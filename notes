@@ -1,0 +1,68 @@
+NEW CHECKS:
+
+** REMOVE DISCONTINUITIES
+** REMOVE MASS DEPOSITION
+
+- check values, divergence.
+- do we need axial velocity and frost layer and convection?
+- do i need the center temperature equation?
+- check functions correctness.
+- remove averaging of density...
+- increase pipe length/ add steel pipe to enable flow directioning........
+- should i start simulation from the boundaries or inside.. m=0 or 1. This doesnt matter with smoothing....
+
+done:
+
+- saturated pressure values are similar to 1d: saturation pressure, mdot calc 1.7822794978752264e-29
+- viscosity has been checked and giving similar results to 1d, 2.3238190624267303e-07, however there is no viscous term in the 1d.
+
+TODO:
+
+-saturation pressure is high starting in 1d bao ~ 78010291.13788661, later it becomes order e-29 if there is m_out..
+
+- dr squared term, density is very low which overestimates the viscous term in the velocity equation... and causes velocity to increase dramatically.. How to solve it?
+- check the viscous term ... how to control it... reduced time stepping so that the dt term is not very small..
+- saturated temp for mdot calculation:~ 50, in 1d it was ~ 20.
+- check q_h function... its a fitting.
+  check dt2nd derivative, its causing problems.
+
+- DENSITY IS THE SOURCE OF ALL MY PROBLEMS..... I SHOULD AVERAGE IT SOMEHOW....
+
+- TODO: CHECK
+
+- recalculate pressure for all iterations and all regions...... VERY IMPORTANT. DONE
+- fix the smoothing, recalculate all properties of the gas within smoothing. DONE
+- increase transition points i DONE
+- check mass deposition for best dt, dr, dx. NOT GETTING ANY CORRECT VALUES.
+- smoothing added as initial BCs and updated within time.....
+
+- TODO:
+
+- speed of sound as the speed for m_max?
+- calculating exponential smoothing..
+- check dt2nd differencing, inlet cancel...
+
+NEXT:
+
+- perform linear stability analysis
+- write down all parameters between 1d and 2d code for mass deposition.
+- RK4 time integration.
+- WENO or Lax for dt2nd_axial_ux.
+- TVD limiter for first gradients.
+- fix the pressure term. - Use WENO reconstruction.
+
+- plot pressure, temperature ad
+- can q1 be negative? Is Ts always higher than Tw? Am i considering this in the equations?
+
+---
+
+- DONE THIS WEEK 12.06:
+- add numpy.delete(arr, obj, axis=None) for the first column in the 2d arrays.. r=0 not calculated.
+- make sure r=0 is not accessed, all values are hardcoded.
+- fix differencing method at n==1
+- fixed energy equation.
+- recalculated pressure for the next iteration, wasnt updating the pressure before.
+- modularized code for understandability.
+- Checked values from functions and made sure they give correct results.
+- deriving m_sound equation... It is not giving correct values.
+-

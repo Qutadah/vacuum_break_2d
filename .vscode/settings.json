@@ -1,0 +1,21 @@
+{
+  // "[python]": {
+  //   "editor.defaultFormatter": "ms-python.autopep8"
+  // },
+  // "python.formatting.provider": "none"
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: Current File",
+      "type": "python",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "env": { "PYTHONPATH": "${workspaceRoot}" }
+    }
+  ],
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.autopep8"
+  },
+  "python.formatting.provider": "none"
+}
