@@ -308,7 +308,7 @@ def q_h(tw, BW_coe):
         q_max1 = (BW_coe*np.power(tt+b2, 1.25))*10000
         q_he = (1.25/2/b2*10000*BW_coe*(1/2.25*np.power(delT, 2.25)-(tt-b2) /
                 1.25*np.power(delT, 1.25))-q_min)/(q_max-q_min)*(q_max1-q_tr)+q_tr
-    print("heat transferred to helium:", q_he)
+    print("rate of heat transfer to helium:", q_he)
     print("q_h calc: ", q_he, "Tw: ", tw)
     q_he = 0  # NO HEAT TRANSFER CASE
     return q_he
@@ -483,23 +483,23 @@ if __name__ == '__main__':
     ts = 4.2
     print("delta_h ", delta_h(tg, ts))
 
-# ------------------------- Mass Deposition ------------------------------- #
+# ------------------------- specific heat of solid nitrogen (J/(kg*K)) ------------------------------- #
 
     print("c_n ", c_n(ts))
 # ------------------------- thermal velocity ------------------------------- #
 
     print("vm ", v_m(tg))
 
-# ------------------------- Mass Deposition ------------------------------- #
+# ------------------------- heat capacity of copper (J/(kg*K)) ------------------------------- #
 
     print("c_c ", c_c(ts))
 
-# ------------------------- Mass Deposition ------------------------------- #
+# ------------------------- coefficient of thermal conductivity of copper (RRR=10) (W/(m*K)) ------------------------------- #
 
     T = 4.2
     print("k_cu", k_cu(T))
 
-# ------------------------- Mass Deposition ------------------------------- #
+# ------------------------- self mass diffusivity of nitrogen (m^2/s) ------------------------------- #
 
     T_g = 298
     P_g = 1000

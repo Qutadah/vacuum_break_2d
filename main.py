@@ -186,12 +186,13 @@ plt.xlabel("X direction grid")
 plt.ylabel("R direction grid")
 
 
-# # NOTE: BC INIT
-# Tw2[:] = Tw1
-# Ts1[:] = Tw1
-# Ts2[:] = Tw1
-# Tc1[:] = Tw1
-# Tc2[:] = Tw1
+# NOTE: BC INIT
+Ts1[:] = T1
+Ts2[:] = Ts1
+Tw1[:] = Ts1
+Tw2[:] = Ts1
+Tc1[:] = Ts1
+Tc2[:] = Ts1
 
 #        ux_in = 50
 # e1[0,:] = e_in                #set energy BC
@@ -318,29 +319,30 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
             # print("m", m)  # Nx-1 to avoid boundary
             # starts from np start [1,Nr]
             for n in np.arange(np.int64(1), np.int64(Nr+1)):
-                print("iteration #:", i, "m,n", m, n)
+                print("iteration #:", i, "[m,n]:", [m, n])
                 # Internal energy (multiplied by rho) NOTE: check later
 
                 ############## Case 1: At boundaries (with mass deposition).##########################################################
                 # print("looping" ,"m",m, "n", n)
                 if n == Nr:  # (at cylinder wall) #check Nr or Nr+1
                     print("THIS IS A SURFACE, MASS DEPOSITION:")
-                    eps = 5./2.*p1[m, n]
-                    # eps = rho1[m, n]/M_n*R * T1[m, n]
 
+                    # intenal energy current timestep
+                    eps = 5./2.*p1[m, n]
+                    e1[m, n] = eps + 1./2. * rho1[m, n] * ur1[m, n]**2
                     print("rho1 ", rho1[m, n])
                     check_negative(rho1[m, n], n)
 
-                    # print("n==NR", "i=", i, "m", m, "n", n)
                     # print("p1p", p1p, "e1[m,n]", e1[m, n], "rho1[m,n]", rho1[m, n], "u1[m,n]", u1[m, n])
                     # print("printed",T1[m, n], p1p, Tw1[m], de1[m], rho1[m, n]*ur1[m, n]-rho1[m, n-1]*ur1[m, n-1])
+
     # Only consider mass deposition at a large enough density, otherwise the program will arise negative density
                     if rho1[m, n] > 2.*rho_0:
                         # print("printed",T1[m, n], p1p, Tw1[m], de1[m], rho1[m, n]* ur1[m, n]-rho1[m, n-1]*ur1[m, n-1])
                         # mass deposition rate (m_out)
                         # print("temp gas",T1[m,n], "pressure", p1_before_dep, "temp wall: ", Tw1[m],"mass depo", de1[m], "dm", rho1[m, n]*n*dr*ur1[m, n]-rho1[m, n-1]*n*dr*ur1[m, n-1], "n grid point", n)
-                        print("input val for m_de calc: [T1, p1, Tw1, de1, rho1, ur1]",
-                              T1[m, n], p1[m, n], Tw1[m], de1[m], rho1[m, n], ur1[m, n])
+                        print("inputs m_de calc: [T1, p1, Ts1, de1, rho1, ur1]",
+                              T1[m, n], p1[m, n], Ts1[m], de1[m], rho1[m, n], ur1[m, n])
                         de1[m] = m_de(T1[m, n], p1[m, n], Ts1[m], de1[m], rho1[m, n]
                                       * n*dr*ur1[m, n]-rho1[m, n-1]*(n-1)*dr*ur1[m, n-1])  # used BWD
                         print("m_de / de1 calculated:", de1[m])
@@ -351,30 +353,18 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     else:
                         de1[m] = 0
                         print("NO MASS DEPOSITION: ")
-                    # for a in np.arange(np.int64(1), np.int64(10)):
-                    #     de1[m] = m_de(T1[m, n], p1[m, n], Tw1[m], de1[m],
-                    #                   rho1[m, n]*ur1[m, n]-rho1[m, n-1]*ur1[m, n-1])
-                    #
-# NOTE: should i put it before the mass deposition or not..
-# NOTE: Check with Yolanda
 
-                    ur2[m, n] = de1[m]/rho1[m, n]
-                    u2[m, n] = ur2[m, n]  # no slip boundary condition.
+                    # Integrate deposition mass
+                    de0[m] += dt*np.pi*D*de1[m]
+                    print("deposition mass surface", de0[m])
+                    check_negative(de0[m], n)
 
-                    # ## New pressure after mass deposition
-                    # p1_after_dep = 2/5*(e1[m, n]+1/2*rho1[m, n] *
-                    #                 ur1[m, n]**2)
-                    # print("pressure after mass deposition:", p1_after_dep)
-                    print("ur2 surface", ur2[m, n], "u2 surface", u2[m, n])
-                    check_negative(ur2[m, n], n)
-                    check_negative(u2[m, n], n)
+                # Calculate the SN2 layer thickness
+                    del_SN = de0[m]/np.pi/D/rho_sn
+                    print("del_SN: ", del_SN)
+                    check_negative(del_SN, n)
 
-                    # if m ==0:
-                    #     dm_x = rho1[m+1,n]-rho1[m,n]
-                    # elif m ==Nx:
-                    #     dm_x =  rho1[m,n]-rho1[m-1,n]
-                    # else:
-                    #     dm_x = rho1[m+1,n]-rho1[m,n]
+                    # density calculation
                     rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
                         n-1)*dr*ur1[m, n-1]) - 4*dt/D * de1[m]
                     # rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
@@ -384,31 +374,33 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     #     print("dr term:", -dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
                     #         n-1)*dr*ur1[m, n-1]), "rho1[m,n]:", rho1[m, n], "rho1[m,n-1]:", rho1[m, n-1])
                     #     print("rho1", rho1[m, n])
-                    #   #  rho2[m,n] = rho1[m,n] #NOTE: addeed remove later, this is a nonphysical condition
-                    #     exit()
 
-                    # print("n*dr*dr", n*dr*dr)
-#                    print("first", dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
-                    # print("rho1[m,n] =", rho1[m, n], "m=", m, "n=", n)
-                    # n-1)*dr*ur1[m, n-1]))
-                    # print("rho2", rho2[m, n])
-                    # print("rho2[m,n]=", rho2[m, n], "m=", m, "n=", n)
                     # ensure no division by zero
                     if rho2[m, n] == 0:
                         rho2[m, n] = 0.0001
                         print("Density went to zero")
 
-                    e1[m, n] = 5./2.*p1[m, n] + 1./2.*rho1[m, n] * u1[m, n]**2
-                    e2[m, n] = e1[m, n]-dt/(n*dr*dr)*(n*dr*ur1[m, n]*e1[m, n] - (
-                        n-1)*dr*ur1[m, n-1]*e1[m, n-1]) - dt*4/D*de1[m]*(eps/rho1[m, n] + 1./2.*u1[m, n]**2)
+# NOTE: Check with Yolanda, should i use rho1 or rho2 ???
+                    # velocity calculation
+                    ur2[m, n] = de1[m]/rho2[m, n]
+                    u2[m, n] = ur2[m, n]  # no slip boundary condition.
+                    ux1[m, n] = 0.
+                    ux2[m, n] = 0.
+                    print("ur2 surface", ur2[m, n], "u2 surface", u2[m, n])
+                    check_negative(ur2[m, n], n)
+                    check_negative(u2[m, n], n)
+
+                    # energy calculation
+                    # radial kinetic enery on surface.
+                    delta_e = n*dr*ur1[m, n]*e1[m, n] - \
+                        (n-1)*dr*ur1[m, n-1]*e1[m, n-1]  # BWD
+                    e2[m, n] = e1[m, n]-dt / \
+                        (n*dr*dr)*(delta_e) - dt*4/D*de1[m]*(e1[m, n])
                     print("e1 surface", e1[m, n], "e2 surface", e2[m, n])
                     check_negative(e1[m, n], n)
                     check_negative(e2[m, n], n)
 
                 # Calculate the gas temperature and ensure it's higher than the SN2 surface temperature
-
-#                    ur2[m, n] = de2[m]/rho2[m, n] NOTE: Should i leave this?
-                    # NOTE: Check temperature equation.
 
                     T2[m, n] = 2./5.*(e2[m, n]-1./2.*rho2[m, n] *
                                       ur2[m, n]**2.)*M_n/rho2[m, n]/R
@@ -416,18 +408,22 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     check_negative(T2[m, n], n)
 
                     if T2[m, n] < Ts1[m]:
-                        e2[m, n] = 5./2.*rho2[m, n]*R*Tw1[m] / \
-                            M_n + 1/2*rho2[m, n]*ur2[m,
-                                                     n]**2.
-                        print("THIS IS T2 < Tw")
+                        e2[m, n] = 5./2.*rho2[m, n]*R*Ts1[m] / \
+                            M_n
+                        print("THIS IS T2 < Ts")
                         print("e2 surface", e2[m, n])
                         check_negative(e2[m, n], n)
 
                         T2[m, n] = 2./5.*(e2[m, n] - 1./2.*rho2[m, n]
                                           * ur2[m, n]**2.)*M_n/rho2[m, n]/R
                         print(
-                            "T2 surface recalculated to make it same as wall temperature", T2[m, n])
+                            "T2 surface recalculated to make it equal to wall temperature (BC)", T2[m, n])
                         check_negative(T2[m, n], n)
+
+                        # update pressure
+                        p2[m, n] = rho2[m, n] * R * \
+                            T2[m, n]/M_n
+                        check_negative(p2[m, n], n)
 
                     # NOTE: Check if the dt2nd is correct.
 #                    second_derivative = laplace(Tw1)/dx
@@ -446,19 +442,11 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     if math.isnan(dt2nd):
                         print("NAN dt2nd surface")
                         assert not math.isnan(dt2nd)
-                    # if dt2nd < 0:
-                    #     print("negative dt2nd surface", dt2nd)
-                    #     exit()
-
-                # Calculate the SN2 layer thickness
-                    del_SN = de0[m]/np.pi/D/rho_sn
-                    print("del_SN: ", del_SN)
-                    check_negative(del_SN, n)
 
                 # Radial heat transfer within Copper section
 
 # Only consider the thermal resistance through SN2 layer when thickness is larger than a small preset value (taking average value)
-                    frac = 1
+
                     if del_SN > 1e-5:
                         print("This is del_SN > 1e-5 condition")
                         # outgoing heatflux qi conduction within frost layer
@@ -467,14 +455,12 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                         check_negative(q1, n)
 
                        # For pipe wall
-
                         Tw2[m] = Tw1[m]+dt/(w_coe*c_c(Tw1[m]))*(q1-q_h(Tw1[m], BW_coe)
                                                                 * Do/D)+dt/2/dx/dx/rho_cu/c_c(Tw1[m])*k_cu(Tw1[m])*dt2nd
                         print("Tw2: ", Tw2[m])
                         check_negative(Tw2[m], n)
 
                         # For SN2 layer
-
                         Tc2[m] = Tc1[m]+dt/(de0[m]*c_n(Tc1[m])/D/np.pi)*(
                             de1[m]*(1/2*(u1[m, n])**2+delta_h(T1[m, n], Ts1[m]))-q1)
                         print("Tc2: ", Tc2[m, n])
@@ -499,31 +485,17 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                         Tc2[m] = Tw2[m]
                         print("Tc2: ", Tc2[m])
 
-                    qhe[m] = q_h(Tw2[m], BW_coe)*np.pi*Do
                     # Calculate SN2 surface temp
                     Ts2[m] = 2*Tc2[m] - Tw2[m]
                     print("Ts2: ", Ts2[m])
                     check_negative(Ts2[m], n)
 
+                    # Heat transfer rate helium
+                    qhe[m] = q_h(Tw1[m], BW_coe)*np.pi*Do
+
                     # print("line 759", "Ts1", Ts1[m], "Ts2", Ts2[m], "Tc2", Tc2[m], "c_c(Ts1[m])", c_c(Ts1[m]), "qh", q_h(Ts1[m], BW_coe), "k_cu(Ts1[m])", k_cu(Ts1[m]), "dt2nd", dt2nd)
                     print("qhe: ", qhe[m])
                     check_negative(qhe[m], n)
-
-                    # print("THis is Tw", Tw1[m])
-                    # Tw2[m] = 2*Tc2[m]-Ts2[m]
-                    # Tw2[m] = 2*Tc2[m] - Ts2[m]
-                    # if math.isnan(Tw2[m]):
-                    #     print("NAN Tw2")
-                    #     assert not math.isnan(Tw2[m])
-                    # if Tw2[m] < 0:
-                    #     print("negative Tw2", Tw2[m])
-                    #     exit()
-
-                    # print("THis is Tw2", Tw2[m])
-    #                print("de0", de0[m], "de2", de2[m], "dt", dt)
-                    de0[m] += dt*np.pi*D*de1[m]  # Integrate deposition mass
-                    print("de0 surface", de0[m])
-                    check_negative(de0[m], n)
 
                     p2[m, n] = 2./5.*(e2[m, n] - 1./2.*rho2[m, n]*u2[m, n]**2)
 
