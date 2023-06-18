@@ -234,7 +234,7 @@ def m_de(T, P, T_s, de, dm):
     beta = u_mean1/v_m1  # this is Beta from Hertz Knudson
     gam1 = gamma(beta)  # deviation from Maxwellian velocity.
     P_s = f_ps(T_s)
-    print("P_s for mdot calc", P_s)
+    print("Saturation pressure at this Ts", P_s)
 
     if P > P_s and P > p_0:
         # Correlated Hertz-Knudsen Relation #####
@@ -258,11 +258,9 @@ def m_de(T, P, T_s, de, dm):
  #           D/4.         # From continuity equation
 #        m_max = 2.564744575054553e-26  #NOTE: added to limit condensation rate...
 #        print("m_max_sound:",m_max)
-        print("saturation temp mdot: ", f_ts(P*np.sqrt(T_s/T)))
-        if m_out < m_max:
-            m_out = m_out
-            print("mout > mmax")
-        else:
+        print("saturation temp: ", f_ts(P*np.sqrt(T_s/T)))
+        print("mout calculated: ", m_out)
+        if m_out > m_max:
             m_out = m_max
             print("mout = mmax")
     else:
@@ -274,20 +272,20 @@ def m_de(T, P, T_s, de, dm):
 #       D/4.         # From continuity equation
     # print("m_max_sound:", m_max, "rho", rho, "rho_min", rho_min)
 
-    print("mdot calculated:", m_out)
+    print("mout final: ", m_out)
     m_out = 0  # NO HEAT TRANSFER/ MASS DEPOSITION CASE
     return m_out  # Output: mass deposition flux, no convective heat flux
 
 
 def q_h(tw, BW_coe):
-    print("q_h calc: ", "Tw: ", tw)
     # Boiling heat transfer rate of helium (W/(m^2*K))
     # delT = ts-4.2
-    delT = tw-298
+    delT = tw-4.2
 
     q_con = 0.375*1000.*delT  # Convection
     q_nu = 58.*1000.*(delT**2.5)  # Nucleate boiling
     q_tr = 7500.  # Transition to film boiling
+    print("qcond: ", q_con, "q_nu: ", q_nu, "q_tr: ", q_tr)
     tt = np.power(q_tr/10000./BW_coe, 1./1.25)
     b2 = tt-1.
     # Breen and Westwater Correlation with tuning parameter
@@ -311,6 +309,7 @@ def q_h(tw, BW_coe):
         q_he = (1.25/2/b2*10000*BW_coe*(1/2.25*np.power(delT, 2.25)-(tt-b2) /
                 1.25*np.power(delT, 1.25))-q_min)/(q_max-q_min)*(q_max1-q_tr)+q_tr
     print("heat transferred to helium:", q_he)
+    print("q_h calc: ", q_he, "Tw: ", tw)
     q_he = 0  # NO HEAT TRANSFER CASE
     return q_he
 
@@ -508,8 +507,8 @@ if __name__ == '__main__':
 
 # ------------------------- Viscosity ------------------------------- #
 
-    T = 298
-    P = 8333
+    T = 273.15
+    P = 9806649
     print("mu_n ", mu_n(T, P))
 
 # ------------------------- Error function ------------------------------- #
@@ -555,7 +554,7 @@ if __name__ == '__main__':
 
 # ------------------------- Heat transferred ------------------------------- #
 
-    tw = 12
+    tw = 298
     BW_coe = 0.02
     print("q_h ", q_h(tw, BW_coe))
 
@@ -568,7 +567,7 @@ if __name__ == '__main__':
     p1 = np.full((Nx+1), p_0, dtype=np.float64)  # Pressure
     for i in np.arange(0, Nx+1):
         p1[i] = exp_smooth(i+n_trans, p_in*2.-p_0, p_0, 0.3, n_trans)
-    print("p1 array", p1)
+    # print("p1 array", p1)
     # print("P1 smoothing values", p1[i,:])
     #    rho1[i,:]=exp_smooth(i,rho_in,rho_0,0.75,n_trans)
     #    T1[i, :] = T_neck(i)

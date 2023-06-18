@@ -341,7 +341,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                         # print("temp gas",T1[m,n], "pressure", p1_before_dep, "temp wall: ", Tw1[m],"mass depo", de1[m], "dm", rho1[m, n]*n*dr*ur1[m, n]-rho1[m, n-1]*n*dr*ur1[m, n-1], "n grid point", n)
                         print("input val for m_de calc: [T1, p1, Tw1, de1, rho1, ur1]",
                               T1[m, n], p1[m, n], Tw1[m], de1[m], rho1[m, n], ur1[m, n])
-                        de1[m] = m_de(T1[m, n], p1[m, n], Tw1[m], de1[m], rho1[m, n]
+                        de1[m] = m_de(T1[m, n], p1[m, n], Ts1[m], de1[m], rho1[m, n]
                                       * n*dr*ur1[m, n]-rho1[m, n-1]*(n-1)*dr*ur1[m, n-1])  # used BWD
                         print("m_de / de1 calculated:", de1[m])
                         check_negative(de1[m], n)
@@ -469,7 +469,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                        # For pipe wall
 
                         Tw2[m] = Tw1[m]+dt/(w_coe*c_c(Tw1[m]))*(q1-q_h(Tw1[m], BW_coe)
-                                                                * frac*Do/D)+dt/2/dx/dx/rho_cu/c_c(Tw1[m])*k_cu(Tw1[m])*dt2nd
+                                                                * Do/D)+dt/2/dx/dx/rho_cu/c_c(Tw1[m])*k_cu(Tw1[m])*dt2nd
                         print("Tw2: ", Tw2[m])
                         check_negative(Tw2[m], n)
 
@@ -489,8 +489,8 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
 #                        print("this is going into c_c func", Ts1[m])
  #                       print("m",m, "n",n)
   #                      print("line 752", "q1", q1,"de1", de1[m], "de2", de2[m],"u1", u1[m,n],"T1", T1[m,n], "Tw1",Tw1[m])
-                        Tw2[m] = Tw1[m]+dt/(w_coe*c_c(Tw1[m]))*(q1-q_h(Tw1[m], BW_coe)
-                                                                * frac*Do/D)+dt/2/dx/dx/rho_cu/c_c(Tw1[m])*k_cu(Tw1[m])*dt2nd
+                        Tw2[m] = Tw1[m]+dt/(w_coe*c_c(Tw1[m]))*(
+                            q1-q_h(Tw1[m], BW_coe)*Do/D)+dt/2/dx/dx/rho_cu/c_c(Tw1[m])*k_cu(Tw1[m])*dt2nd
 
                        # print("n value", n)
                         print("Tw2: ", Tw2[m])
@@ -499,14 +499,13 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                         Tc2[m] = Tw2[m]
                         print("Tc2: ", Tc2[m])
 
-                    qhe[m] = q_h(Tw2[m], BW_coe)*frac*np.pi*Do
+                    qhe[m] = q_h(Tw2[m], BW_coe)*np.pi*Do
                     # Calculate SN2 surface temp
                     Ts2[m] = 2*Tc2[m] - Tw2[m]
                     print("Ts2: ", Ts2[m])
                     check_negative(Ts2[m], n)
 
                     # print("line 759", "Ts1", Ts1[m], "Ts2", Ts2[m], "Tc2", Tc2[m], "c_c(Ts1[m])", c_c(Ts1[m]), "qh", q_h(Ts1[m], BW_coe), "k_cu(Ts1[m])", k_cu(Ts1[m]), "dt2nd", dt2nd)
-                    qhe[m] = q_h(Tw1[m], BW_coe)*frac*np.pi*Do
                     print("qhe: ", qhe[m])
                     check_negative(qhe[m], n)
 
@@ -893,7 +892,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
         p1[Nx, n] = 2/5*(e1[Nx, n]-1/2*rho1[Nx, n]
                          * u1[Nx, n]**2)  # Pressure
         # NOTE: check input de to the m_de equation.
-        de1[Nx] = m_de(T2[Nx, n], p1[Nx, n], Tw2[Nx], de1[Nx], 0.)
+        de1[Nx] = m_de(T2[Nx, n], p1[Nx, n], Ts2[Nx], de1[Nx], 0.)
         del_SN = de0[Nx]/np.pi/D/rho_sn
         if del_SN > 1e-5:
             q1 = k_sn*(Tw1[Nx]-Ts1[Nx])/del_SN
