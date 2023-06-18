@@ -449,27 +449,27 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
 # Only consider the thermal resistance through SN2 layer when thickness is larger than a small preset value (taking average value)
 
 # NOTE: CHECK THIS LOGIC TREE
+
+                        # q deposited into frost layer. Nusselt convection neglected
+                    q_dep = de1[m]*(1/2*(ur1[m, n])**2 +
+                                    delta_h(T1[m, n], Ts1[m]))
+
                     if del_SN > 1e-5:
-                        print("This is del_SN > 1e-5 condition")
+                        print(
+                            "This is del_SN > 1e-5 condition, conduction across SN2 layer considered")
 
                         # heatflux into copper wall from frost layer
                         qi = k_sn*(Ts1[m]-Tw1[m])/del_SN
                         print("qi: ", qi)
-                        check_negative(q1, n)
+                        check_negative(qi, n)
 
-                       # For pipe wall
+                       # pipe wall equation
                         Tw2[m] = Tw1[m] + dt/(w_coe*c_c(Tw1[m]))*(
                             qi-q_h(Tw1[m], BW_coe)*Do/D)+dt/(rho_cu*c_c(Tw1[m]))*k_cu(Tw1[m])*dt2nd
                         print("Tw2: ", Tw2[m])
                         check_negative(Tw2[m], n)
 
-                        # # For SN2 layer
-                        # Tc2[m] = Tc1[m]+dt/(de0[m]*c_n(Tc1[m])/D/np.pi)*(
-                        #     de1[m]*(1/2*(u1[m, n])**2+delta_h(T1[m, n], Ts1[m]))-q1)
-
-                        # For SN2 layer, frost layer center Tc equation
-                        q_dep = de1[m]*(1/2*(ur1[m, n])**2 +
-                                        delta_h(T1[m, n], Ts1[m]))
+                        # SN2 Center layer Tc equation
                         Tc2[m] = Tc1[m] + dt * \
                             (q_dep-qi) / (rho_sn * c_n(Ts1[m, n]*del_SN))
                         print("Tc2: ", Tc2[m, n])
@@ -478,17 +478,17 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     else:
                         # heatflux into copper wall from frost layer
                         qi = 0
-                        q_dep = de1[m]*(1/2*(ur1[m, n])**2 +
-                                        delta_h(T1[m, n], Ts1[m]))
                         print("qi: ", qi)
                         check_negative(qi, n)
 
-#                        print("this is going into c_c func", Ts1[m])
+                       # pipe wall equation
                         Tw2[m] = Tw1[m] + dt/(w_coe*c_c(Tw1[m]))*(
                             qi-q_h(Tw1[m], BW_coe)*Do/D)+dt/(rho_cu*c_c(Tw1[m]))*k_cu(Tw1[m])*dt2nd
                         print("Tw2: ", Tw2[m])
                         check_negative(Tw2[m], n)
 
+                        # SN2 Center layer Tc equation
+                        # NOTE: Is this te wall temperature?
                         Tc2[m] = Tw2[m]
                         print("Tc2: ", Tc2[m])
 
@@ -504,6 +504,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     print("qhe: ", qhe[m])
                     check_negative(qhe[m], n)
 
+                    # Update pressure
                     p2[m, n] = 2./5.*(e2[m, n] - 1./2.*rho2[m, n]*u2[m, n]**2)
 
 
