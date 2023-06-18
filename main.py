@@ -316,8 +316,6 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
 
         # starts from np start [0,Nx]
         for m in np.arange(np.int64(0), np.int64(Nx+1)):
-            # print("m", m)  # Nx-1 to avoid boundary
-            # starts from np start [1,Nr]
             for n in np.arange(np.int64(1), np.int64(Nr+1)):
                 print("iteration #:", i, "[m,n]:", [m, n])
                 # Internal energy (multiplied by rho) NOTE: check later
@@ -382,7 +380,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
 
 # NOTE: Check with Yolanda, should i use rho1 or rho2 ??? Also de1 or de2?
 
-                    # velocity calculation
+                    # velocity calculation #  I think we need some momentum R equation... this is not correct.
                     ur2[m, n] = de1[m]/rho2[m, n]
                     u2[m, n] = ur2[m, n]  # no slip boundary condition.
                     ux1[m, n] = 0.
@@ -421,14 +419,8 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                             "T2 surface recalculated to make it equal to wall temperature (BC)", T2[m, n])
                         check_negative(T2[m, n], n)
 
-                        # update pressure
-                        p2[m, n] = rho2[m, n] * R * \
-                            T2[m, n]/M_n
-                        check_negative(p2[m, n], n)
-
                     # NOTE: Check if the dt2nd is correct.
 #                    second_derivative = laplace(Tw1)/dx
- #                   print("second derivative",second_derivative)
                     if m == 0:
                         dt2nd = (T_in - 2 * Tw1[m] +
                                  Tw1[m+1])/(dx**2)  # 3-point CD
@@ -505,22 +497,19 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     check_negative(qhe[m], n)
 
                     # Update pressure
-                    p2[m, n] = 2./5.*(e2[m, n] - 1./2.*rho2[m, n]*u2[m, n]**2)
+                    p2[m, n] = 2./5.*(e2[m, n] - 1./2.*rho2[m, n]*ur2[m, n]**2)
+                    check_negative(p2[m, n], n)
+#                    p2[m, n] = rho2[m, n] * R * T2[m, n]/M_n
 
 
 ################################################################### Case 2: no mass deposition (within flow field,away from wall in radial direction) ########
 
                 else:
                     print("THIS IS THE BULK:")
-                    # Calculate pressure P1
-                    #  NOTE: CHECK THIS ENERGY THING.
-                    print("density starting bulk",
-                          rho1[m, n], "T1 starting bulk:", T1[m, n])
+                    print("rho1 bulk: ",
+                          rho1[m, n], "T1 bulk:", T1[m, n])
                     eps = 5./2.*p1[m, n]
-#                    eps = e1[m,n] - 1./2. * rho1[m,n]*u1[m,n]**2
-#                    print("type", type(eps))
                     print("eps bulk:", eps)
-                    # check_negative(eps,eps, n)
                     if eps < 0:
                         print("negative eps Bulk ", eps)
                         exit()
@@ -599,8 +588,8 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                             ur1[m+1, n] + ur1[m-1, n] - 2*ur1[m, n])/(dx**2)  # CD
                         print("dt2nd_axial_ur1:", dt2nd_axial_ur1)
 
-                        print("rho2 bulk", rho2[m, n])
-                        check_negative(rho2[m, n], n)
+                    print("rho2 bulk", rho2[m, n])
+                    check_negative(rho2[m, n], n)
 
                     # Define second derivatives in radial direction (consider n as reference)
 

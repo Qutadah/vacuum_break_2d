@@ -63,5 +63,6 @@ NEXT:
 - can q1 be negative? Is Ts always higher than Tw? Am i considering this in the equations?
 - parabolic velocity profile at inlet, and calculating all corresponding properties.
 - checked all q*h, delta*, q1 functions for Ts, tw.
-- do i need the center temperature equation?
 - radial velocity relation with mass deposition is a mistake... I think we need momentum R equation. The rate of change of thickness in SN2 layer is controlled by mass deposition.
+- do we use de1 or de2 for calculating ur2 ?
+-
