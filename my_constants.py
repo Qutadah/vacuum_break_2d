@@ -33,9 +33,8 @@ Sc_PP = 0.95  # Condensation\boiling coeffcient
 sample = 100  # Sample coeffcient
 n_trans = 60  # Smoothing control for initial condition
 T_in = 298.
-T_s = 298.  # Temperature boundaries
-# T_in = 100.# rho_0=1e-10
-artv = 0.06  # Control parameter for the artificial viscosity
+T_s = 298  # Temperature boundaries
+T_0 = 298
 
 #   Constants
 M_n = 0.028
@@ -60,13 +59,11 @@ L_h = 0.7208/0.05  # Copper pipe length per bath depth, m/m
 dH_He = 12000  # 20720.59@1atm  # Latent heat of LHe, J/kg
 dH_He_V = dH_He*125  # Latent heat of LHe, J/m^3
 
-#   Calculate initial values
-u_in_x = np.sqrt(7./5.*R*T_in/M_n)*1.0  # Inlet velocity, m/s (gamma*RT)
-# print("u_in_x", u_in_x)
-u_in_r = 0
 rho_0 = 1e-2  # An arbitrary small initial density in pipe, kg/m3
-p_0 = rho_0/M_n*R*T_s  # Initial pressure, Pa
-print("p_0", p_0)
-e_0 = 5./2.*rho_0/M_n*R*T_s  # Initial internal energy
+p_0 = rho_0/M_n*R*T_0  # Initial pressure, Pa
+e_0 = 5./2.*rho_0/M_n*R*T_0  # Initial internal energy
 
-F = 1.*dt/dx**2.  # Stability indictor   ### Q:
+# Kinetic energy
+
+u_in_x = np.sqrt(7./5.*R*T_in/M_n)*1.0  # Inlet velocity, m/s (gamma*RT)
+u_in_r = 0

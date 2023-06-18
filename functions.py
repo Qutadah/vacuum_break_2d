@@ -13,6 +13,8 @@ import sys
 import matplotlib.pyplot as plt
 np.set_printoptions(threshold=sys.maxsize)
 
+u_in_x = np.sqrt(7./5.*R*T_in/M_n)*1.0  # Inlet velocity, m/s (gamma*RT)
+
 
 def f_ps(ts):
     #   Calculate saturated vapor pressure (Pa)
@@ -170,7 +172,6 @@ def val_in(n):
     A1 = 0.00261
     C = 100902.5175  # 100 kPa
    # A1 = 0.00277; C = 10000.15263  # 50 kPa
-# NOTE: COMMENTED
     P_in_fit = np.power(A1*n*dt+np.power(C, -1./7.), -7.)
 
     # P_in_fit = 1./2.*P_in_fit
@@ -181,13 +182,11 @@ def val_in(n):
     q_in = -(np.power(C, 2./7.)*0.230735318/1.4/297./T_in) * \
         (np.power(P_in_fit, -2./7.)*dP_in_fit)
     ma_in_x = q_in/A
-    ma_in_r = 0
     rho_in = ma_in_x/u_in_x
     p_in = rho_in/M_n*R*T_in
     ux_in = ma_in_x/rho_in
 #    ux_in = 10
-    ur_in = ma_in_r/rho_in
-    u_in_r = ma_in_r/rho_in
+    ur_in = 0.
     e_in = 5./2.*rho_in/M_n*R*T_in + 1./2.*rho_in*ux_in**2
     # print("u_in_x", u_in_x)
     out = np.array([q_in, ux_in, ur_in, rho_in, p_in, e_in])

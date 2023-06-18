@@ -1,4 +1,3 @@
-
 from inspect import currentframe
 from functions import *
 from my_constants import *
@@ -31,7 +30,22 @@ def check_negative(var_in, n):  # CHECKS CALCULATIONS FOR NEGATIVE OR NAN VALUES
             assert not math.isnan(var_in)
 
 
-print("p_0", p_0)
+#### -----------------------------------------   Calculate initial values ----------------------------------------- #
+# Internal energy - defined in constants file
+
+# rho_0 = 1e-2  # An arbitrary small initial density in pipe, kg/m3
+# p_0 = rho_0/M_n*R*T_0  # Initial pressure, Pa
+# e_0 = 5./2.*rho_0/M_n*R*T_0  # Initial internal energy
+
+# Kinetic energy
+
+u_in_x = np.sqrt(7./5.*R*T_in/M_n)*1.0  # Inlet velocity, m/s (gamma*RT)
+u_in_r = 0
+
+# Stability factors
+F = 1.*dt/dx**2.  # Stability indictor   ### Q:
+artv = 0.06  # Control parameter for the artificial viscosity
+
 
 # ----------------- Array initialization ----------------------------
 rho12 = np.full((Nx+1, Nr+1), rho_0, dtype=(np.float64, np.float64))  # Density
@@ -45,24 +59,22 @@ e1 = np.full((Nx+1, Nr+1), e_0, dtype=(np.float64, np.float64))
 # CHECK TODO: calculate using equation velocity.
 # TODO: calculate using equation velocity.
 
-T1 = np.full((Nx+1, Nr+1), T_s, dtype=(np.float64, np.float64))  # Temperature
+T1 = np.full((Nx+1, Nr+1), T_0, dtype=(np.float64, np.float64))  # Temperature
 
 rho2 = np.full((Nx+1, Nr+1), rho_0, dtype=(np.float64, np.float64))
 ux2 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
 ur2 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
 u2 = np.sqrt(np.square(ux2) + np.square(ur2))  # total velocity
 e2 = np.full((Nx+1, Nr+1), e_0, dtype=(np.float64, np.float64))
-T2 = np.full((Nx+1, Nr+1), T_s, dtype=(np.float64, np.float64))
+T2 = np.full((Nx+1, Nr+1), T_0, dtype=(np.float64, np.float64))
 p2 = np.full((Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # Pressure
 
 
-Tw1 = np.full((Nx+1), T_s, dtype=(np.float64))  # Temperature of SN2 surface
+Tw1 = np.full((Nx+1), T_s, dtype=(np.float64))  # Wall temperature
 Tw2 = np.full((Nx+1), T_s, dtype=(np.float64))
-Ts1 = np.full((Nx+1), T_s, dtype=(np.float64))  # Wall temperature
-# pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-remove-de2/'
-# np.savetxt("ts1.csv", Ts1, delimiter=",")
-
+Ts1 = np.full((Nx+1), T_s, dtype=(np.float64))  # Temperature of SN2 surface
 Ts2 = np.full((Nx+1), T_s, dtype=(np.float64))
+
 # Average temperature of SN2 layer
 Tc1 = np.full((Nx+1), T_s, dtype=(np.float64))
 Tc2 = np.full((Nx+1), T_s, dtype=(np.float64))
@@ -72,6 +84,7 @@ de1 = np.full((Nx+1), 0., dtype=(np.float64))  # Deposition rate
 qhe = np.zeros_like(de0, dtype=np.float64)  # heat transfer
 
 
+# These matrices are just place holder. These will be overwritten and saved. (remove r=0)
 rho3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
 ux3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
 ur3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
@@ -79,7 +92,7 @@ u3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
 e3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
 T3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
 p3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
-# mass deposition is only on the boundaries.
+
 # Initialization
 
 # ps = np.zeros(Nx+1, np.float64)
@@ -104,7 +117,7 @@ print("Initial conditions simulation start", val_in(0))
 
 # ux_in = 10
 
-### ------------------------------------- PREPPING AREA ------------------------------------------------- ########
+### ------------------------------------- PREPPING AREA - smoothing ------------------------------------------------- ########
 
 for i in range(0, Nx+1):
     p1[i, :] = exp_smooth(i+n_trans, p_in*2.-p_0, p_0, 0.4, n_trans)
@@ -116,13 +129,17 @@ for i in range(0, Nx+1):
     # v_max = np.sqrt(7./5.*R*T/M_n)  # diatomic gas gamma = 7/5
 #    u1[i, :] = exp_smooth(i + n_trans, ux_in*2, 0, 0.4, n_trans)
 
-    if i < n_trans+1:
-        e1[i, :] = 5./2.*p1[i, :]+1./2.*rho1[i, :]*u1[i, :]**2
+    # if i < n_trans+1:
+    #     e1[i, :] = 5./2.*p1[i, :]+1./2.*rho1[i, :]*u1[i, :]**2
+
 #        rho1[i, :] = p1[i, :]*M_n/R/T1[i, :]  # IDEAL GAS LAW
 
     # print("p1 matrix after smoothing", p1)
-    else:
-        e1[i, :] = 5/2*rho1[i, :]/M_n*R*T_in+1/2**rho1[i, :]*u1[i, :]**2
+    # else:
+    #     e1[i, :] = 5/2*rho1[i, :]/M_n*R*T_in+1/2**rho1[i, :]*u1[i, :]**2
+
+
+# for i in range(0, Nx+1):
 
 
 ####### ---------------------------- PARABOLIC VELOCITY PROFILE - inlet prepping area-------------------------------------------------------- ######
@@ -136,11 +153,11 @@ for i in np.arange(60):
         u1[i, y] = ux1[i, y]
 
 
-#### ----------------------------------------------------------INLET BOUNDARY CONDITION - NO SLIP BC ----------------------------------------------------------###
+### ---------------------------------------------------------- NO SLIP BOUNDARY CONDITION ----------------------------------------------------------###
 ux1[:, Nr] = 0
 u1[:, Nr] = 0
 
-e1[:, Nr] = 5./2. * p1[:, Nr] + 1./2. * rho1[:, Nr] * u1[:, Nr]**2
+e1[:, Nr] = 5./2. * p1[:, Nr]
 # recalculate energies
 
 ## ------------------------------------------------------------- SAVING INITIAL CONDITIONS ---------------------------------------------------------------- #####
@@ -169,12 +186,12 @@ plt.xlabel("X direction grid")
 plt.ylabel("R direction grid")
 
 
-# NOTE: BC INIT
-Tw2[:] = Tw1
-Ts1[:] = Tw1
-Ts2[:] = Tw1
-Tc1[:] = Tw1
-Tc2[:] = Tw1
+# # NOTE: BC INIT
+# Tw2[:] = Tw1
+# Ts1[:] = Tw1
+# Ts2[:] = Tw1
+# Tc1[:] = Tw1
+# Tc2[:] = Tw1
 
 #        ux_in = 50
 # e1[0,:] = e_in                #set energy BC
@@ -398,7 +415,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     print("T2 surface", T2[m, n])
                     check_negative(T2[m, n], n)
 
-                    if T2[m, n] < Tw1[m]:
+                    if T2[m, n] < Ts1[m]:
                         e2[m, n] = 5./2.*rho2[m, n]*R*Tw1[m] / \
                             M_n + 1/2*rho2[m, n]*ur2[m,
                                                      n]**2.
@@ -435,7 +452,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
 
                 # Calculate the SN2 layer thickness
                     del_SN = de0[m]/np.pi/D/rho_sn
-                    print("del_SN surface", del_SN)
+                    print("del_SN: ", del_SN)
                     check_negative(del_SN, n)
 
                 # Radial heat transfer within Copper section
@@ -446,30 +463,27 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                         print("This is del_SN > 1e-5 condition")
                         # outgoing heatflux qi conduction within frost layer
                         q1 = k_sn*(Ts1[m]-Tw1[m])/del_SN
-                        print("q1 surface", q1)
+                        print("q1: ", q1)
                         check_negative(q1, n)
 
-                        # print(Ts1[m])
-                        # print(c_c(Ts1[m]))
-                        # print(q_h(Ts1[m], BW_coe))
-                        # print(k_cu(Ts1[m]))
-                        # print(dt2nd)
-                        # NOTE: SHOULD THIS BE TS OR TW from the equation.?? Check with Bao..#
-                   #     print("this is going into c_c func", Ts1[m])
+                       # For pipe wall
+
                         Tw2[m] = Tw1[m]+dt/(w_coe*c_c(Tw1[m]))*(q1-q_h(Tw1[m], BW_coe)
                                                                 * frac*Do/D)+dt/2/dx/dx/rho_cu/c_c(Tw1[m])*k_cu(Tw1[m])*dt2nd
-                        print("Tw2 surface", Tw2[m])
+                        print("Tw2: ", Tw2[m])
                         check_negative(Tw2[m], n)
 
+                        # For SN2 layer
+
                         Tc2[m] = Tc1[m]+dt/(de0[m]*c_n(Tc1[m])/D/np.pi)*(
-                            de1[m]*(1/2*(u1[m, n])**2+delta_h(T1[m, n], Tw1[m]))-q1)  # NOTEL Should this be the wall temperature or the SN2 surface temp?
-                        print("Tc2 surface", Tc2[m, n])
+                            de1[m]*(1/2*(u1[m, n])**2+delta_h(T1[m, n], Ts1[m]))-q1)
+                        print("Tc2: ", Tc2[m, n])
                         check_negative(Tc2[m], n)
 
                     else:
                         q1 = de1[m]*(1/2*(u1[m, n])**2 +
                                      delta_h(T1[m, n], Ts1[m]))
-                        print("q1 surface", q1)
+                        print("q1: ", q1)
                         check_negative(q1, n)
 
 #                        print("this is going into c_c func", Ts1[m])
@@ -479,20 +493,21 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                                                                 * frac*Do/D)+dt/2/dx/dx/rho_cu/c_c(Tw1[m])*k_cu(Tw1[m])*dt2nd
 
                        # print("n value", n)
-                        print("Tw2 surface", Tw2[m])
+                        print("Tw2: ", Tw2[m])
                         check_negative(Tw2[m], n)
 
                         Tc2[m] = Tw2[m]
-                        print("Tc2 surface", Tc2[m])
+                        print("Tc2: ", Tc2[m])
 
+                    qhe[m] = q_h(Tw2[m], BW_coe)*frac*np.pi*Do
                     # Calculate SN2 surface temp
                     Ts2[m] = 2*Tc2[m] - Tw2[m]
-                    print("Ts2 surface", Ts2[m])
+                    print("Ts2: ", Ts2[m])
                     check_negative(Ts2[m], n)
 
                     # print("line 759", "Ts1", Ts1[m], "Ts2", Ts2[m], "Tc2", Tc2[m], "c_c(Ts1[m])", c_c(Ts1[m]), "qh", q_h(Ts1[m], BW_coe), "k_cu(Ts1[m])", k_cu(Ts1[m]), "dt2nd", dt2nd)
                     qhe[m] = q_h(Tw1[m], BW_coe)*frac*np.pi*Do
-                    print("qhe surface", qhe[m])
+                    print("qhe: ", qhe[m])
                     check_negative(qhe[m], n)
 
                     # print("THis is Tw", Tw1[m])
@@ -885,16 +900,16 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
     #           print("line 848", "q1", q1,"Tw1", Tw1[Nx],"Ts1", Ts1[Nx],"ksn", k_sn)
             assert not math.isnan(Ts1[Nx])
             Ts2[Nx] = Ts1[Nx]+dt/(w_coe*c_c(Tw1[Nx])) * \
-                (q1-q_h(Ts1[Nx], BW_coe)*Do/D)
+                (q1-q_h(Tw1[Nx], BW_coe)*Do/D)
             Tc2[Nx] = Tc1[Nx]+dt/(de0[m]*c_n(Tc1[Nx])/D/np.pi)*(de1[Nx]
-                                                                * (1/2*(u1[Nx, n])**2+delta_h(T1[Nx, n], Tw1[Nx])-q1))
+                                                                * (1/2*(u1[Nx, n])**2+delta_h(T1[Nx, n], Ts1[Nx])-q1))
         else:
-            q1 = de1[Nx]*(1/2*(u1[Nx, n])**2+delta_h(T1[Nx, n], Tw1[Nx]))
+            q1 = de1[Nx]*(1/2*(u1[Nx, n])**2+delta_h(T1[Nx, n], Ts1[Nx]))
             Ts2[Nx] = Ts1[Nx]+dt/(w_coe*c_c(Tw1[Nx])) * \
-                (q1-q_h(Ts1[Nx], BW_coe)*Do/D)
+                (q1-q_h(Tw1[Nx], BW_coe)*Do/D)
             Tc2[Nx] = Ts2[Nx]
         Tw2[Nx] = 2*Tc2[Nx]-Ts2[Nx]
-        qhe[Nx] = q_h(Ts1[Nx], BW_coe)*np.pi*Do
+        qhe[Nx] = q_h(Tw1[Nx], BW_coe)*np.pi*Do
         de0[Nx] += dt*np.pi*D*de1[Nx]
         rho2[Nx, n] = max(2*rho2[Nx-1, n]-rho2[Nx-2, n], rho_0)  # Free outflow
         u2[Nx, n] = max(2*rho2[Nx-1, n]*u2[Nx-1, n] -
@@ -924,7 +939,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
    #         print("this is T2 from BC",T2)
 
         for b in np.arange(np.int64(0), np.int64(Nx-1)):
-            if (T2[b, Nr] < Tw2[b]):  # or(rho1[Nx]<rho_sw*k_c(T2[Nx],p1p)):
+            if (T2[b, Nr] < Ts2[b]):  # or(rho1[Nx]<rho_sw*k_c(T2[Nx],p1p)):
                 e2[b, Nr] = 5/2*rho2[b, Nr]*R*Tw2[b] / \
                     M_n+1./2.*rho2[b, Nr]*ur2[b, Nr]**2
 
