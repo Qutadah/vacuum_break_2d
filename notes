@@ -5,7 +5,6 @@ NEW CHECKS:
 
 - check values, divergence.
 - do we need axial velocity and frost layer and convection?
-- do i need the center temperature equation?
 - check functions correctness.
 - remove averaging of density...
 - increase pipe length/ add steel pipe to enable flow directioning........
@@ -30,16 +29,9 @@ TODO:
 
 - TODO: CHECK
 
-- recalculate pressure for all iterations and all regions...... VERY IMPORTANT. DONE
-- fix the smoothing, recalculate all properties of the gas within smoothing. DONE
-- increase transition points i DONE
-- check mass deposition for best dt, dr, dx. NOT GETTING ANY CORRECT VALUES.
-- smoothing added as initial BCs and updated within time.....
+- check mass deposition for best dt, dr, dx. NOT GETTING ANY CORRECT VALUES. used x equation.
 
 - TODO:
-
-- speed of sound as the speed for m_max?
-- calculating exponential smoothing..
 - check dt2nd differencing, inlet cancel...
 
 NEXT:
@@ -52,7 +44,6 @@ NEXT:
 - fix the pressure term. - Use WENO reconstruction.
 
 - plot pressure, temperature ad
-- can q1 be negative? Is Ts always higher than Tw? Am i considering this in the equations?
 
 ---
 
@@ -65,4 +56,12 @@ NEXT:
 - modularized code for understandability.
 - Checked values from functions and made sure they give correct results.
 - deriving m_sound equation... It is not giving correct values.
--
+
+- WEEK 18.06:
+
+- IS de2 needed ?? there is de1 input to m_de function.
+- can q1 be negative? Is Ts always higher than Tw? Am i considering this in the equations?
+- parabolic velocity profile at inlet, and calculating all corresponding properties.
+- checked all q*h, delta*, q1 functions for Ts, tw.
+- do i need the center temperature equation?
+- radial velocity relation with mass deposition is a mistake... I think we need momentum R equation. The rate of change of thickness in SN2 layer is controlled by mass deposition.

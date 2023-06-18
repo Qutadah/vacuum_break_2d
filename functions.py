@@ -360,7 +360,7 @@ def save_data(tx, dt, rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1):
     np.savetxt("e.csv", e1, delimiter=",")
     np.savetxt("tw.csv", Tw1, delimiter=",")
     np.savetxt("ts.csv", Ts1, delimiter=",")
-    np.savetxt("de.csv", de0, delimiter=",")
+    np.savetxt("de_mass.csv", de0, delimiter=",")
     np.savetxt("de_rate.csv", de1, delimiter=",")
     np.savetxt("p.csv", p1, delimiter=",")
 
