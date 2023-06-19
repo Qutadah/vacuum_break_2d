@@ -652,8 +652,6 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     #     print("second derivative", (ux1[m+1, n] + ux1[m-1, n] - 2*ux1[m, n])/(dx**2))
                     #     exit()
 
-                    print("T1 bulk: ", T1[m, n])
-
                     if (m != 0 and m != Nx and n == 1):
                         #                        rho1[m,n] = (rho1[m,n] + rho1[m,n])/2.
                         grad_p1_n1 = (p1[m, n+2] - p1[m, n])/(4*dr)
@@ -761,32 +759,35 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     # We dont need the surface case, this is the bulk...
 
                     e_in_x = eps_in + 1./2.*rho_in*ux_in**2.
-                    if (m == 0 and n != 1):
-                        e2[m, n] = e1[m, n]-dt/(n*dr*dr)*(n*dr*ur1[m, n]*e1[m, n] - (
-                            n-1)*dr*ur1[m, n-1]*e1[m, n-1]) - dt/dx*(e1[m, n]*ux1[m, n]-e_in_x*ux_in)
-
-                    elif (m == 0 and n == 1):  # NOTE: FIX DIFFERENCING # ur =0 at  n =0
+ 
+                    if (m == 0 and n == 1):  # NOTE: FIX DIFFERENCING # ur =0 at  n =0
                         e2[m, n] = e1[m, n] - dt/dx * \
                             (e1[m, n]*ux1[m, n]-e_in_x*ux_in) - \
                             dt/(n*dr*dr)*(n*dr*ur1[m, n]*e1[m, n])
 
-                    elif (m == Nx and n != 1):
+                    elif (m == 0 and n != 1):
                         e2[m, n] = e1[m, n]-dt/(n*dr*dr)*(n*dr*ur1[m, n]*e1[m, n] - (
-                            n-1)*dr*ur1[m, n-1]*e1[m, n-1]) - dt/dx*(e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])
-
+                            n-1)*dr*ur1[m, n-1]*e1[m, n-1]) - dt/dx*(e1[m, n]*ux1[m, n]-e_in_x*ux_in)
+ 
                     elif (m == Nx and n == 1):  # NOTE: FIX DIFFERENCING
                         e2[m, n] = e1[m, n] - dt/dx * \
                             (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n]
                              ) - dt/(n*dr*dr)*(n*dr*ur1[m, n]*e1[m, n])
 
-                    elif (m != Nx and m != 0 and n != 1 and n != Nr):
+                    elif (m == Nx and n != 1):
                         e2[m, n] = e1[m, n]-dt/(n*dr*dr)*(n*dr*ur1[m, n]*e1[m, n] - (
                             n-1)*dr*ur1[m, n-1]*e1[m, n-1]) - dt/dx*(e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])
 
-                    elif (m != Nx and m != 0 and n == 1):
+
+                    elif ( m != 0 and m != Nx and n == 1):
                         e2[m, n] = e1[m, n] - dt/dx * \
                             (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n]
                              ) - dt/(n*dr*dr)*(n*dr*ur1[m, n]*e1[m, n])
+
+                    else: # 0 < m < Nx,  1 < n < Nr 
+                        e2[m, n] = e1[m, n]-dt/(n*dr*dr)*(n*dr*ur1[m, n]*e1[m, n] - (
+                            n-1)*dr*ur1[m, n-1]*e1[m, n-1]) - dt/dx*(e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])
+
 
                     # print("internal energy", e2[m, n])
                     # print("Kinetic energy", 1/2*rho2[m, n] *
@@ -800,12 +801,10 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                           e2[m, n], rho2[m, n], u2[m, n])
                     T2[m, n] = 2/5*(e2[m, n]-1/2*rho2[m, n] *
                                     u2[m, n]**2)*M_n/rho2[m, n]/R
-                    print("T2 bulk:", T2[m, n])
+                    print("T1 bulk: ", T1[m, n], "T2 bulk:", T2[m, n])
+                    check_negative(T1[m, n], n)
                     check_negative(T2[m, n], n)
 
-                    # # calculate e2 again. #NOTE: New added.
-                    # eps2 = 5./2.*rho2[m, n]/M_n*R * \
-                    #     T2[m, n]
                     p2[m, n] = 2./5.*(e2[m, n] - 1./2.*rho2[m, n]*u2[m, n]**2)
                     print("P2 bulk:", p2[m, n])
                     check_negative(p2[m, n], n)
