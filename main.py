@@ -148,7 +148,8 @@ for i in np.arange(60):
     # diatomic gas gamma = 7/5   WE USED ANY POINT, since this preparation area is constant along R direction.
     v_max = np.sqrt(7./5.*R*T1[i, 4]/M_n)
     for y in np.arange(Nr+1):
-        a = v_max*(1.0 - ((y*dr)/R_cyl)**2)
+        a = v_max
+        # a = v_max*(1.0 - ((y*dr)/R_cyl)**2)
         ux1[i, y] = a
         u1[i, y] = ux1[i, y]
 
@@ -174,7 +175,7 @@ im = axs[0].imshow(p1.transpose())
 plt.colorbar(im, ax=axs[0])
 # plt.colorbar(im, ax=ax[0])
 axs[0].set(ylabel='Pressure [Pa]')
-plt.title("Pressure smoothing")
+# plt.title("Pressure smoothing")
 
 
 # VELOCITY DISTRIBUTION
@@ -183,13 +184,13 @@ im = axs[1].imshow(ux1.transpose())
 plt.colorbar(im, ax=axs[1])
 # axs[1].colorbars(location="bottom")
 axs[1].set(ylabel='Ux [m/s]')
-plt.title("velocity parabolic smoothing")
+# plt.title("velocity parabolic smoothing")
 
 # Temperature DISTRIBUTION
 im = axs[2].imshow(T1.transpose())
 plt.colorbar(im, ax=axs[2])
 # axs[1].colorbars(location="bottom")
-axs[2].set(ylabel='temperature [K]')
+# axs[2].set(ylabel='temperature [K]')
 
 
 plt.xlabel("L(x)")
@@ -291,7 +292,6 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     print("del_SN: ", del_SN)
                     check_negative(del_SN, n)
 
-
                     # density calculation
                     rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
                         n-1)*dr*ur1[m, n-1]) - 4*dt/D * de1[m]
@@ -318,19 +318,18 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
 
                     ur1[m, n] = de1[m]/rho1[m, n]
                     u1[m, n] = ur1[m, n]  # no slip boundary condition.
-                    ux1[m, n] = 0. # no slip boundary condition.
+                    ux1[m, n] = 0.  # no slip boundary condition.
 
                     u2[m, n] = u1[m, n]  # no momentum R equation
                     ur2[m, n] = ur1[m, n]  # no slip boundary condition.
-                    ux2[m, n] = 0. # no slip boundary condition.
+                    ux2[m, n] = 0.  # no slip boundary condition.
 
-
-                    print("ur1 surface", ur1[m, n], "u1 surface", u1[m, n], "ur2 surface", ur2[m, n], "u2 surface", u2[m, n])
+                    print("ur1 surface", ur1[m, n], "u1 surface", u1[m, n],
+                          "ur2 surface", ur2[m, n], "u2 surface", u2[m, n])
                     check_negative(ur2[m, n], n)
                     check_negative(u2[m, n], n)
 
-
-                    # intenal energy current timestep
+                    # internal energy current timestep
                     eps = 5./2.*p1[m, n]
                     e1[m, n] = eps + 1./2. * rho1[m, n] * ur1[m, n]**2
                     print("rho1 ", rho1[m, n])
@@ -338,9 +337,6 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
 
                     # print("p1p", p1p, "e1[m,n]", e1[m, n], "rho1[m,n]", rho1[m, n], "u1[m,n]", u1[m, n])
                     # print("printed",T1[m, n], p1p, Tw1[m], de1[m], rho1[m, n]*ur1[m, n]-rho1[m, n-1]*ur1[m, n-1])
-
-
-
 
                     # energy calculation
                     # radial kinetic enery on surface.
@@ -538,19 +534,25 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
 
                     if n == 1:
                         # --------------------------- dt2nd radial ux1 ---------------------------------#
-                        dt2nd_radial_ux1 = (
-                            ux1[m, n+2] - 2*ux1[m, n+1] + ux1[m, n])/(dr**2)  # FWD
- #                       dt2nd_radial_ux1 = (2*ux1[m,n] - 5*ux1[m,n+1] + 4*ux1[m,n+2] -ux1[m,n+3])/(dr**3) # FWD
+                        #                         dt2nd_radial_ux1 = (
+                        #                             ux1[m, n+2] - 2*ux1[m, n+1] + ux1[m, n])/(dr**2)  # FWD
+                        #  #                       dt2nd_radial_ux1 = (2*ux1[m,n] - 5*ux1[m,n+1] + 4*ux1[m,n+2] -ux1[m,n+3])/(dr**3) # FWD
 
-                    # --------------------------- dt2nd radial ur1 ---------------------------------#
+                        # --------------------------- dt2nd radial ur1 ---------------------------------#
 
-                    # NOTE: Symmetry Boundary Condition assumed for ur1 radial derivative along x axis..
+                        # NOTE: Symmetry Boundary Condition assumed for ur1 radial derivative along x axis..
 
+                        # --------------------------- dt2nd radial ux1 ---------------------------------#
+                        grad_ux1_n1 = (ux1[m, n+2] - ux1[m, n])/(4*dr)
+                        dt2nd_radial_ux1_n1 = (
+                            ux1[m, n+2] - ux1[m, n]) / (4*dr**2)
+                        print("dt2nd_radial_ux1_n1:", dt2nd_radial_ux1_n1)
+
+                        # --------------------------- dt2nd radial ur1 ---------------------------------#
                         grad_ur1_n1 = (ur1[m, n+2] - ur1[m, n])/(4*dr)
                         dt2nd_radial_ur1_n1 = (
                             ur1[m, n+2] - ur1[m, n]) / (4*dr**2)
                         print("dt2nd_radial_ur1_n1:", dt2nd_radial_ur1_n1)
-                        dt2nd_radial_ur1 = 0.
 
                     else:  # (n is between 1 and Nr)
 
@@ -563,7 +565,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                             ur1[m, n+1] + ur1[m, n-1] - 2*ur1[m, n])/(dr**2)  # CD
                         print("dt2nd_radial_ur1:", dt2nd_radial_ur1)
 
-                    if m == 0:
+                    if m == 0 and n != 1:
                         # 4-point CD
                         dp = (p_in - 8*p_in + 8 *
                               p1[m+1, n] - p1[m+2, n])/(12*dx)
@@ -577,13 +579,38 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                             dt*ux1[m, n] * (ux1[m, n] - ux_in)/dx -\
                             dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr
 
-                    elif m == Nx:
+                    elif m == 0 and n == 1:
+                        # 4-point CD
+                        dp = (p_in - 8*p_in + 8 *
+                              p1[m+1, n] - p1[m+2, n])/(12*dx)
+                    #     print("first term:", ux1[m, n], "pressure term:", -dt*dp/rho1[m, n], "viscosity:", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1), "dt2nd_axial_ux", dt2nd_axial_ux1, "dt2nd_radial_ux",
+                    #           dt2nd_radial_ux1, "ux1 term:", dt*ux1[m, n] * (ux1[m, n] - ux_in)/dx, "ur1 term:", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr, "mu_n", mu_n(T1[m, n], p1[m, n]), "extra", (ux1[m, n+1]-ux1[m, n]), "extra2", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr)
+                    # # print("rho2[m,n] inside bulk=", rho2[m, n])
+                        ux2[m, n] = ux1[m, n] - dt*dp/rho1[m, n] + \
+                            mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * \
+                            (dt2nd_radial_ux1_n1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) +
+                             dt2nd_axial_ux1) -\
+                            dt*ux1[m, n] * (ux1[m, n] - ux_in)/dx -\
+                            dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr
+
+                    elif m == Nx and n != 1:
                         # print("first term:", ux1[m, n], "pressure term:", -dt*(p1[m, n] - p1[m-1, n])/(rho1[m, n]*dx), "viscosity:", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1), "dt2nd_axial_ux", dt2nd_axial_ux1,
                         #       "dt2nd_radial_ux", dt2nd_radial_ux1, "ux1 term:", dt*ux1[m, n] * (ux1[m, n] - ux1[m-1, n])/dx, "ur1 term:", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr, "mu_n", mu_n(T1[m, n], p1[m, n]), "extra", (ux1[m, n+1]-ux1[m, n]), "extra2", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr)
                         # print("rho2[m,n] inside bulk=", rho2[m, n])
                         ux2[m, n] = ux1[m, n] - dt*(p1[m, n] - p1[m-1, n])/(rho1[m, n]*dx) + \
                             mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * \
                             (dt2nd_radial_ux1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) +
+                             dt2nd_axial_ux1) -\
+                            dt*ux1[m, n] * (ux1[m, n] - ux1[m-1, n])/dx -\
+                            dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr
+
+                    elif m == Nx and n == 1:
+                        # print("first term:", ux1[m, n], "pressure term:", -dt*(p1[m, n] - p1[m-1, n])/(rho1[m, n]*dx), "viscosity:", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1), "dt2nd_axial_ux", dt2nd_axial_ux1,
+                        #       "dt2nd_radial_ux", dt2nd_radial_ux1, "ux1 term:", dt*ux1[m, n] * (ux1[m, n] - ux1[m-1, n])/dx, "ur1 term:", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr, "mu_n", mu_n(T1[m, n], p1[m, n]), "extra", (ux1[m, n+1]-ux1[m, n]), "extra2", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr)
+                        # print("rho2[m,n] inside bulk=", rho2[m, n])
+                        ux2[m, n] = ux1[m, n] - dt*(p1[m, n] - p1[m-1, n])/(rho1[m, n]*dx) + \
+                            mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * \
+                            (dt2nd_radial_ux1_n1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) +
                              dt2nd_axial_ux1) -\
                             dt*ux1[m, n] * (ux1[m, n] - ux1[m-1, n])/dx -\
                             dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr
@@ -782,7 +809,6 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     p2[m, n] = 2./5.*(e2[m, n] - 1./2.*rho2[m, n]*u2[m, n]**2)
                     print("P2 bulk:", p2[m, n])
                     check_negative(p2[m, n], n)
-
 
 
 ############################################## Updating timesteps finished ############################################################
