@@ -48,7 +48,7 @@ artv = 0.06  # Control parameter for the artificial viscosity
 
 
 # ----------------- Array initialization ----------------------------
-rho12 = np.full((Nx+1, Nr+1), rho_0, dtype=(np.float64, np.float64))  # Density
+# rho12 = np.full((Nx+1, Nr+1), rho_0, dtype=(np.float64, np.float64))  # Density
 p1 = np.full((Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # Pressure
 rho1 = np.full((Nx+1, Nr+1), rho_0, dtype=(np.float64, np.float64))  # Density
 ux1 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))  # velocity -x
@@ -187,7 +187,7 @@ plt.ylabel("R direction grid")
 
 
 # NOTE: BC INIT
-Ts1[:] = T1
+Ts1[:] = T1[:, Nr]
 Ts2[:] = Ts1
 Tw1[:] = Ts1
 Tw2[:] = Ts1
@@ -304,15 +304,15 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
   #      u1[1, :] = ux_in
    #     e1[1, :] = 5/2*p_in
 
-        for x in np.arange(Nx):
-            for y in np.arange(Nr):
+        # for x in np.arange(Nx):
+        #     for y in np.arange(Nr):
 
-                if x == 0:
-                    rho12[x, y] = (rho1[x, y] + rho_in)/2.
-                elif x == Nx:
-                    rho12[x, y] = (rho1[x, y] + rho1[x-1, y])/2.
-                else:
-                    rho12[x, y] = (rho1[x, y] + rho1[x+1, y])/2.
+        #         if x == 0:
+        #             rho12[x, y] = (rho1[x, y] + rho_in)/2.
+        #         elif x == Nx:
+        #             rho12[x, y] = (rho1[x, y] + rho1[x-1, y])/2.
+        #         else:
+        #             rho12[x, y] = (rho1[x, y] + rho1[x+1, y])/2.
 
         # starts from np start [0,Nx]
         for m in np.arange(np.int64(0), np.int64(Nx+1)):
@@ -518,15 +518,6 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                         assert not math.isnan(eps)
 
 #                    print("u1 for p1 calculation:", u1[m, n])
-                    # NOTE: Check the pressure from BC..
-
-                    # if p1[m,n] < 0:
-                    #     print("negative p1 in Bulk ",p1[m,n])
-                    #     exit()
-                    # if math.isnan(p1[m,n]):
-                    #     print("NAN p1 in Bulk",p1[m,n])
-                    #     assert not math.isnan(p1[m,n])
-# print("Pressure in the bulk", p1[m, n])
 
                     # Calculate mass\momentum\energy at time n+1 with no mass deposition - no heat transfer
 
@@ -539,11 +530,9 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     # if dt2nd_axial_ux1 > 10000:
                     #     dt2nd_axial_ux1 = 1000
 
-                    # print("n value:", n)
-
                     if m == 0:
-                        rho2[m, n] = rho_in - dt/(n*dr*dr)*(rho12[m, n+1]*(n+1)*dr*ur1[m, n+1] - rho12[m, n]
-                                                            * n*dr*ur1[m, n]) - dt/dx*(rho12[m, n]*ux1[m, n]-rho_in*ux_in)
+                        rho2[m, n] = rho_in - dt/(n*dr*dr)*(rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] - rho1[m, n]
+                                                            * n*dr*ur1[m, n]) - dt/dx*(rho1[m, n]*ux1[m, n]-rho_in*ux_in)
                         #                        dt2nd_axial_ux1 = (2*ux1[m,n] - 5*ux1[m+1,n] + 4*ux1[m+2,n] -ux1[m+3,n])/(dx**3) #FWD
 
                         # --------------------------- dt2nd axial ux1 ---------------------------------#
@@ -560,8 +549,8 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
  #                        dt2nd_axial_ur1 = (2*ur1[m,n] - 5*ur1[m+1,n] + 4*ur1[m+2,n] -ur1[m+3,n])/(dx**3)  # FWD
 
                     elif m == Nx:
-                        rho2[m, n] = rho12[m, n] - dt/(n*dr*dr)*(rho12[m, n+1]*(n+1)*dr*ur1[m, n+1] - rho12[m, n]
-                                                                 * n*dr*ur1[m, n]) - dt/dx*(rho12[m, n]*ux1[m, n]-rho12[m-1, n]*ux1[m-1, n])
+                        rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] - rho1[m, n]
+                                                                * n*dr*ur1[m, n]) - dt/dx*(rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])
                         # --------------------------- dt2nd axial ux1 ---------------------------------#
 
                         dt2nd_axial_ux1 = (
@@ -574,8 +563,8 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                         print("dt2nd_axial_ur1:", dt2nd_axial_ur1)
 
                     else:
-                        rho2[m, n] = rho12[m, n] - dt/(n*dr*dr)*(rho12[m, n+1]*(n+1)*dr*ur1[m, n+1] - rho12[m, n]
-                                                                 * n*dr*ur1[m, n]) - dt/dx*(rho12[m+1, n]*ux1[m+1, n]-rho12[m, n]*ux1[m, n])
+                        rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] - rho1[m, n]
+                                                                 * n*dr*ur1[m, n]) - dt/dx*(rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])
                         print("rho1 bulk", rho1[m, n],
                               "rho2 bulk:", rho2[m, n])
                     # print("density inside the bulk:", rho2[m, n])
@@ -624,11 +613,11 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                         # 4-point CD
                         dp = (p_in - 8*p_in + 8 *
                               p1[m+1, n] - p1[m+2, n])/(12*dx)
-                    #     print("first term:", ux1[m, n], "pressure term:", -dt*dp/rho12[m, n], "viscosity:", mu_n(T1[m, n], p1[m, n]) * dt/rho12[m, n] * (dt2nd_radial_ux1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1), "dt2nd_axial_ux", dt2nd_axial_ux1, "dt2nd_radial_ux",
+                    #     print("first term:", ux1[m, n], "pressure term:", -dt*dp/rho1[m, n], "viscosity:", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1), "dt2nd_axial_ux", dt2nd_axial_ux1, "dt2nd_radial_ux",
                     #           dt2nd_radial_ux1, "ux1 term:", dt*ux1[m, n] * (ux1[m, n] - ux_in)/dx, "ur1 term:", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr, "mu_n", mu_n(T1[m, n], p1[m, n]), "extra", (ux1[m, n+1]-ux1[m, n]), "extra2", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr)
                     # # print("rho2[m,n] inside bulk=", rho2[m, n])
-                        ux2[m, n] = ux1[m, n] - dt*dp/rho12[m, n] + \
-                            mu_n(T1[m, n], p1[m, n]) * dt/rho12[m, n] * \
+                        ux2[m, n] = ux1[m, n] - dt*dp/rho1[m, n] + \
+                            mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * \
                             (dt2nd_radial_ux1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) +
                              dt2nd_axial_ux1) -\
                             dt*ux1[m, n] * (ux1[m, n] - ux_in)/dx -\
@@ -638,26 +627,26 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                         # print("first term:", ux1[m, n], "pressure term:", -dt*(p1[m, n] - p1[m-1, n])/(rho1[m, n]*dx), "viscosity:", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1), "dt2nd_axial_ux", dt2nd_axial_ux1,
                         #       "dt2nd_radial_ux", dt2nd_radial_ux1, "ux1 term:", dt*ux1[m, n] * (ux1[m, n] - ux1[m-1, n])/dx, "ur1 term:", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr, "mu_n", mu_n(T1[m, n], p1[m, n]), "extra", (ux1[m, n+1]-ux1[m, n]), "extra2", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr)
                         # print("rho2[m,n] inside bulk=", rho2[m, n])
-                        ux2[m, n] = ux1[m, n] - dt*(p1[m, n] - p1[m-1, n])/(rho12[m, n]*dx) + \
-                            mu_n(T1[m, n], p1[m, n]) * dt/rho12[m, n] * \
+                        ux2[m, n] = ux1[m, n] - dt*(p1[m, n] - p1[m-1, n])/(rho1[m, n]*dx) + \
+                            mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * \
                             (dt2nd_radial_ux1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) +
                              dt2nd_axial_ux1) -\
                             dt*ux1[m, n] * (ux1[m, n] - ux1[m-1, n])/dx -\
                             dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr
 
                     else:
-                        print("first term:", ux1[m, n], "pressure term:", -dt*(p1[m+1, n] - p1[m, n])/(rho12[m, n]*dx), "viscosity:", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1), "dt2nd_axial_ux", dt2nd_axial_ux1, "dt2nd_radial_ux", dt2nd_radial_ux1, "ux1 term:", dt*ux1[m, n] * (
+                        print("first term:", ux1[m, n], "pressure term:", -dt*(p1[m+1, n] - p1[m, n])/(rho1[m, n]*dx), "viscosity:", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1), "dt2nd_axial_ux", dt2nd_axial_ux1, "dt2nd_radial_ux", dt2nd_radial_ux1, "ux1 term:", dt*ux1[m, n] * (
                             ux1[m+1, n] - ux1[m, n])/dx, "ur1 term:", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr, "mu_n", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1), "extra", (ux1[m, n+1]-ux1[m, n]), "extra2", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr)
                         print("rho2 bulk=", rho2[m, n])
-                        ux2[m, n] = ux1[m, n] - dt*(p1[m+1, n] - p1[m, n])/(rho12[m, n]*dx) + \
-                            mu_n(T1[m, n], p1[m, n]) * dt/rho12[m, n] * \
+                        ux2[m, n] = ux1[m, n] - dt*(p1[m+1, n] - p1[m, n])/(rho1[m, n]*dx) + \
+                            mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * \
                             (dt2nd_radial_ux1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) +
                              dt2nd_axial_ux1) -\
                             dt*ux1[m, n] * (ux1[m+1, n] - ux1[m, n])/dx -\
                             dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr
 
-                    if ux2[m, n] < 1:
-                        ux2[m, n] = 0
+                    # if ux2[m, n] < 1:
+                    #     ux2[m, n] = 0
 
                     print("ux1 bulk", ux1[m, n], "ux2 bulk:", ux2[m, n])
                     # print("ux2 bulk=", ux2[m, n])
@@ -685,7 +674,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     print("T1 bulk: ", T1[m, n])
 
                     if (m != 0 and m != Nx and n == 1):
-                        #                        rho12[m,n] = (rho1[m,n] + rho1[m,n])/2.
+                        #                        rho1[m,n] = (rho1[m,n] + rho1[m,n])/2.
                         grad_p1_n1 = (p1[m, n+2] - p1[m, n])/(4*dr)
 
                         ur2[m, n] = ur1[m, n] - dt*(grad_p1_n1)/(rho1[m, n]) +\
@@ -696,7 +685,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                             dt*ux1[m, n] * (ur1[m+1, n] - ur1[m, n])/dx - \
                             dt*ur1[m, n]*grad_ur1_n1
 
-                        # print("ur1", ur1[m, n],
+                        # print("ur1", ur1[m, n],, "p_n+1, p_n", [p1[m, n+2], p1[m, n]],
                         #       "press term", dt *
                         #       (p1[m, n+1] - p1[m, n])/(rho1[m, n]*dr),
                         #       "viscous", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ur1_n1 + (
@@ -708,7 +697,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                         #       )
 
                     elif (m == 0 and n == 1):
-                        #                        rho12[m,n] = (rho1[m,n] + rho1[m,n])/2.
+                        #                        rho1[m,n] = (rho1[m,n] + rho1[m,n])/2.
 
                         grad_p1_n1 = (p1[m, n+2] - p1[m, n])/(4*dr)
                         ur2[m, n] = ur1[m, n] - dt*(grad_p1_n1)/(rho1[m, n]) +\
@@ -719,7 +708,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                             dt*ux1[m, n] * (ur1[m, n] - ur_in)/dx - \
                             dt*ur1[m, n]*grad_ur1_n1
 
-                        print("ur1", ur1[m, n],
+                        print("ur1", ur1[m, n], "p_n+1, p_n", [p1[m, n+1], p1[m, n]],
                               "press term", dt *
                               (p1[m, n+1] - p1[m, n])/(rho1[m, n]*dr),
                               "viscous", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ur1_n1 + (
@@ -730,7 +719,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                               ur1[m, n]*(ur1[m, n+1] - ur1[m, n])/dr
                               )
                     elif (m == 0 and n != 1):
-                        #                        rho12[m,n] = (rho1[m,n] + rho1[m,n])/2.
+                        #                        rho1[m,n] = (rho1[m,n] + rho1[m,n])/2.
                         ur2[m, n] = ur1[m, n] - dt*(p1[m, n+1] - p1[m, n])/(rho1[m, n]*dr) +\
                             mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * \
                             (dt2nd_radial_ur1 +
@@ -739,7 +728,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                             dt*ux1[m, n] * (ur1[m, n] - ur_in)/dx - \
                             dt*ur1[m, n]*(ur1[m, n+1] - ur1[m, n])/dr
 
-                        # print("ur1", ur1[m, n],
+                        # print("ur1", ur1[m, n],, "p_n+1, p_n", [p1[m, n+1], p1[m, n]],
                         #       "press term", dt *
                         #       (p1[m, n+1] - p1[m, n])/(rho1[m, n]*dr),
                         #       "viscous", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ur1 + (
@@ -760,7 +749,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                             dt*ux1[m, n] * (ur1[m, n] - ur1[m-1, n])/dx - \
                             dt*ur1[m, n]*(ur1[m, n+1] - ur1[m, n])/dr
 
-                        # print("ur1", ur1[m, n], "press term", dt*(p1[m, n+1] - p1[m, n])/(rho1[m, n]*dr), "viscous", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ur1 + (1/(n*dr))*(
+                        # print("ur1", ur1[m, n], , "p_n+1, p_n", [p1[m, n+1], p1[m, n]], "press term", dt*(p1[m, n+1] - p1[m, n])/(rho1[m, n]*dr), "viscous", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ur1 + (1/(n*dr))*(
                         #     ur1[m, n+1]-ur1[m, n])/dr + dt2nd_axial_ur1 - ur1[m, n]/(dr**2*n**2)), "ux1 term", dt*ux1[m, n] * (ur1[m, n] - ur1[m-1, n])/dx, "ur1 term", dt*ur1[m, n]*(ur1[m, n+1] - ur1[m, n])/dr)
 
                     # if ur2[m, n] < 1:

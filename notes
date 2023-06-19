@@ -65,4 +65,4 @@ NEXT:
 - checked all q*h, delta*, q1 functions for Ts, tw.
 - radial velocity relation with mass deposition is a mistake... I think we need momentum R equation. The rate of change of thickness in SN2 layer is controlled by mass deposition.
 - do we use de1 or de2 for calculating ur2 ?
--
+- You reached bulk ur2 calculation, continue
