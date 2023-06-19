@@ -166,25 +166,37 @@ save_initial_conditions(rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1)
 
 ##### ----------------------------------------- PLOTTING INITIAL CONDITIONS ---------------------------------------------------------------------------####
 
+fig, axs = plt.subplots(3)
+fig.suptitle('Initial Conditions along tube for all R')
 
 # PRESSURE DISTRIBUTION
-
-plt.imshow(p1.transpose())
-plt.colorbar(location="bottom")
+im = axs[0].imshow(p1.transpose())
+plt.colorbar(im, ax=axs[0])
+# plt.colorbar(im, ax=ax[0])
+axs[0].set(ylabel='Pressure [Pa]')
 plt.title("Pressure smoothing")
-plt.xlabel("X direction grid")
-plt.ylabel("R direction grid")
-# print("pressure smoothing column",p1[2,:])
-# print("density smoothing column",rho1[2,:])
+
 
 # VELOCITY DISTRIBUTION
+# axs[1].imshow()
+im = axs[1].imshow(ux1.transpose())
+plt.colorbar(im, ax=axs[1])
+# axs[1].colorbars(location="bottom")
+axs[1].set(ylabel='Ux [m/s]')
+plt.title("velocity parabolic smoothing")
 
-plt.imshow(ux1.transpose())
-plt.colorbar(location="bottom")
-plt.title("Velocity distribution")
-plt.xlabel("X direction grid")
-plt.ylabel("R direction grid")
+# Temperature DISTRIBUTION
+im = axs[2].imshow(T1.transpose())
+plt.colorbar(im, ax=axs[2])
+# axs[1].colorbars(location="bottom")
+axs[2].set(ylabel='temperature [K]')
 
+
+plt.xlabel("L(x)")
+plt.show()
+
+
+## ------------------------------------------------ BC INLET starting matrices  ------------------------------------------------- #
 
 # NOTE: BC INIT
 Ts1[:] = T1[:, Nr]
@@ -223,83 +235,9 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
         q_in, ux_in, ur_in, rho_in, p_in, e_in = val_in(
             i)  # define inlet values
         print("pressure value inlet", p_in)
-        # fig, axs = plt.subplots(2, 2)
-        plt.figure(i)
-#        print("Radius", R_cyl)
-        r1 = np.linspace(0, R_cyl, Nr+1)  # r = 0 plotted
-        r = np.delete(r1, 0, axis=0)  # r = 0 point removed from array
-#        print("array", r)
-        X = np.linspace(0, L, Nx+1)
-
-#        print("linspace", R)
-       # print("shape r", np.shape(r))
-        # RADIAL DIRECTION
-        # a = rho1[0,:]
-        # b = u1[0,:]
-        c = T3[0, :]
-        # d = Ts1[:]
-        # e = Tw1[0,:]
-#        f = p1[0,:]
-
-        # AXIAL DIRECTION
-        # a = rho1[:,7]
-        b = u1[:, 7]
-        # c = T1[:,7]
-        # d = Ts1[:]
-        # e = Tw1[0,:]
-#        f = p1[0,:]
-        # g= de1[:]
-        # h= de0[:]
-
-#       #        print("shape y", np.shape(y))
-        # plt.scatter(r,a)
-        # plt.scatter(r,b)
-        print("shape T3", np.shape(T3), "shape r", np.shape(r))
-        plt.scatter(r, c, label="Temperature")
-        plt.title("Tg along R axis")
-        plt.xlabel("radius (m)")
-        plt.ylabel("Tg (K)")
-
-        # plt.scatter(r,d)
-        # plt.scatter(r,e)
- #       plt.scatter(r,f)
-        # plt.plot(r,b)
-        # plt.plot(r,c)
-        # plt.plot(r,d)
-        # plt.plot(r,e)
-#        plt.plot(X,g)
-        # plt.plot(X,h)
-        # plt.plot(X,b)
-        # plt.title("Axial velocity along X axis")
-        # plt.xlabel("Length (m)")
-        # plt.ylabel("Ux (m/s)")
-
-#        plt.ylim((0, 0.05))   # set the ylim to bottom, top
-        # axs[0, 0].scatter(r, a)
-        # axs[0, 0].set_title('density along R')
-        # axs[0, 1].plot(r, b, 'tab:orange')
-        # axs[0, 1].set_title('Velocity along R')
-        # axs[1, 0].plot(r, c, 'tab:green')
-        # axs[1, 0].set_title('Tg along R')
-        # axs[1, 1].plot(X, d, 'tab:red')
-        # axs[1, 1].set_title('Ts along R')
-
-        # axs[0, 0].scatter(X, a)
-        # axs[0, 0].set_title('density along R')
-        # axs[0, 1].plot(X, b, 'tab:orange')
-        # axs[0, 1].set_title('Velocity along R')
-        # axs[1, 0].plot(X, c, 'tab:green')
-        # axs[1, 0].set_title('Tg along R')
-        # axs[1, 1].plot(X, d, 'tab:red')
-        # axs[1, 1].set_title('Ts along R')
-#        plt.title("Pressure along inlet in the r-direction")
- #       plt.legend()
-        plt.show()
-
 
 #        rho1[1, :] = rho_in
  #       ux1[1, :] = ux_in
- #        print("matrixxx", ux1)
 
   #      u1[1, :] = ux_in
    #     e1[1, :] = 5/2*p_in
@@ -317,7 +255,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
         # starts from np start [0,Nx]
         for m in np.arange(np.int64(0), np.int64(Nx+1)):
             for n in np.arange(np.int64(1), np.int64(Nr+1)):
-                print("iteration #:", i, "[m,n]:", [m, n])
+                print("[i,m,n]:", [i, m, n])
                 # Internal energy (multiplied by rho) NOTE: check later
 
                 ############## Case 1: At boundaries (with mass deposition).##########################################################
@@ -877,7 +815,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
         # e2[0, :] = e_in
         # print("pressure val_in fitting BC", p_in) # from fitting function
 
-        # ------------------------ Temperature oundary condition ------------------------------------- #
+        # ------------------------ Temperature Boundary condition ------------------------------------- #
         # Calculate the gas temperature and ensure it's higher than the SN2 surface temperature
         T2 = 2/5*(e2-1/2*rho2 *
                   u2**2)*M_n/rho2/R
@@ -919,6 +857,114 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
         print("shape rho3", np.shape(rho3))
 
         save_data(i, dt, rho3, ux3, ur3, u3, e3, T3, Tw2, Ts2, de0, p3, de1)
+
+## -------------------------------------------- Plotting values after BCs-------------------------------------------- ##
+
+        # fig, axs = plt.subplots(2, 2)
+#        print("Radius", R_cyl)
+        r1 = np.linspace(0, R_cyl, Nr+1)  # r = 0 plotted
+        r = np.delete(r1, 0, axis=0)  # r = 0 point removed from array
+#        print("array", r)
+        X = np.linspace(0, L, Nx+1)
+
+#        print("linspace", R)
+       # print("shape r", np.shape(r))
+        # RADIAL DIRECTION
+        # a = rho1[0,:]
+        b = u3[0, :]
+        c = T3[0, :]
+        # d = Ts1[:]
+        # e = Tw1[0,:]
+        f = p3[0, :]
+
+        # AXIAL DIRECTION
+        # a = rho3[:,Nr]
+        # b = u3[:, Nr]
+        # c = T1[:, Nr]
+        # d = Ts1[:]
+        # e = Tw1[:]
+        # f = p3[:, Nr]
+        # g= de1[:]
+        # h= de0[:]
+
+#       #        print("shape y", np.shape(y))
+        # plt.scatter(r,a)
+        # plt.scatter(r,b)
+#        print("shape T3", np.shape(T3), "shape r", np.shape(r))
+        fig, axs = plt.subplots(4)
+        fig.tight_layout()
+        fig.suptitle('Properties along radial axis @ m=0')
+        axs[0].scatter(r, b, label="Velocity", color='red')
+        axs[0].set(ylabel='U [m/s]')
+        # plt.ylabel("Velocity [m/s]")
+        axs[1].scatter(r, c, label="Temperature", color='blue')
+        axs[1].set(ylabel='Temperature [K]')
+        # plt.ylabel("Temperature [K]")
+        axs[2].scatter(r, f, label="Pressure", color='green')
+        axs[2].set(ylabel='Pressure [Pa]')
+        # plt.ylabel("Pressure [Pa]")
+        axs[3].scatter(r, b, label="Ur", color='yellow')
+        axs[3].set(ylabel='Ur [m/s]')
+        plt.xlabel("radius (m)")
+
+        # plt.figure()
+        # plt.subplot(210)
+        # plt.scatter(r, b, label="Velocity", color='red')
+        # plt.title("Velocity - Radial axis")
+        # plt.xlabel("radius (m)")
+        # plt.ylabel("Velocity [m/s]")
+        # # ax.set_xlabel("Radius (r)", fontsize=14)
+        # # ax.set_ylabel("Velocity",
+        # #       color="black",
+        # #       fontsize=14)
+
+        # plt.subplot(211)
+        # plt.scatter(r, c, label="Temperature", color='blue')
+        # plt.subplot(212)
+        # plt.title("Tg- Radial axis")
+        # plt.xlabel("radius (m)")
+        # plt.ylabel("Temperature [K]")
+
+        # plt.scatter(r, f, label="Pressure", color='green')
+        # plt.title("Pressure - Radial axis")
+        # plt.xlabel("radius (m)")
+        # plt.ylabel("P [Pa]")
+
+        # plt.scatter(r,d)
+        # plt.scatter(r,e)
+ #       plt.scatter(r,f)
+        # plt.plot(r,b)
+        # plt.plot(r,c)
+        # plt.plot(r,d)
+        # plt.plot(r,e)
+#        plt.plot(X,g)
+        # plt.plot(X,h)
+        # plt.plot(X,b)
+        # plt.title("Axial velocity along X axis")
+        # plt.xlabel("Length (m)")
+        # plt.ylabel("Ux (m/s)")
+
+#        plt.ylim((0, 0.05))   # set the ylim to bottom, top
+        # axs[0, 0].scatter(r, a)
+        # axs[0, 0].set_title('density along R')
+        # axs[0, 1].plot(r, b, 'tab:orange')
+        # axs[0, 1].set_title('Velocity along R')
+        # axs[1, 0].plot(r, c, 'tab:green')
+        # axs[1, 0].set_title('Tg along R')
+        # axs[1, 1].plot(X, d, 'tab:red')
+        # axs[1, 1].set_title('Ts along R')
+
+        # axs[0, 0].scatter(X, a)
+        # axs[0, 0].set_title('density along R')
+        # axs[0, 1].plot(X, b, 'tab:orange')
+        # axs[0, 1].set_title('Velocity along R')
+        # axs[1, 0].plot(X, c, 'tab:green')
+        # axs[1, 0].set_title('Tg along R')
+        # axs[1, 1].plot(X, d, 'tab:red')
+        # axs[1, 1].set_title('Ts along R')
+#        plt.title("Pressure along inlet in the r-direction")
+ #       plt.legend()
+        plt.show()
 
 
 # define global tx to save in worksheets.
