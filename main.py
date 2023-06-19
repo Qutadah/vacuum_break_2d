@@ -263,15 +263,6 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                 if n == Nr:  # (at cylinder wall) #check Nr or Nr+1
                     print("THIS IS A SURFACE, MASS DEPOSITION:")
 
-                    # intenal energy current timestep
-                    eps = 5./2.*p1[m, n]
-                    e1[m, n] = eps + 1./2. * rho1[m, n] * ur1[m, n]**2
-                    print("rho1 ", rho1[m, n])
-                    check_negative(rho1[m, n], n)
-
-                    # print("p1p", p1p, "e1[m,n]", e1[m, n], "rho1[m,n]", rho1[m, n], "u1[m,n]", u1[m, n])
-                    # print("printed",T1[m, n], p1p, Tw1[m], de1[m], rho1[m, n]*ur1[m, n]-rho1[m, n-1]*ur1[m, n-1])
-
     # Only consider mass deposition at a large enough density, otherwise the program will arise negative density
                     if rho1[m, n] > 2.*rho_0:
                         # print("printed",T1[m, n], p1p, Tw1[m], de1[m], rho1[m, n]* ur1[m, n]-rho1[m, n-1]*ur1[m, n-1])
@@ -300,6 +291,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     print("del_SN: ", del_SN)
                     check_negative(del_SN, n)
 
+
                     # density calculation
                     rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
                         n-1)*dr*ur1[m, n-1]) - 4*dt/D * de1[m]
@@ -319,13 +311,36 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
 # NOTE: Check with Yolanda, should i use rho1 or rho2 ??? Also de1 or de2?
 
                     # velocity calculation #  I think we need some momentum R equation... this is not correct.
-                    ur2[m, n] = de1[m]/rho2[m, n]
-                    u2[m, n] = ur2[m, n]  # no slip boundary condition.
-                    ux1[m, n] = 0.
-                    ux2[m, n] = 0.
-                    print("ur2 surface", ur2[m, n], "u2 surface", u2[m, n])
+                    # ur2[m, n] = de1[m]/rho2[m, n]
+                    # u2[m, n] = ur2[m, n]  # no slip boundary condition.
+                    # ux1[m, n] = 0.
+                    # ux2[m, n] = 0.
+
+                    ur1[m, n] = de1[m]/rho1[m, n]
+                    u1[m, n] = ur1[m, n]  # no slip boundary condition.
+                    ux1[m, n] = 0. # no slip boundary condition.
+
+                    u2[m, n] = u1[m, n]  # no momentum R equation
+                    ur2[m, n] = ur1[m, n]  # no slip boundary condition.
+                    ux2[m, n] = 0. # no slip boundary condition.
+
+
+                    print("ur1 surface", ur1[m, n], "u1 surface", u1[m, n], "ur2 surface", ur2[m, n], "u2 surface", u2[m, n])
                     check_negative(ur2[m, n], n)
                     check_negative(u2[m, n], n)
+
+
+                    # intenal energy current timestep
+                    eps = 5./2.*p1[m, n]
+                    e1[m, n] = eps + 1./2. * rho1[m, n] * ur1[m, n]**2
+                    print("rho1 ", rho1[m, n])
+                    check_negative(rho1[m, n], n)
+
+                    # print("p1p", p1p, "e1[m,n]", e1[m, n], "rho1[m,n]", rho1[m, n], "u1[m,n]", u1[m, n])
+                    # print("printed",T1[m, n], p1p, Tw1[m], de1[m], rho1[m, n]*ur1[m, n]-rho1[m, n-1]*ur1[m, n-1])
+
+
+
 
                     # energy calculation
                     # radial kinetic enery on surface.
@@ -436,6 +451,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
 
                     # Update pressure
                     p2[m, n] = 2./5.*(e2[m, n] - 1./2.*rho2[m, n]*ur2[m, n]**2)
+                    print("P2 surface: ", p2[m, n])
                     check_negative(p2[m, n], n)
 #                    p2[m, n] = rho2[m, n] * R * T2[m, n]/M_n
 
@@ -764,6 +780,9 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     # eps2 = 5./2.*rho2[m, n]/M_n*R * \
                     #     T2[m, n]
                     p2[m, n] = 2./5.*(e2[m, n] - 1./2.*rho2[m, n]*u2[m, n]**2)
+                    print("P2 bulk:", p2[m, n])
+                    check_negative(p2[m, n], n)
+
 
 
 ############################################## Updating timesteps finished ############################################################
