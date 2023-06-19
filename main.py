@@ -904,6 +904,12 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
 
         save_data(i, dt, rho3, ux3, ur3, u3, e3, T3, Tw2, Ts2, de0, p3, de1)
 
+## -------------------------------- value checks ----------------------------------------#
+
+# checking Ts = Tg
+
+        if (Ts1[:] == T1[:, Nr]):
+            print("first check complete, Tg = Ts")
 ## -------------------------------------------- Plotting values after BCs-------------------------------------------- ##
 
         # fig, axs = plt.subplots(2, 2)
