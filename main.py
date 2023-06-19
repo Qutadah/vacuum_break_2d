@@ -343,7 +343,8 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     delta_e = n*dr*ur1[m, n]*e1[m, n] - \
                         (n-1)*dr*ur1[m, n-1]*e1[m, n-1]  # BWD
                     e2[m, n] = e1[m, n]-dt / \
-                        (n*dr*dr)*(delta_e) - dt*4/D*de1[m]*(e1[m, n])
+                        (n*dr*dr)*(delta_e) - dt*4 / \
+                        D*de1[m]*(e1[m, n]/rho1[m, n])
                     print("e1 surface", e1[m, n], "e2 surface", e2[m, n])
                     check_negative(e1[m, n], n)
                     check_negative(e2[m, n], n)
@@ -759,7 +760,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     # We dont need the surface case, this is the bulk...
 
                     e_in_x = eps_in + 1./2.*rho_in*ux_in**2.
- 
+
                     if (m == 0 and n == 1):  # NOTE: FIX DIFFERENCING # ur =0 at  n =0
                         e2[m, n] = e1[m, n] - dt/dx * \
                             (e1[m, n]*ux1[m, n]-e_in_x*ux_in) - \
@@ -768,7 +769,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     elif (m == 0 and n != 1):
                         e2[m, n] = e1[m, n]-dt/(n*dr*dr)*(n*dr*ur1[m, n]*e1[m, n] - (
                             n-1)*dr*ur1[m, n-1]*e1[m, n-1]) - dt/dx*(e1[m, n]*ux1[m, n]-e_in_x*ux_in)
- 
+
                     elif (m == Nx and n == 1):  # NOTE: FIX DIFFERENCING
                         e2[m, n] = e1[m, n] - dt/dx * \
                             (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n]
@@ -778,16 +779,14 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                         e2[m, n] = e1[m, n]-dt/(n*dr*dr)*(n*dr*ur1[m, n]*e1[m, n] - (
                             n-1)*dr*ur1[m, n-1]*e1[m, n-1]) - dt/dx*(e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])
 
-
-                    elif ( m != 0 and m != Nx and n == 1):
+                    elif (m != 0 and m != Nx and n == 1):
                         e2[m, n] = e1[m, n] - dt/dx * \
                             (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n]
                              ) - dt/(n*dr*dr)*(n*dr*ur1[m, n]*e1[m, n])
 
-                    else: # 0 < m < Nx,  1 < n < Nr 
+                    else:  # 0 < m < Nx,  1 < n < Nr
                         e2[m, n] = e1[m, n]-dt/(n*dr*dr)*(n*dr*ur1[m, n]*e1[m, n] - (
                             n-1)*dr*ur1[m, n-1]*e1[m, n-1]) - dt/dx*(e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])
-
 
                     # print("internal energy", e2[m, n])
                     # print("Kinetic energy", 1/2*rho2[m, n] *
@@ -815,9 +814,12 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
 
 ############################################## Boundary Conditions ############################################################
 
+# ------------------------------------- surface boundary conditions --------------------------------------------- #
+
+        ux1[:, Nr] = 0
 
 # ------------------------------------ Outlet boundary conditions ------------------------------------------- #
-        print("This is the ", Nx)
+        # print("This is the ", Nx)
         p1[Nx, n] = 2/5*(e1[Nx, n]-1/2*rho1[Nx, n]
                          * u1[Nx, n]**2)  # Pressure
         # NOTE: check input de to the m_de equation.
