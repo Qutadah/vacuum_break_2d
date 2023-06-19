@@ -556,7 +556,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                         dt2nd_axial_ux1 = (
                             ux1[m-2, n] - 2*ux1[m-1, n] + ux1[m, n])/(dx**2)  # BWD
 #                        dt2nd_axial_ux1 = (2*ux1[m,n] - 5*ux1[m-1,n] + 4*ux1[m-2,n] -ux1[m-3,n])/(dx**3) # BWD
-                        # --------------------------- dt2nd axial ur1 ---------------------------------#
+                     # --------------------------- dt2nd axial ur1 ---------------------------------#
                         # Three-point BWD
                         dt2nd_axial_ur1 = (
                             ur1[m-2, n] - 2*ur1[m-1, n] + ur1[m, n])/(dx**2)
@@ -564,7 +564,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
 
                     else:
                         rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] - rho1[m, n]
-                                                                 * n*dr*ur1[m, n]) - dt/dx*(rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])
+                                                                * n*dr*ur1[m, n]) - dt/dx*(rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])
                         print("rho1 bulk", rho1[m, n],
                               "rho2 bulk:", rho2[m, n])
                     # print("density inside the bulk:", rho2[m, n])
