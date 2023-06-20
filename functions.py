@@ -135,7 +135,7 @@ def grad_ur2_calc(m, n, p1, ur1, ur_in):
     return dp_dr, ur_dx, ur_dr
 
 
-def grad_e2_calc(m, n, dr, ur1, ux1, ux_in, e_in_x, e1):
+def grad_e2_calc(m, n, ur1, ux1, ux_in, e_in_x, e1):
 
     # We dont need the surface case, this is the bulk...
     if (m == 0 and n == 1):  # NOTE: FIX DIFFERENCING # ur =0 at  n =0
@@ -398,7 +398,7 @@ def val_in(n):
     rho_in = ma_in_x/u_in_x
     p_in = rho_in/M_n*R*T_in
     ux_in = ma_in_x/rho_in
-#    ux_in = 10
+    ux_in = 70.
     ur_in = 0.
     e_in = 5./2.*rho_in/M_n*R*T_in + 1./2.*rho_in*ux_in**2
     # print("u_in_x", u_in_x)

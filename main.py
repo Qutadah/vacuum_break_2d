@@ -165,7 +165,7 @@ ux1[n_trans, :] = 0
 ux1[:, Nr] = 0
 u1[:, Nr] = 0
 
-e1 = 5./2. * p1 + 1./2 * rho1 * u1**2
+e1 = 7./2. * p1 + 1./2 * rho1 * u1**2
 # recalculate energies
 
 ## ------------------------------------------------------------- SAVING INITIAL CONDITIONS ---------------------------------------------------------------- #####
@@ -347,7 +347,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     check_negative(u2[m, n], n)
 
                     # internal energy current timestep
-                    eps = 5./2.*p1[m, n]
+                    eps = 7./2.*p1[m, n]
                     e1[m, n] = eps + 1./2. * rho1[m, n] * ur1[m, n]**2
                     print("rho1 ", rho1[m, n])
                     check_negative(rho1[m, n], n)
@@ -368,7 +368,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     check_negative(e2[m, n], n)
 
                     # Calculate Tg
-                    T2[m, n] = 2./5.*(e2[m, n]-1./2.*rho2[m, n] *
+                    T2[m, n] = 2./7.*(e2[m, n]-1./2.*rho2[m, n] *
                                       ur2[m, n]**2.)*M_n/rho2[m, n]/R
                     print("T2 surface", T2[m, n])
                     check_negative(T2[m, n], n)
@@ -455,7 +455,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     # check_negative(qhe[m], n)
 
                     # Update pressure
-                    p2[m, n] = 2./5.*(e2[m, n] - 1./2.*rho2[m, n]*ur2[m, n]**2)
+                    p2[m, n] = 2./7.*(e2[m, n] - 1./2.*rho2[m, n]*ur2[m, n]**2)
                     print("P2 surface: ", p2[m, n])
                     check_negative(p2[m, n], n)
 #                    p2[m, n] = rho2[m, n] * R * T2[m, n]/M_n
@@ -482,16 +482,42 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     #     dt2nd_axial_ux1 = 1000
 
                     if m == 0:
-                        rho2[m, n] = rho_in - dt/(n*dr*dr)*(rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] - rho1[m, n]
-                                                            * n*dr*ur1[m, n]) - dt/dx*(rho1[m, n]*ux1[m, n]-rho_in*ux_in)
+                        if n == 1:
+                            # NOTE: SYMMETRY BC
+                            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m,
+                                    n+2] - rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
+                            rho2[m, n] = rho_in - dt / \
+                                (n*dr)*d_dr - dt/dx * \
+                                (rho1[m, n]*ux1[m, n]-rho_in*ux_in)
+                        else:
+                            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m,
+                                    n+1] - rho1[m, n] * n*dr*ur1[m, n])/dr
+                            rho2[m, n] = rho_in - dt / \
+                                (n*dr)*d_dr - dt/dx * \
+                                (rho1[m, n]*ux1[m, n]-rho_in*ux_in)
 
                     elif m == Nx:
-                        rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] - rho1[m, n]
-                                                                * n*dr*ur1[m, n]) - dt/dx*(rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])
-
+                        if n == 1:
+                            # NOTE: SYMMETRY BC
+                            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m,
+                                    n+2] - rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
+                            rho2[m, n] = rho1[m, n] - dt/(n*dr)*d_dr - dt/dx*(
+                                rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])
+                        else:
+                            rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] - rho1[m, n]
+                                                                    * n*dr*ur1[m, n]) - dt/dx*(rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])
                     else:
-                        rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] - rho1[m, n]
-                                                                * n*dr*ur1[m, n]) - dt/dx*(rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])
+                        if n == 1:
+                            # NOTE: SYMMETRY BC
+                            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m,
+                                    n+2] - rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
+                            rho2[m, n] = rho1[m, n] - dt/(n*dr)*d_dr - dt/dx*(
+                                rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])
+                        else:
+                            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m,
+                                    n+1] - rho1[m, n] * n*dr*ur1[m, n])/dr
+                            rho2[m, n] = rho1[m, n] - dt/(n*dr)*d_dr - dt/dx*(
+                                rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])
 
                     print("rho1 bulk", rho1[m, n], "rho2 bulk", rho2[m, n])
                     check_negative(rho2[m, n], n)
@@ -574,10 +600,10 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     check_negative(e2[m, n], n)
 
                     # Energy calculation
-                    eps_in = 5./2.*p_in
+                    eps_in = 7./2.*p_in
 #                    eps_in = 5./2.*rho_in/M_n*R * T_in
 
-                    eps = 5./2.*p1[m, n]
+                    eps = 7./2.*p1[m, n]
                     print("eps bulk:", eps)
                     if eps < 0:
                         print("negative eps Bulk ", eps)
@@ -591,7 +617,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     e1[m, n] = eps + 1./2.*rho1[m, n] * u1[m, n]**2.
 
                     grad_x, grad_r = grad_e2_calc(
-                        m, n, dr, ur1, ux1, ux_in, e_in_x, e1)
+                        m, n, ur1, ux1, ux_in, e_in_x, e1)
                     e2[m, n] = e1[m, n]-dt/(n*dr*dr)*grad_r - dt/dx*grad_x
 
                     print("e1 bulk: ", e1[m, n], "e2 bulk: ", e2[m, n])
@@ -601,13 +627,13 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     # NOTE: Check temperature calculation..
                     print("temp calculation: [e2, rho2, u2]",
                           [e2[m, n], rho2[m, n], u2[m, n]])
-                    T2[m, n] = 2/5*(e2[m, n]-1/2*rho2[m, n] *
+                    T2[m, n] = 2/7*(e2[m, n]-1/2*rho2[m, n] *
                                     u2[m, n]**2)*M_n/rho2[m, n]/R
                     print("T1 bulk: ", T1[m, n], "T2 bulk:", T2[m, n])
                     check_negative(T1[m, n], n)
                     check_negative(T2[m, n], n)
 
-                    p2[m, n] = 2./5.*(e2[m, n] - 1./2.*rho2[m, n]*u2[m, n]**2)
+                    p2[m, n] = 2./7.*(e2[m, n] - 1./2.*rho2[m, n]*u2[m, n]**2)
                     print("P2 bulk:", p2[m, n])
                     check_negative(p2[m, n], n)
 
