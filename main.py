@@ -151,11 +151,15 @@ for i in np.arange(n_trans):
     for y in np.arange(Nr+1):
         a = v_max
         # a = v_max*(1.0 - ((y*dr)/R_cyl)**2)
-        print("parabolic y", y)
+        # print("parabolic y", y)
         ux1[i, y] = a
         u1[i, y] = ux1[i, y]
-        print("parabolic ux at center: ", ux1[i, 0])
+        # print("parabolic ux at center: ", ux1[i, 0])
 
+## fixing the n_transition 60th point velocity
+
+u1[n_trans,:] = 0
+ux1[n_trans,:] = 0
 
 ### ---------------------------------------------------------- NO SLIP BOUNDARY CONDITION ----------------------------------------------------------###
 ux1[:, Nr] = 0
@@ -350,6 +354,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     # radial kinetic enery on surface.
                     delta_e = n*dr*ur1[m, n]*e1[m, n] - \
                         (n-1)*dr*ur1[m, n-1]*e1[m, n-1]  # BWD
+                    print("delta_e surface", delta_e)
                     e2[m, n] = e1[m, n]-dt / \
                         (n*dr*dr)*(delta_e) - dt*4 / \
                         D*de1[m]*(e1[m, n]/rho1[m, n])
@@ -467,14 +472,6 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     print("THIS IS THE BULK:")
                     print("rho1 bulk: ",
                           rho1[m, n], "T1 bulk:", T1[m, n])
-                    eps = 5./2.*p1[m, n]
-                    print("eps bulk:", eps)
-                    if eps < 0:
-                        print("negative eps Bulk ", eps)
-                        exit()
-                    if math.isnan(eps):
-                        print("NAN EPS Bulk ", eps)
-                        assert not math.isnan(eps)
 
 #                    print("u1 for p1 calculation:", u1[m, n])
 
@@ -744,9 +741,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     #     ur2[m, n] = 0
                     print("ur1 bulk: ", ur1[m, n], "ur2 bulk: ", ur2[m, n])
                     print("pn+1, pn bulk: ", p1[m, n+1], p1[m, n])
-                    # print("ur2 inside bulk=", ur2[m, n])
                  #   print("matrix ur", ur2)
-#                    print("Value of ur2", ur2[m, n])
 
                     check_negative(ur2[m, n], n)
 
@@ -757,13 +752,23 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     print("u2 bulk: ", u2[m, n])
                     check_negative(e2[m, n], n)
 
-            # print("u2[m,n] inside bulk=", u2[m, n])
+
+                    # Energy calculation
+                    eps_in = 5./2.*p_in
+#                    eps_in = 5./2.*rho_in/M_n*R * T_in
+
+                    eps = 5./2.*p1[m, n]
+                    print("eps bulk:", eps)
+                    if eps < 0:
+                        print("negative eps Bulk ", eps)
+                        exit()
+                    if math.isnan(eps):
+                        print("NAN EPS Bulk ", eps)
+                        assert not math.isnan(eps)
 
                     e1[m, n] = eps + \
                         1./2.*rho1[m, n] * \
                         u1[m, n]**2.  # Initial internal energy
-                    eps_in = 5./2.*p_in
-#                    eps_in = 5./2.*rho_in/M_n*R * T_in
 
                     # We dont need the surface case, this is the bulk...
 
@@ -916,7 +921,8 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
 
 # checking Ts = Tg
 
-        if (Ts1[:] == T1[:, Nr]):
+        if np.array_equiv(Ts1[:], T1[:, Nr]) == True:
+            # if (Ts1[:] == T1[:, Nr]):
             print("first check complete, Tg = Ts")
 ## -------------------------------------------- Plotting values after BCs-------------------------------------------- ##
 
