@@ -59,7 +59,7 @@ NEXT:
 
 - WEEK 18.06:
 
-- IS de2 needed ?? there is de1 input to m_de function.
+- NOTE: Is de2 needed ?? there is de1 input to m_de function.
 - can q1 be negative? Is Ts always higher than Tw? Am i considering this in the equations?
 - parabolic velocity profile at inlet, and calculating all corresponding properties.
 - checked all q*h, delta*, q1 functions for Ts, tw.
@@ -67,3 +67,6 @@ NEXT:
 - do we use de1 or de2 for calculating ur2 ?
 - subplots of all properties inlet conditions and calculated properties at each timestep.
 - You reached bulk ur2 calculation, continue
+- NOTE: Calculate the gas temperature and ensure it's higher than the SN2 surface temperature .... VERY IMPORTANT
+- check all commits git
+- NOTE: check false tg = ts important

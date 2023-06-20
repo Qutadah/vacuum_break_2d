@@ -16,6 +16,43 @@ np.set_printoptions(threshold=sys.maxsize)
 u_in_x = np.sqrt(7./5.*R*T_in/M_n)*1.0  # Inlet velocity, m/s (gamma*RT)
 
 
+def gradients_ux2(p_in, p1, ux_in, ux1, dx, dr, m, n):
+    if m == 0 and n != 1:
+        # 4-point CD
+        dp_dx = (p_in - 8*p_in + 8 *
+                 p1[m+1, n] - p1[m+2, n])/(12*dx)
+        ux_dx = (ux1[m, n] - ux_in)/dx
+        ux_dr = (ux1[m, n+1] - ux1[m, n])/dr
+
+    elif m == 0 and n == 1:
+        # 4-point CD
+        dp_dx = (p_in - 8*p_in + 8 *
+                 p1[m+1, n] - p1[m+2, n])/(12*dx)
+        ux_dx = (ux1[m, n] - ux_in)/dx
+
+        # NOTE: SYMMETRY CONDITION HERE done
+        ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
+
+    elif m == Nx and n != 1:
+        dp_dx = (p1[m, n] - p1[m-1, n])/dx
+        ux_dx = (ux1[m, n] - ux1[m-1, n])/dx
+        ux_dr = (ux1[m, n+1] - ux1[m, n])/dr
+
+    elif m == Nx and n == 1:
+        dp_dx = (p1[m, n] - p1[m-1, n])/dx
+        ux_dx = (ux1[m, n] - ux1[m-1, n])/dx
+
+        # NOTE: SYMMETRY CONDITION HERE done
+        ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
+
+    else:
+        dp_dx = (p1[m+1, n] - p1[m, n])/dx
+        ux_dx = (ux1[m+1, n] - ux1[m, n])/dx
+        ux_dr = (ux1[m, n+1] - ux1[m, n])/dr
+
+    return dp_dx, ux_dx, ux_dr
+
+
 def f_ps(ts):
     #   Calculate saturated vapor pressure (Pa)
     ts = float(ts)

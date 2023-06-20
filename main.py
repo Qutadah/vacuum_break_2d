@@ -273,11 +273,10 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
         for m in np.arange(np.int64(0), np.int64(Nx+1)):
             for n in np.arange(np.int64(1), np.int64(Nr+1)):
                 print("[i,m,n]:", [i, m, n])
-                # Internal energy (multiplied by rho) NOTE: check later
 
                 ############## Case 1: At boundaries (with mass deposition).##########################################################
                 # print("looping" ,"m",m, "n", n)
-                if n == Nr:  # (at cylinder wall) #check Nr or Nr+1
+                if n == Nr:
                     print("THIS IS A SURFACE, MASS DEPOSITION:")
 
     # Only consider mass deposition at a large enough density, otherwise the program will arise negative density
@@ -570,43 +569,13 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                         print("dt2nd_radial_ur1:", dt2nd_radial_ur1)
 
                     # Ux velocity calculation
-                    if m == 0 and n != 1:
-                        # 4-point CD
-                        dp = (p_in - 8*p_in + 8 *
-                              p1[m+1, n] - p1[m+2, n])/(12*dx)
-                        ux_dx = (ux1[m, n] - ux_in)/dx
-                        ux_dr = (ux1[m, n+1] - ux1[m, n])/dr
-
-                    elif m == 0 and n == 1:
-                        # 4-point CD
-                        dp = (p_in - 8*p_in + 8 *
-                              p1[m+1, n] - p1[m+2, n])/(12*dx)
-                        ux_dx = (ux1[m, n] - ux_in)/dx
-
-                        # NOTE: SYMMETRY CONDITION HERE done
-                        ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
-
-                    elif m == Nx and n != 1:
-
-                        dp = (p1[m, n] - p1[m-1, n])/dx
-                        ux_dx = (ux1[m, n] - ux1[m-1, n])/dx
-                        ux_dr = (ux1[m, n+1] - ux1[m, n])/dr
-
-                    elif m == Nx and n == 1:
-                        dp = (p1[m, n] - p1[m-1, n])/dx
-                        ux_dx = (ux1[m, n] - ux1[m-1, n])/dx
-
-                        # NOTE: SYMMETRY CONDITION HERE done
-                        ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
-
-                    else:
-                        dp = (p1[m+1, n] - p1[m, n])/dx
-                        ux_dx = (ux1[m+1, n] - ux1[m, n])/dx
-                        ux_dr = (ux1[m, n+1] - ux1[m, n])/dr
-
                     # if ux2[m, n] < 1:
                     #     ux2[m, n] = 0
-                    ux2[m, n] = ux1[m, n] - dt*dp/rho1[m, n] + mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (
+
+                    dp_dx, ux_dx, ux_dr = gradients_ux2(
+                        p_in, p1, ux_in, ux1, dx, dr, m, n)
+
+                    ux2[m, n] = ux1[m, n] - dt*dp_dx/rho1[m, n] + mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (
                         1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1) - dt*ux1[m, n] * ux_dx - dt*ur1[m, n]*ux_dr
 
                     # print("first term:", ux1[m, n], "pressure term:", -dt*dp/rho1[m, n], "viscosity:", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (1/(n*dr)) * (
@@ -743,7 +712,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
 
                     # NOTE: Check temperature calculation..
                     print("temp calculation: [e2, rho2, u2]",
-                          e2[m, n], rho2[m, n], u2[m, n])
+                          [e2[m, n], rho2[m, n], u2[m, n]])
                     T2[m, n] = 2/5*(e2[m, n]-1/2*rho2[m, n] *
                                     u2[m, n]**2)*M_n/rho2[m, n]/R
                     print("T1 bulk: ", T1[m, n], "T2 bulk:", T2[m, n])
@@ -853,10 +822,15 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
 ## -------------------------------- value checks ----------------------------------------#
 
 # checking Ts = Tg
+        print(Ts1[:])
+        print(T1[:, Nr])
 
         if np.array_equiv(Ts1[:], T1[:, Nr]) == True:
             # if (Ts1[:] == T1[:, Nr]):
             print("first check complete, Tg = Ts")
+        else:
+            print("check false")
+            exit()
 ## -------------------------------------------- Plotting values after BCs-------------------------------------------- ##
 
         # fig, axs = plt.subplots(2, 2)
