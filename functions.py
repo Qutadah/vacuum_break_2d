@@ -137,8 +137,8 @@ def mu_n(T, P):
         7.402*tao**0.9*delta**2*np.exp(-1*delta**2) +\
         4.620*tao**0.3*delta**1*np.exp(-1*delta**3)
 #    print("viscosity from function:", (mu_n_1+mu_n_2)/1e6)
-    # mu_n_2 = 0
-    # mu_n_1 = 0
+    mu_n_2 = 0
+    mu_n_1 = 0
     print("viscosity from function:", (mu_n_1+mu_n_2)/1e6)
 
     return (mu_n_1+mu_n_2)/1e6

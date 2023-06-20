@@ -144,14 +144,17 @@ for i in range(0, Nx+1):
 
 ####### ---------------------------- PARABOLIC VELOCITY PROFILE - inlet prepping area-------------------------------------------------------- ######
 
-for i in np.arange(60):
+for i in np.arange(n_trans):
     # diatomic gas gamma = 7/5   WE USED ANY POINT, since this preparation area is constant along R direction.
+    # any temperature works, they are equl in the radial direction
     v_max = np.sqrt(7./5.*R*T1[i, 4]/M_n)
     for y in np.arange(Nr+1):
         a = v_max
         # a = v_max*(1.0 - ((y*dr)/R_cyl)**2)
+        print("parabolic y", y)
         ux1[i, y] = a
         u1[i, y] = ux1[i, y]
+        print("parabolic ux at center: ", ux1[i, 0])
 
 
 ### ---------------------------------------------------------- NO SLIP BOUNDARY CONDITION ----------------------------------------------------------###
@@ -167,7 +170,7 @@ save_initial_conditions(rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1)
 
 ##### ----------------------------------------- PLOTTING INITIAL CONDITIONS ---------------------------------------------------------------------------####
 
-fig, axs = plt.subplots(3)
+fig, axs = plt.subplots(4)
 fig.suptitle('Initial Conditions along tube for all R')
 
 # PRESSURE DISTRIBUTION
@@ -189,9 +192,14 @@ axs[1].set(ylabel='Ux [m/s]')
 # Temperature DISTRIBUTION
 im = axs[2].imshow(T1.transpose())
 plt.colorbar(im, ax=axs[2])
+axs[2].set(ylabel='Tg [K]')
+
 # axs[1].colorbars(location="bottom")
 # axs[2].set(ylabel='temperature [K]')
 
+im = axs[3].imshow(rho1.transpose())
+plt.colorbar(im, ax=axs[3])
+axs[3].set(ylabel='Density [kg/m3]')
 
 plt.xlabel("L(x)")
 plt.show()
