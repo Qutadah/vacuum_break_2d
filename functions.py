@@ -41,7 +41,7 @@ def gradients_ux2(p_in, p1, ux_in, ux1, m, n):
 
         # NOTE: SYMMETRY CONDITION HERE done
         ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
-    
+
     elif m == 0 and n != 1:
         # 4-point CD
         dp_dx = (p_in - 8*p_in + 8 *
@@ -62,11 +62,30 @@ def gradients_ux2(p_in, p1, ux_in, ux1, m, n):
         ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
 
     elif m != 1 and m != Nx and n == 1:
-        dp_dx = (p1[m, n] - p1[m-1, n])/dx
-        ux_dx = (ux1[m, n] - ux1[m-1, n])/dx
+        dp_dx = (p1[m+1, n] - p1[m-1, n])/(2*dx)
+        ux_dx = (ux1[m+1, n] - ux1[m-1, n])/(2*dx)
 
         # NOTE: SYMMETRY CONDITION HERE done
         ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
+
+    elif m == n_trans and n == 1:
+        # NOTE Use four point CD at transition point.
+        dp_dx = (p1[m-2, n] - 8*p1[m-1, n] + 8 *
+                 p1[m+1, n] - p1[m+2, n])/(12*dx)
+        ux_dx = (ux1[m-2, n] - 8*ux1[m-1, n] + 8 *
+                 ux1[m+1, n] - ux1[m+2, n])/(12*dx)
+
+        # NOTE: SYMMETRY CONDITION HERE done
+        ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
+
+    elif m == n_trans and n != 1:
+        # NOTE Use four point CD at transition point.
+        dp_dx = (p1[m-2, n] - 8*p1[m-1, n] + 8 *
+                 p1[m+1, n] - p1[m+2, n])/(12*dx)
+        ux_dx = (ux1[m-2, n] - 8*ux1[m-1, n] + 8 *
+                 ux1[m+1, n] - ux1[m+2, n])/(12*dx)
+        # NOTE: Use 2 point CD
+        ux_dr = (ux1[m, n+1] - ux1[m, n-1])/(2*dr)
 
     else:
         dp_dx = (p1[m+1, n] - p1[m, n])/dx
