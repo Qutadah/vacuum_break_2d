@@ -246,7 +246,8 @@ Tc2[:] = Ts1
 # def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2, Tw2, Ts2, Tc2, de1, T3):
 def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
 
-    for i in np.arange(np.int64(0), np.int64(4)):  # NOTE: Nt+1, starts with first number
+    # NOTE: Nt+1, starts with first number
+    for i in np.arange(np.int64(0), np.int64(Nt+1)):
 
         # REA += 1
         # print("REA", REA)
@@ -342,7 +343,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
 
                     print("ur1 surface", ur1[m, n], "u1 surface", u1[m, n],
                           "ur2 surface", ur2[m, n], "u2 surface", u2[m, n])
-                    check_negative(ur2[m, n], n)
+                    # check_negative(ur2[m, n], n)
                     check_negative(u2[m, n], n)
 
                     # internal energy current timestep
@@ -511,8 +512,8 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     ux2[m, n] = ux1[m, n] - dt*dp_dx/rho1[m, n] + mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (
                         1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1) - dt*ux1[m, n] * ux_dx - dt*ur1[m, n]*ux_dr
 
-                    # print("first term:", ux1[m, n], "pressure term:", -dt*dp/rho1[m, n], "viscosity:", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (1/(n*dr)) * (
-                    #     (ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1), "dt2nd_axial_ux", dt2nd_axial_ux1, "dt2nd_radial_ux", dt2nd_radial_ux1, "ux1 term:", dt*ux1[m, n] * ux_dx, "ur1 term:", dt*ur1[m, n]*ux_dr)
+                    print("pressure term:", -dt*dp_dx/rho1[m, n], "viscosity:", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (1/(n*dr)) * (
+                        (ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1), "dt2nd_axial_ux", dt2nd_axial_ux1, "dt2nd_radial_ux", dt2nd_radial_ux1, "ux1 term:", - dt*ux1[m, n] * ux_dx, "ur1 term:", - dt*ur1[m, n]*ux_dr)
 
                     print("ux1 bulk", ux1[m, n], "ux2 bulk:", ux2[m, n])
                     # print("ux2 bulk=", ux2[m, n])

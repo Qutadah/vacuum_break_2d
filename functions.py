@@ -31,6 +31,77 @@ def dt2nd_wall(m, Tw1):
     return dt2nd
 
 
+def gradients_ux2(p_in, p1, ux_in, ux1, m, n):
+
+    if m == 0 and n == 1:
+        # 4-point CD
+        dp_dx = (p_in - 8*p_in + 8 *
+                 p1[m+1, n] - p1[m+2, n])/(12*dx)
+        ux_dx = (ux1[m, n] - ux_in)/dx
+
+        # NOTE: SYMMETRY CONDITION HERE done
+        ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
+    
+    elif m == 0 and n != 1:
+        # 4-point CD
+        dp_dx = (p_in - 8*p_in + 8 *
+                 p1[m+1, n] - p1[m+2, n])/(12*dx)
+        ux_dx = (ux1[m, n] - ux_in)/dx
+        ux_dr = (ux1[m, n+1] - ux1[m, n])/dr
+
+    elif m == Nx and n != 1:
+        dp_dx = (p1[m, n] - p1[m-1, n])/dx
+        ux_dx = (ux1[m, n] - ux1[m-1, n])/dx
+        ux_dr = (ux1[m, n+1] - ux1[m, n])/dr
+
+    elif m == Nx and n == 1:
+        dp_dx = (p1[m, n] - p1[m-1, n])/dx
+        ux_dx = (ux1[m, n] - ux1[m-1, n])/dx
+
+        # NOTE: SYMMETRY CONDITION HERE done
+        ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
+
+    elif m != 1 and m != Nx and n == 1:
+        dp_dx = (p1[m, n] - p1[m-1, n])/dx
+        ux_dx = (ux1[m, n] - ux1[m-1, n])/dx
+
+        # NOTE: SYMMETRY CONDITION HERE done
+        ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
+
+    else:
+        dp_dx = (p1[m+1, n] - p1[m, n])/dx
+        ux_dx = (ux1[m+1, n] - ux1[m, n])/dx
+        ux_dr = (ux1[m, n+1] - ux1[m, n])/dr
+
+    return dp_dx, ux_dx, ux_dr
+
+
+def grad_ur2_calc(m, n, p1, ur1, ur_in):
+    if (m != 0 and m != Nx and n == 1):
+        dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
+        ur_dx = (ur1[m+1, n] - ur1[m, n])/dx
+        # NOTE: Symmetry BC done
+        ur_dr = (ur1[m, n+2] - ur1[m, n])/(4*dr)
+
+    elif (m == 0 and n == 1):
+        dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
+        ur_dx = (ur1[m, n] - ur_in)/dx
+        # NOTE: Symmetry BC done
+        ur_dr = (ur1[m, n+2] - ur1[m, n])/(4*dr)
+
+    elif (m == 0 and n != 1):
+        dp_dr = (p1[m, n+1] - p1[m, n])/dr
+        ur_dx = (ur1[m, n] - ur_in)/dx
+        ur_dr = (ur1[m, n+1] - ur1[m, n])/dr
+
+    else:  # case1: (m== Nx and n==1): case2" m ==Nx, n!=1
+        dp_dr = (p1[m, n+1] - p1[m, n])/dr
+        ur_dx = (ur1[m, n] - ur1[m-1, n])/dx
+        ur_dr = (ur1[m, n+1] - ur1[m, n])/dr
+
+    return dp_dr, ur_dx, ur_dr
+
+
 def grad_e2_calc(m, n, dr, ur1, ux1, ux_in, e_in_x, e1):
 
     # We dont need the surface case, this is the bulk...
@@ -59,32 +130,6 @@ def grad_e2_calc(m, n, dr, ur1, ux1, ux_in, e_in_x, e1):
         grad_r = n*dr*ur1[m, n]*e1[m, n] - (n-1)*dr*ur1[m, n-1]*e1[m, n-1]
 
     return grad_x, grad_r
-
-
-def grad_ur2_calc(m, n, p1, ur1, ur_in):
-    if (m != 0 and m != Nx and n == 1):
-        dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
-        ur_dx = (ur1[m+1, n] - ur1[m, n])/dx
-        # NOTE: Symmetry BC done
-        ur_dr = (ur1[m, n+2] - ur1[m, n])/(4*dr)
-
-    elif (m == 0 and n == 1):
-        dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
-        ur_dx = (ur1[m, n] - ur_in)/dx
-        # NOTE: Symmetry BC done
-        ur_dr = (ur1[m, n+2] - ur1[m, n])/(4*dr)
-
-    elif (m == 0 and n != 1):
-        dp_dr = (p1[m, n+1] - p1[m, n])/dr
-        ur_dx = (ur1[m, n] - ur_in)/dx
-        ur_dr = (ur1[m, n+1] - ur1[m, n])/dr
-
-    else:  # case1: (m== Nx and n==1): case2" m ==Nx, n!=1
-        dp_dr = (p1[m, n+1] - p1[m, n])/dr
-        ur_dx = (ur1[m, n] - ur1[m-1, n])/dx
-        ur_dr = (ur1[m, n+1] - ur1[m, n])/dr
-
-    return dp_dr, ur_dx, ur_dr
 
 
 def dt2nd_radial(ux1, ur1, m, n):
@@ -149,43 +194,6 @@ def dt2nd_axial(ux_in, ur_in, ux1, ur1, m, n):
         print("dt2nd_axial_ur1:", dt2nd_axial_ur1)
 
     return dt2nd_axial_ux1, dt2nd_axial_ur1
-
-
-def gradients_ux2(p_in, p1, ux_in, ux1, m, n):
-    if m == 0 and n != 1:
-        # 4-point CD
-        dp_dx = (p_in - 8*p_in + 8 *
-                 p1[m+1, n] - p1[m+2, n])/(12*dx)
-        ux_dx = (ux1[m, n] - ux_in)/dx
-        ux_dr = (ux1[m, n+1] - ux1[m, n])/dr
-
-    elif m == 0 and n == 1:
-        # 4-point CD
-        dp_dx = (p_in - 8*p_in + 8 *
-                 p1[m+1, n] - p1[m+2, n])/(12*dx)
-        ux_dx = (ux1[m, n] - ux_in)/dx
-
-        # NOTE: SYMMETRY CONDITION HERE done
-        ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
-
-    elif m == Nx and n != 1:
-        dp_dx = (p1[m, n] - p1[m-1, n])/dx
-        ux_dx = (ux1[m, n] - ux1[m-1, n])/dx
-        ux_dr = (ux1[m, n+1] - ux1[m, n])/dr
-
-    elif m == Nx and n == 1:
-        dp_dx = (p1[m, n] - p1[m-1, n])/dx
-        ux_dx = (ux1[m, n] - ux1[m-1, n])/dx
-
-        # NOTE: SYMMETRY CONDITION HERE done
-        ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
-
-    else:
-        dp_dx = (p1[m+1, n] - p1[m, n])/dx
-        ux_dx = (ux1[m+1, n] - ux1[m, n])/dx
-        ux_dr = (ux1[m, n+1] - ux1[m, n])/dr
-
-    return dp_dx, ux_dx, ux_dr
 
 
 def f_ps(ts):
