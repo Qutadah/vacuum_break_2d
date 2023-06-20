@@ -15,6 +15,39 @@ np.set_printoptions(threshold=sys.maxsize)
 
 u_in_x = np.sqrt(7./5.*R*T_in/M_n)*1.0  # Inlet velocity, m/s (gamma*RT)
 
+def dt2nd_axial(ux_in, ur_in, ux1, ur1, m, n, dx):    
+    if m == 0:
+    # --------------------------- dt2nd axial ux1 ---------------------------------#
+        dt2nd_axial_ux1 = (ux_in - 2*ux1[m, n] + ux1[m+1, n]) / (dx**2)
+        # dt2nd_axial_ux1 = (ux1[m+2,n] -2*ux1[m+1,n] + ux1[m,n])/(dx**2) #FWD
+
+    # --------------------------- dt2nd axial ur1 ---------------------------------#
+                        #                        dt2nd_axial_ur1 = (ur1[m+2,n] -2*ur1[m+1,n] + ur1[m,n])/(dx**2) #FWD
+                        # FWD
+        dt2nd_axial_ur1 = (-ur_in + ur_in - 30 * ur1[m, n] + 16*ur1[m+1, n] - ur1[m+2, n])/(12*dx**2)
+        print("dt2nd_axial_ur1:", dt2nd_axial_ur1)
+ #                        dt2nd_axial_ur1 = (2*ur1[m,n] - 5*ur1[m+1,n] + 4*ur1[m+2,n] -ur1[m+3,n])/(dx**3)  # FWD
+
+    elif m == Nx:
+    # --------------------------- dt2nd axial ux1 ---------------------------------#
+
+        dt2nd_axial_ux1 = (ux1[m-2, n] - 2*ux1[m-1, n] + ux1[m, n])/(dx**2)  # BWD
+    # dt2nd_axial_ux1 = (2*ux1[m,n] - 5*ux1[m-1,n] + 4*ux1[m-2,n] -ux1[m-3,n])/(dx**3) # BWD
+                     # --------------------------- dt2nd axial ur1 ---------------------------------#
+    # Three-point BWD
+        dt2nd_axial_ur1 = (ur1[m-2, n] - 2*ur1[m-1, n] + ur1[m, n])/(dx**2)
+        print("dt2nd_axial_ur1:", dt2nd_axial_ur1)
+
+    else:
+    # --------------------------- dt2nd axial ux1 ---------------------------------#
+        dt2nd_axial_ux1 = (ux1[m+1, n] + ux1[m-1, n] - 2*ux1[m, n])/(dx**2)  # CD
+
+    # --------------------------- dt2nd axial ur1 ---------------------------------#
+        dt2nd_axial_ur1 = (ur1[m+1, n] + ur1[m-1, n] - 2*ur1[m, n])/(dx**2)  # CD
+        print("dt2nd_axial_ur1:", dt2nd_axial_ur1)
+    
+    return dt2nd_axial_ux1, dt2nd_axial_ur1
+
 
 def gradients_ux2(p_in, p1, ux_in, ux1, dx, dr, m, n):
     if m == 0 and n != 1:

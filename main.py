@@ -492,51 +492,18 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     if m == 0:
                         rho2[m, n] = rho_in - dt/(n*dr*dr)*(rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] - rho1[m, n]
                                                             * n*dr*ur1[m, n]) - dt/dx*(rho1[m, n]*ux1[m, n]-rho_in*ux_in)
-                        #                        dt2nd_axial_ux1 = (2*ux1[m,n] - 5*ux1[m+1,n] + 4*ux1[m+2,n] -ux1[m+3,n])/(dx**3) #FWD
-
-                        # --------------------------- dt2nd axial ux1 ---------------------------------#
-                        dt2nd_axial_ux1 = (
-                            ux_in - 2*ux1[m, n] + ux1[m+1, n]) / (dx**2)
-                        # dt2nd_axial_ux1 = (ux1[m+2,n] -2*ux1[m+1,n] + ux1[m,n])/(dx**2) #FWD
-
-                    # --------------------------- dt2nd axial ur1 ---------------------------------#
-                        #                        dt2nd_axial_ur1 = (ur1[m+2,n] -2*ur1[m+1,n] + ur1[m,n])/(dx**2) #FWD
-                        # FWD
-                        dt2nd_axial_ur1 = (-ur_in + ur_in - 30 *
-                                           ur1[m, n] + 16*ur1[m+1, n] - ur1[m+2, n])/(12*dx**2)
-                        print("dt2nd_axial_ur1:", dt2nd_axial_ur1)
- #                        dt2nd_axial_ur1 = (2*ur1[m,n] - 5*ur1[m+1,n] + 4*ur1[m+2,n] -ur1[m+3,n])/(dx**3)  # FWD
 
                     elif m == Nx:
                         rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] - rho1[m, n]
                                                                 * n*dr*ur1[m, n]) - dt/dx*(rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])
-                        # --------------------------- dt2nd axial ux1 ---------------------------------#
-
-                        dt2nd_axial_ux1 = (
-                            ux1[m-2, n] - 2*ux1[m-1, n] + ux1[m, n])/(dx**2)  # BWD
-#                        dt2nd_axial_ux1 = (2*ux1[m,n] - 5*ux1[m-1,n] + 4*ux1[m-2,n] -ux1[m-3,n])/(dx**3) # BWD
-                     # --------------------------- dt2nd axial ur1 ---------------------------------#
-                        # Three-point BWD
-                        dt2nd_axial_ur1 = (
-                            ur1[m-2, n] - 2*ur1[m-1, n] + ur1[m, n])/(dx**2)
-                        print("dt2nd_axial_ur1:", dt2nd_axial_ur1)
 
                     else:
                         rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] - rho1[m, n]
                                                                 * n*dr*ur1[m, n]) - dt/dx*(rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])
-                        print("rho1 bulk", rho1[m, n],
-                              "rho2 bulk:", rho2[m, n])
-                    # print("density inside the bulk:", rho2[m, n])
-
-                        # --------------------------- dt2nd axial ux1 ---------------------------------#
-                        dt2nd_axial_ux1 = (
-                            ux1[m+1, n] + ux1[m-1, n] - 2*ux1[m, n])/(dx**2)  # CD
-                        # --------------------------- dt2nd axial ur1 ---------------------------------#
-                        dt2nd_axial_ur1 = (
-                            ur1[m+1, n] + ur1[m-1, n] - 2*ur1[m, n])/(dx**2)  # CD
-                        print("dt2nd_axial_ur1:", dt2nd_axial_ur1)
-
-                    print("rho2 bulk", rho2[m, n])
+                    
+                    dt2nd_axial_ux1, dt2nd_axial_ur1 = dt2nd_axial(ux_in, ur_in, ux1, ur1, m, n, dx)
+                    
+                    print("rho1 bulk",rho1[m,n],"rho2 bulk", rho2[m, n])
                     check_negative(rho2[m, n], n)
 
                     # Define second derivatives in radial direction (consider n as reference)
