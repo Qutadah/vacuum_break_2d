@@ -165,7 +165,7 @@ ux1[n_trans, :] = 0
 ux1[:, Nr] = 0
 u1[:, Nr] = 0
 
-e1[:, Nr] = 5./2. * p1[:, Nr]
+e1 = 5./2. * p1 + 1./2 * rho1 * u1**2
 # recalculate energies
 
 ## ------------------------------------------------------------- SAVING INITIAL CONDITIONS ---------------------------------------------------------------- #####
@@ -174,7 +174,7 @@ save_initial_conditions(rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1)
 
 ##### ----------------------------------------- PLOTTING INITIAL CONDITIONS ---------------------------------------------------------------------------####
 
-fig, axs = plt.subplots(4)
+fig, axs = plt.subplots(5)
 fig.suptitle('Initial Conditions along tube for all R')
 
 # PRESSURE DISTRIBUTION
@@ -204,6 +204,10 @@ axs[2].set(ylabel='Tg [K]')
 im = axs[3].imshow(rho1.transpose())
 plt.colorbar(im, ax=axs[3])
 axs[3].set(ylabel='Density [kg/m3]')
+
+im = axs[4].imshow(e1.transpose())
+plt.colorbar(im, ax=axs[4])
+axs[4].set(ylabel='energy [kg/m3]')
 
 plt.xlabel("L(x)")
 plt.show()
