@@ -16,6 +16,21 @@ np.set_printoptions(threshold=sys.maxsize)
 u_in_x = np.sqrt(7./5.*R*T_in/M_n)*1.0  # Inlet velocity, m/s (gamma*RT)
 
 
+def dt2nd_wall(m, Tw1):
+
+    if m == 0:
+        dt2nd = (T_in - 2 * Tw1[m] +
+                 Tw1[m+1])/(dx**2)  # 3-point CD
+#       dt2nd = Tw1[m+1]-Tw1[m]-Tw1[m-1]+T_in
+    elif m == Nx:
+        print("m=Nx", m)
+        dt2nd = (-Tw1[m-3] + 4*Tw1[m-2] - 5*Tw1[m-1] +
+                 2*Tw1[m]) / (dx**2)  # Four point BWD
+    else:
+        dt2nd = Tw1[m-1]-2*Tw1[m]+Tw1[m+1]/(dx**2)
+    return dt2nd
+
+
 def grad_e2_calc(m, n, dr, ur1, ux1, ux_in, e_in_x, e1):
 
     # We dont need the surface case, this is the bulk...
@@ -490,10 +505,10 @@ def save_initial_conditions(rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1):
     np.savetxt("ux.csv", ux1, delimiter=",")
     np.savetxt("ur.csv", ur1, delimiter=",")
     np.savetxt("e.csv", e1, delimiter=",")
-    np.savetxt("tw.csv", Tw1, delimiter=",")
-    np.savetxt("ts.csv", Ts1, delimiter=",")
-    np.savetxt("de.csv", de0, delimiter=",")
-    np.savetxt("de_rate.csv", de1, delimiter=",")
+    # np.savetxt("tw.csv", Tw1, delimiter=",")
+    # np.savetxt("ts.csv", Ts1, delimiter=",")
+    # np.savetxt("de.csv", de0, delimiter=",")
+    # np.savetxt("de_rate.csv", de1, delimiter=",")
     np.savetxt("p.csv", p1, delimiter=",")
 
 
@@ -515,10 +530,10 @@ def save_data(tx, dt, rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1):
     np.savetxt("ux.csv", ux1, delimiter=",")
     np.savetxt("ur.csv", ur1, delimiter=",")
     np.savetxt("e.csv", e1, delimiter=",")
-    np.savetxt("tw.csv", Tw1, delimiter=",")
-    np.savetxt("ts.csv", Ts1, delimiter=",")
-    np.savetxt("de_mass.csv", de0, delimiter=",")
-    np.savetxt("de_rate.csv", de1, delimiter=",")
+    # np.savetxt("tw.csv", Tw1, delimiter=",")
+    # np.savetxt("ts.csv", Ts1, delimiter=",")
+    # np.savetxt("de_mass.csv", de0, delimiter=",")
+    # np.savetxt("de_rate.csv", de1, delimiter=",")
     np.savetxt("p.csv", p1, delimiter=",")
 
 

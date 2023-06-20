@@ -70,3 +70,9 @@ NEXT:
 - NOTE: Calculate the gas temperature and ensure it's higher than the SN2 surface temperature .... VERY IMPORTANT
 - check all commits git
 - NOTE: check false tg = ts important
+  NOTE Check Ts = Tg BC in surface loop.
+  pressure is higher on surface because energy flux in the radial direction towards the wall. therefore all energy gets converted to
+
+  CONCLUSIONS.
+
+  - pressure energy and pressure rises, which creates a pressure radient in the radial ddirection inwards towards the center of the duct and therefore a negative radial velocity.
