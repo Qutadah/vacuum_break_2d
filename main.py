@@ -500,40 +500,15 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     else:
                         rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] - rho1[m, n]
                                                                 * n*dr*ur1[m, n]) - dt/dx*(rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])
-                    
-                    dt2nd_axial_ux1, dt2nd_axial_ur1 = dt2nd_axial(ux_in, ur_in, ux1, ur1, m, n, dx)
-                    
-                    print("rho1 bulk",rho1[m,n],"rho2 bulk", rho2[m, n])
+
+                    print("rho1 bulk", rho1[m, n], "rho2 bulk", rho2[m, n])
                     check_negative(rho2[m, n], n)
 
                     # Define second derivatives in radial direction (consider n as reference)
-
-                    if n == 1:
-                        # NOTE: Symmetry Boundary Condition assumed for ur1 radial derivative along x axis..
-
-                        # --------------------------- dt2nd radial ux1 ---------------------------------#
-                        grad_ux1 = (ux1[m, n+2] - ux1[m, n])/(4*dr)
-                        dt2nd_radial_ux1 = (
-                            ux1[m, n+2] - ux1[m, n]) / (4*dr**2)
-
-                        # --------------------------- dt2nd radial ur1 ---------------------------------#
-                        grad_ur1 = (ur1[m, n+2] - ur1[m, n])/(4*dr)
-                        dt2nd_radial_ur1 = (
-                            ur1[m, n+2] - ur1[m, n]) / (4*dr**2)
-
-                        print("dt2nd_radial_ux1_n1:", dt2nd_radial_ux1)
-                        print("dt2nd_radial_ur1_n1:", dt2nd_radial_ur1)
-
-                    else:  # (n is between 1 and Nr)
-
-                        # --------------------------- dt2nd radial ux1 ---------------------------------#
-                        dt2nd_radial_ux1 = (
-                            ux1[m, n+1] + ux1[m, n-1] - 2*ux1[m, n])/dr**2  # CD
-
-                    # --------------------------- dt2nd radial ur1 ---------------------------------#
-                        dt2nd_radial_ur1 = (
-                            ur1[m, n+1] + ur1[m, n-1] - 2*ur1[m, n])/(dr**2)  # CD
-                        print("dt2nd_radial_ur1:", dt2nd_radial_ur1)
+                    dt2nd_axial_ux1, dt2nd_axial_ur1 = dt2nd_axial(
+                        ux_in, ur_in, ux1, ur1, m, n, dx)
+                    dt2nd_radial_ux1, dt2nd_radial_ur1 = dt2nd_radial(
+                        ux1, ur1, dr, m, n)
 
                     # Ux velocity calculation
                     # if ux2[m, n] < 1:
@@ -601,7 +576,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     ur2[m, n] = ur1[m, n] - dt*dp_dr/(rho1[m, n]) +\
                         mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * \
                         (dt2nd_radial_ur1 +
-                         (1/(n*dr))*grad_ur1 + dt2nd_axial_ur1 -
+                         (1/(n*dr))*ur_dr + dt2nd_axial_ur1 -
                          - ur1[m, n]/(dr**2*n**2)) + \
                         dt*ux1[m, n] * ur_dx - \
                         dt*ur1[m, n]*ur_dr

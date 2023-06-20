@@ -15,6 +15,30 @@ np.set_printoptions(threshold=sys.maxsize)
 
 u_in_x = np.sqrt(7./5.*R*T_in/M_n)*1.0  # Inlet velocity, m/s (gamma*RT)
 
+
+def dt2nd_radial(ux1,ur1, dr,m,n):
+    if n == 1:
+    # NOTE: Symmetry Boundary Condition assumed for ur1 radial derivative along x axis..
+    # --------------------------- dt2nd radial ux1 ---------------------------------#
+        grad_ux1 = (ux1[m, n+2] - ux1[m, n])/(4*dr)
+        dt2nd_radial_ux1 = (ux1[m, n+2] - ux1[m, n]) / (4*dr**2)
+
+        # --------------------------- dt2nd radial ur1 ---------------------------------#
+        grad_ur1 = (ur1[m, n+2] - ur1[m, n])/(4*dr)
+        dt2nd_radial_ur1 = (ur1[m, n+2] - ur1[m, n]) / (4*dr**2)
+
+        print("dt2nd_radial_ux1_n1:", dt2nd_radial_ux1)
+        print("dt2nd_radial_ur1_n1:", dt2nd_radial_ur1)
+
+    else:  # (n is between 1 and Nr)
+
+# --------------------------- dt2nd radial ux1 ---------------------------------#
+        dt2nd_radial_ux1 = (ux1[m, n+1] + ux1[m, n-1] - 2*ux1[m, n])/dr**2  # CD
+    # --------------------------- dt2nd radial ur1 ---------------------------------#
+        dt2nd_radial_ur1 = (ur1[m, n+1] + ur1[m, n-1] - 2*ur1[m, n])/(dr**2)  # CD
+        print("dt2nd_radial_ur1:", dt2nd_radial_ur1)    
+    return dt2nd_radial_ux1, dt2nd_radial_ur1
+
 def dt2nd_axial(ux_in, ur_in, ux1, ur1, m, n, dx):    
     if m == 0:
     # --------------------------- dt2nd axial ux1 ---------------------------------#
