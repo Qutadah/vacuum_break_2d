@@ -546,33 +546,15 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     #     print("second derivative", (ux1[m+1, n] + ux1[m-1, n] - 2*ux1[m, n])/(dx**2))
                     #     exit()
 
-                    if (m != 0 and m != Nx and n == 1):
-                        dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
-                        ur_dx = (ur1[m+1, n] - ur1[m, n])/dx
-                        # NOTE: Symmetry BC done
-                        ur_dr = (ur1[m, n+2] - ur1[m, n])/(4*dr)
-
-                    elif (m == 0 and n == 1):
-                        dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
-                        ur_dx = (ur1[m, n] - ur_in)/dx
-                        # NOTE: Symmetry BC done
-                        ur_dr = (ur1[m, n+2] - ur1[m, n])/(4*dr)
-
-                    elif (m == 0 and n != 1):
-                        dp_dr = (p1[m, n+1] - p1[m, n])/dr
-                        ur_dx = (ur1[m, n] - ur_in)/dx
-                        ur_dr = (ur1[m, n+1] - ur1[m, n])/dr
-
-                    else:  # case1: (m== Nx and n==1): case2" m ==Nx, n!=1
-                        dp_dr = (p1[m, n+1] - p1[m, n])/dr
-                        ur_dx = (ur1[m, n] - ur1[m-1, n])/dx
-                        ur_dr = (ur1[m, n+1] - ur1[m, n])/dr
 
                         # print("ur1", ur1[m, n], , "p_n+1, p_n", [p1[m, n+1], p1[m, n]], "press term", dt*(p1[m, n+1] - p1[m, n])/(rho1[m, n]*dr), "viscous", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ur1 + (1/(n*dr))*(
                         #     ur1[m, n+1]-ur1[m, n])/dr + dt2nd_axial_ur1 - ur1[m, n]/(dr**2*n**2)), "ux1 term", dt*ux1[m, n] * (ur1[m, n] - ur1[m-1, n])/dx, "ur1 term", dt*ur1[m, n]*(ur1[m, n+1] - ur1[m, n])/dr)
 
                     # if ur2[m, n] < 1:
                     #     ur2[m, n] = 0
+
+                    dp_dr, ur_dx, ur_dr = grad_ur2_calc(m,n, p1, ur1, ur_in)
+
                     ur2[m, n] = ur1[m, n] - dt*dp_dr/(rho1[m, n]) +\
                         mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * \
                         (dt2nd_radial_ur1 +

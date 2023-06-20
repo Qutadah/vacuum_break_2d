@@ -16,10 +16,36 @@ np.set_printoptions(threshold=sys.maxsize)
 u_in_x = np.sqrt(7./5.*R*T_in/M_n)*1.0  # Inlet velocity, m/s (gamma*RT)
 
 
-def dt2nd_radial(ux1,ur1, dr,m,n):
+def grad_ur2_calc(m, n, p1, ur1, ur_in):
+    if (m != 0 and m != Nx and n == 1):
+        dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
+        ur_dx = (ur1[m+1, n] - ur1[m, n])/dx
+        # NOTE: Symmetry BC done
+        ur_dr = (ur1[m, n+2] - ur1[m, n])/(4*dr)
+
+    elif (m == 0 and n == 1):
+        dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
+        ur_dx = (ur1[m, n] - ur_in)/dx
+        # NOTE: Symmetry BC done
+        ur_dr = (ur1[m, n+2] - ur1[m, n])/(4*dr)
+
+    elif (m == 0 and n != 1):
+        dp_dr = (p1[m, n+1] - p1[m, n])/dr
+        ur_dx = (ur1[m, n] - ur_in)/dx
+        ur_dr = (ur1[m, n+1] - ur1[m, n])/dr
+
+    else:  # case1: (m== Nx and n==1): case2" m ==Nx, n!=1
+        dp_dr = (p1[m, n+1] - p1[m, n])/dr
+        ur_dx = (ur1[m, n] - ur1[m-1, n])/dx
+        ur_dr = (ur1[m, n+1] - ur1[m, n])/dr
+
+    return dp_dr, ur_dx, ur_dr
+
+
+def dt2nd_radial(ux1, ur1, dr, m, n):
     if n == 1:
-    # NOTE: Symmetry Boundary Condition assumed for ur1 radial derivative along x axis..
-    # --------------------------- dt2nd radial ux1 ---------------------------------#
+        # NOTE: Symmetry Boundary Condition assumed for ur1 radial derivative along x axis..
+        # --------------------------- dt2nd radial ux1 ---------------------------------#
         grad_ux1 = (ux1[m, n+2] - ux1[m, n])/(4*dr)
         dt2nd_radial_ux1 = (ux1[m, n+2] - ux1[m, n]) / (4*dr**2)
 
@@ -32,44 +58,51 @@ def dt2nd_radial(ux1,ur1, dr,m,n):
 
     else:  # (n is between 1 and Nr)
 
-# --------------------------- dt2nd radial ux1 ---------------------------------#
-        dt2nd_radial_ux1 = (ux1[m, n+1] + ux1[m, n-1] - 2*ux1[m, n])/dr**2  # CD
+        # --------------------------- dt2nd radial ux1 ---------------------------------#
+        dt2nd_radial_ux1 = (ux1[m, n+1] + ux1[m, n-1] -
+                            2*ux1[m, n])/dr**2  # CD
     # --------------------------- dt2nd radial ur1 ---------------------------------#
-        dt2nd_radial_ur1 = (ur1[m, n+1] + ur1[m, n-1] - 2*ur1[m, n])/(dr**2)  # CD
-        print("dt2nd_radial_ur1:", dt2nd_radial_ur1)    
+        dt2nd_radial_ur1 = (ur1[m, n+1] + ur1[m, n-1] -
+                            2*ur1[m, n])/(dr**2)  # CD
+        print("dt2nd_radial_ur1:", dt2nd_radial_ur1)
     return dt2nd_radial_ux1, dt2nd_radial_ur1
 
-def dt2nd_axial(ux_in, ur_in, ux1, ur1, m, n, dx):    
+
+def dt2nd_axial(ux_in, ur_in, ux1, ur1, m, n, dx):
     if m == 0:
-    # --------------------------- dt2nd axial ux1 ---------------------------------#
+        # --------------------------- dt2nd axial ux1 ---------------------------------#
         dt2nd_axial_ux1 = (ux_in - 2*ux1[m, n] + ux1[m+1, n]) / (dx**2)
         # dt2nd_axial_ux1 = (ux1[m+2,n] -2*ux1[m+1,n] + ux1[m,n])/(dx**2) #FWD
 
     # --------------------------- dt2nd axial ur1 ---------------------------------#
-                        #                        dt2nd_axial_ur1 = (ur1[m+2,n] -2*ur1[m+1,n] + ur1[m,n])/(dx**2) #FWD
-                        # FWD
-        dt2nd_axial_ur1 = (-ur_in + ur_in - 30 * ur1[m, n] + 16*ur1[m+1, n] - ur1[m+2, n])/(12*dx**2)
+        #                        dt2nd_axial_ur1 = (ur1[m+2,n] -2*ur1[m+1,n] + ur1[m,n])/(dx**2) #FWD
+        # FWD
+        dt2nd_axial_ur1 = (-ur_in + ur_in - 30 *
+                           ur1[m, n] + 16*ur1[m+1, n] - ur1[m+2, n])/(12*dx**2)
         print("dt2nd_axial_ur1:", dt2nd_axial_ur1)
  #                        dt2nd_axial_ur1 = (2*ur1[m,n] - 5*ur1[m+1,n] + 4*ur1[m+2,n] -ur1[m+3,n])/(dx**3)  # FWD
 
     elif m == Nx:
-    # --------------------------- dt2nd axial ux1 ---------------------------------#
+        # --------------------------- dt2nd axial ux1 ---------------------------------#
 
-        dt2nd_axial_ux1 = (ux1[m-2, n] - 2*ux1[m-1, n] + ux1[m, n])/(dx**2)  # BWD
+        dt2nd_axial_ux1 = (ux1[m-2, n] - 2*ux1[m-1, n] +
+                           ux1[m, n])/(dx**2)  # BWD
     # dt2nd_axial_ux1 = (2*ux1[m,n] - 5*ux1[m-1,n] + 4*ux1[m-2,n] -ux1[m-3,n])/(dx**3) # BWD
-                     # --------------------------- dt2nd axial ur1 ---------------------------------#
+        # --------------------------- dt2nd axial ur1 ---------------------------------#
     # Three-point BWD
         dt2nd_axial_ur1 = (ur1[m-2, n] - 2*ur1[m-1, n] + ur1[m, n])/(dx**2)
         print("dt2nd_axial_ur1:", dt2nd_axial_ur1)
 
     else:
-    # --------------------------- dt2nd axial ux1 ---------------------------------#
-        dt2nd_axial_ux1 = (ux1[m+1, n] + ux1[m-1, n] - 2*ux1[m, n])/(dx**2)  # CD
+        # --------------------------- dt2nd axial ux1 ---------------------------------#
+        dt2nd_axial_ux1 = (ux1[m+1, n] + ux1[m-1, n] -
+                           2*ux1[m, n])/(dx**2)  # CD
 
     # --------------------------- dt2nd axial ur1 ---------------------------------#
-        dt2nd_axial_ur1 = (ur1[m+1, n] + ur1[m-1, n] - 2*ur1[m, n])/(dx**2)  # CD
+        dt2nd_axial_ur1 = (ur1[m+1, n] + ur1[m-1, n] -
+                           2*ur1[m, n])/(dx**2)  # CD
         print("dt2nd_axial_ur1:", dt2nd_axial_ur1)
-    
+
     return dt2nd_axial_ux1, dt2nd_axial_ur1
 
 
