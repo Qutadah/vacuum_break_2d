@@ -156,10 +156,10 @@ for i in np.arange(n_trans):
         u1[i, y] = ux1[i, y]
         # print("parabolic ux at center: ", ux1[i, 0])
 
-## fixing the n_transition 60th point velocity
+# fixing the n_transition 60th point velocity
 
-u1[n_trans,:] = 0
-ux1[n_trans,:] = 0
+u1[n_trans, :] = 0
+ux1[n_trans, :] = 0
 
 ### ---------------------------------------------------------- NO SLIP BOUNDARY CONDITION ----------------------------------------------------------###
 ux1[:, Nr] = 0
@@ -752,7 +752,6 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     print("u2 bulk: ", u2[m, n])
                     check_negative(e2[m, n], n)
 
-
                     # Energy calculation
                     eps_in = 5./2.*p_in
 #                    eps_in = 5./2.*rho_in/M_n*R * T_in
@@ -766,44 +765,41 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                         print("NAN EPS Bulk ", eps)
                         assert not math.isnan(eps)
 
-                    e1[m, n] = eps + \
-                        1./2.*rho1[m, n] * \
-                        u1[m, n]**2.  # Initial internal energy
+                    # Initial internal energy
+                    e_in_x = eps_in + 1./2.*rho_in*ux_in**2.
+                    e1[m, n] = eps + 1./2.*rho1[m, n] * u1[m, n]**2.
 
                     # We dont need the surface case, this is the bulk...
 
-                    e_in_x = eps_in + 1./2.*rho_in*ux_in**2.
-
                     if (m == 0 and n == 1):  # NOTE: FIX DIFFERENCING # ur =0 at  n =0
-                        e2[m, n] = e1[m, n] - dt/dx * \
-                            (e1[m, n]*ux1[m, n]-e_in_x*ux_in) - \
-                            dt/(n*dr*dr)*(n*dr*ur1[m, n]*e1[m, n])
+                        grad_x = e1[m, n]*ux1[m, n]-e_in_x*ux_in
+                        grad_r = n*dr*ur1[m, n]*e1[m, n]
 
                     elif (m == 0 and n != 1):
-                        e2[m, n] = e1[m, n]-dt/(n*dr*dr)*(n*dr*ur1[m, n]*e1[m, n] - (
-                            n-1)*dr*ur1[m, n-1]*e1[m, n-1]) - dt/dx*(e1[m, n]*ux1[m, n]-e_in_x*ux_in)
+                        grad_x = e1[m, n]*ux1[m, n]-e_in_x*ux_in
+                        grad_r = n*dr*ur1[m, n]*e1[m, n] - \
+                            (n-1)*dr*ur1[m, n-1]*e1[m, n-1]
 
                     elif (m == Nx and n == 1):  # NOTE: FIX DIFFERENCING
-                        e2[m, n] = e1[m, n] - dt/dx * \
-                            (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n]
-                             ) - dt/(n*dr*dr)*(n*dr*ur1[m, n]*e1[m, n])
+                        grad_x = n*dr*ur1[m, n]*e1[m, n]  # ur=0 @ r=0
+                        grad_r = e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n]
 
                     elif (m == Nx and n != 1):
-                        e2[m, n] = e1[m, n]-dt/(n*dr*dr)*(n*dr*ur1[m, n]*e1[m, n] - (
-                            n-1)*dr*ur1[m, n-1]*e1[m, n-1]) - dt/dx*(e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])
+                        grad_x = e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n]
+                        grad_r = n*dr*ur1[m, n]*e1[m, n] - \
+                            (n-1)*dr*ur1[m, n-1]*e1[m, n-1]
 
                     elif (m != 0 and m != Nx and n == 1):
-                        e2[m, n] = e1[m, n] - dt/dx * \
-                            (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n]
-                             ) - dt/(n*dr*dr)*(n*dr*ur1[m, n]*e1[m, n])
+                        grad_x = e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n]
+                        grad_r = n*dr*ur1[m, n]*e1[m, n]
 
                     else:  # 0 < m < Nx,  1 < n < Nr
-                        e2[m, n] = e1[m, n]-dt/(n*dr*dr)*(n*dr*ur1[m, n]*e1[m, n] - (
-                            n-1)*dr*ur1[m, n-1]*e1[m, n-1]) - dt/dx*(e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])
+                        grad_x = e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n]
+                        grad_r = n*dr*ur1[m, n]*e1[m, n] - \
+                            (n-1)*dr*ur1[m, n-1]*e1[m, n-1]
 
-                    # print("internal energy", e2[m, n])
-                    # print("Kinetic energy", 1/2*rho2[m, n] *
-                    # u2[m, n]**2)
+                    e2[m, n] = e1[m, n]-dt/(n*dr*dr)*grad_r - dt/dx*grad_x
+
                     print("e1 bulk: ", e1[m, n], "e2 bulk: ", e2[m, n])
                     check_negative(e1[m, n], n)
                     check_negative(e2[m, n], n)
