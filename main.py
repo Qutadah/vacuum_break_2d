@@ -539,26 +539,20 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     # Define second derivatives in radial direction (consider n as reference)
 
                     if n == 1:
-                        # --------------------------- dt2nd radial ux1 ---------------------------------#
-                        #                         dt2nd_radial_ux1 = (
-                        #                             ux1[m, n+2] - 2*ux1[m, n+1] + ux1[m, n])/(dr**2)  # FWD
-                        #  #                       dt2nd_radial_ux1 = (2*ux1[m,n] - 5*ux1[m,n+1] + 4*ux1[m,n+2] -ux1[m,n+3])/(dr**3) # FWD
-
-                        # --------------------------- dt2nd radial ur1 ---------------------------------#
-
                         # NOTE: Symmetry Boundary Condition assumed for ur1 radial derivative along x axis..
 
                         # --------------------------- dt2nd radial ux1 ---------------------------------#
                         grad_ux1_n1 = (ux1[m, n+2] - ux1[m, n])/(4*dr)
-                        dt2nd_radial_ux1_n1 = (
+                        dt2nd_radial_ux1 = (
                             ux1[m, n+2] - ux1[m, n]) / (4*dr**2)
-                        print("dt2nd_radial_ux1_n1:", dt2nd_radial_ux1_n1)
 
                         # --------------------------- dt2nd radial ur1 ---------------------------------#
                         grad_ur1_n1 = (ur1[m, n+2] - ur1[m, n])/(4*dr)
-                        dt2nd_radial_ur1_n1 = (
+                        dt2nd_radial_ur1 = (
                             ur1[m, n+2] - ur1[m, n]) / (4*dr**2)
-                        print("dt2nd_radial_ur1_n1:", dt2nd_radial_ur1_n1)
+
+                        print("dt2nd_radial_ux1_n1:", dt2nd_radial_ux1)
+                        print("dt2nd_radial_ur1_n1:", dt2nd_radial_ur1)
 
                     else:  # (n is between 1 and Nr)
 
@@ -571,69 +565,48 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                             ur1[m, n+1] + ur1[m, n-1] - 2*ur1[m, n])/(dr**2)  # CD
                         print("dt2nd_radial_ur1:", dt2nd_radial_ur1)
 
+                    # Ux velocity calculation
                     if m == 0 and n != 1:
                         # 4-point CD
                         dp = (p_in - 8*p_in + 8 *
                               p1[m+1, n] - p1[m+2, n])/(12*dx)
-                    #     print("first term:", ux1[m, n], "pressure term:", -dt*dp/rho1[m, n], "viscosity:", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1), "dt2nd_axial_ux", dt2nd_axial_ux1, "dt2nd_radial_ux",
-                    #           dt2nd_radial_ux1, "ux1 term:", dt*ux1[m, n] * (ux1[m, n] - ux_in)/dx, "ur1 term:", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr, "mu_n", mu_n(T1[m, n], p1[m, n]), "extra", (ux1[m, n+1]-ux1[m, n]), "extra2", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr)
-                    # # print("rho2[m,n] inside bulk=", rho2[m, n])
-                        ux2[m, n] = ux1[m, n] - dt*dp/rho1[m, n] + \
-                            mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * \
-                            (dt2nd_radial_ux1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) +
-                             dt2nd_axial_ux1) -\
-                            dt*ux1[m, n] * (ux1[m, n] - ux_in)/dx -\
-                            dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr
+                        ux_dx = (ux1[m, n] - ux_in)/dx
+                        ux_dr = (ux1[m, n+1] - ux1[m, n])/dr
 
                     elif m == 0 and n == 1:
                         # 4-point CD
                         dp = (p_in - 8*p_in + 8 *
                               p1[m+1, n] - p1[m+2, n])/(12*dx)
-                    #     print("first term:", ux1[m, n], "pressure term:", -dt*dp/rho1[m, n], "viscosity:", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1), "dt2nd_axial_ux", dt2nd_axial_ux1, "dt2nd_radial_ux",
-                    #           dt2nd_radial_ux1, "ux1 term:", dt*ux1[m, n] * (ux1[m, n] - ux_in)/dx, "ur1 term:", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr, "mu_n", mu_n(T1[m, n], p1[m, n]), "extra", (ux1[m, n+1]-ux1[m, n]), "extra2", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr)
-                    # # print("rho2[m,n] inside bulk=", rho2[m, n])
-                        ux2[m, n] = ux1[m, n] - dt*dp/rho1[m, n] + \
-                            mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * \
-                            (dt2nd_radial_ux1_n1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) +
-                             dt2nd_axial_ux1) -\
-                            dt*ux1[m, n] * (ux1[m, n] - ux_in)/dx -\
-                            dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr
+                        ux_dx = (ux1[m, n] - ux_in)/dx
+
+                        # NOTE: SYMMETRY CONDITION HERE
+                        ux_dr = (ux1[m, n+1] - ux1[m, n])/dr
 
                     elif m == Nx and n != 1:
-                        # print("first term:", ux1[m, n], "pressure term:", -dt*(p1[m, n] - p1[m-1, n])/(rho1[m, n]*dx), "viscosity:", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1), "dt2nd_axial_ux", dt2nd_axial_ux1,
-                        #       "dt2nd_radial_ux", dt2nd_radial_ux1, "ux1 term:", dt*ux1[m, n] * (ux1[m, n] - ux1[m-1, n])/dx, "ur1 term:", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr, "mu_n", mu_n(T1[m, n], p1[m, n]), "extra", (ux1[m, n+1]-ux1[m, n]), "extra2", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr)
-                        # print("rho2[m,n] inside bulk=", rho2[m, n])
-                        ux2[m, n] = ux1[m, n] - dt*(p1[m, n] - p1[m-1, n])/(rho1[m, n]*dx) + \
-                            mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * \
-                            (dt2nd_radial_ux1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) +
-                             dt2nd_axial_ux1) -\
-                            dt*ux1[m, n] * (ux1[m, n] - ux1[m-1, n])/dx -\
-                            dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr
+
+                        dp = (p1[m, n] - p1[m-1, n])/dx
+                        ux_dx = (ux1[m, n] - ux1[m-1, n])/dx
+                        ux_dr = (ux1[m, n+1] - ux1[m, n])/dr
 
                     elif m == Nx and n == 1:
-                        # print("first term:", ux1[m, n], "pressure term:", -dt*(p1[m, n] - p1[m-1, n])/(rho1[m, n]*dx), "viscosity:", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1), "dt2nd_axial_ux", dt2nd_axial_ux1,
-                        #       "dt2nd_radial_ux", dt2nd_radial_ux1, "ux1 term:", dt*ux1[m, n] * (ux1[m, n] - ux1[m-1, n])/dx, "ur1 term:", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr, "mu_n", mu_n(T1[m, n], p1[m, n]), "extra", (ux1[m, n+1]-ux1[m, n]), "extra2", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr)
-                        # print("rho2[m,n] inside bulk=", rho2[m, n])
-                        ux2[m, n] = ux1[m, n] - dt*(p1[m, n] - p1[m-1, n])/(rho1[m, n]*dx) + \
-                            mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * \
-                            (dt2nd_radial_ux1_n1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) +
-                             dt2nd_axial_ux1) -\
-                            dt*ux1[m, n] * (ux1[m, n] - ux1[m-1, n])/dx -\
-                            dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr
+                        dp = (p1[m, n] - p1[m-1, n])/dx
+                        ux_dx = (ux1[m, n] - ux1[m-1, n])/dx
+
+                        # NOTE: SYMMETRY CONDITION HERE
+                        ux_dr = (ux1[m, n+1] - ux1[m, n])/dr
 
                     else:
-                        print("first term:", ux1[m, n], "pressure term:", -dt*(p1[m+1, n] - p1[m, n])/(rho1[m, n]*dx), "viscosity:", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1), "dt2nd_axial_ux", dt2nd_axial_ux1, "dt2nd_radial_ux", dt2nd_radial_ux1, "ux1 term:", dt*ux1[m, n] * (
-                            ux1[m+1, n] - ux1[m, n])/dx, "ur1 term:", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr, "mu_n", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1), "extra", (ux1[m, n+1]-ux1[m, n]), "extra2", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr)
-                        print("rho2 bulk=", rho2[m, n])
-                        ux2[m, n] = ux1[m, n] - dt*(p1[m+1, n] - p1[m, n])/(rho1[m, n]*dx) + \
-                            mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * \
-                            (dt2nd_radial_ux1 + (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) +
-                             dt2nd_axial_ux1) -\
-                            dt*ux1[m, n] * (ux1[m+1, n] - ux1[m, n])/dx -\
-                            dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr
+                        dp = (p1[m+1, n] - p1[m, n])/dx
+                        ux_dx = (ux1[m+1, n] - ux1[m, n])/dx
+                        ux_dr = (ux1[m, n+1] - ux1[m, n])/dr
 
                     # if ux2[m, n] < 1:
                     #     ux2[m, n] = 0
+                    ux2[m, n] = ux1[m, n] - dt*dp/rho1[m, n] + mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (
+                        1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1) - dt*ux1[m, n] * ux_dx - dt*ur1[m, n]*ux_dr
+
+                    print("first term:", ux1[m, n], "pressure term:", -dt*dp/rho1[m, n], "viscosity:", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (1/(n*dr)) * (
+                        (ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1), "dt2nd_axial_ux", dt2nd_axial_ux1, "dt2nd_radial_ux", dt2nd_radial_ux1, "ux1 term:", dt*ux1[m, n] * ux_dx, "ur1 term:", dt*ur1[m, n]*ux_dr)
 
                     print("ux1 bulk", ux1[m, n], "ux2 bulk:", ux2[m, n])
                     # print("ux2 bulk=", ux2[m, n])
@@ -664,7 +637,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
 
                         ur2[m, n] = ur1[m, n] - dt*(grad_p1_n1)/(rho1[m, n]) +\
                             mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * \
-                            (dt2nd_radial_ur1_n1 +
+                            (dt2nd_radial_ur1 +
                              (1/(n*dr))*grad_ur1_n1 + dt2nd_axial_ur1 -
                              - ur1[m, n]/(dr**2*n**2)) + \
                             dt*ux1[m, n] * (ur1[m+1, n] - ur1[m, n])/dx - \
@@ -687,7 +660,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                         grad_p1_n1 = (p1[m, n+2] - p1[m, n])/(4*dr)
                         ur2[m, n] = ur1[m, n] - dt*(grad_p1_n1)/(rho1[m, n]) +\
                             mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * \
-                            (dt2nd_radial_ur1_n1 +
+                            (dt2nd_radial_ur1 +
                              (1/(n*dr))*grad_ur1_n1 + dt2nd_axial_ur1 -
                              - ur1[m, n]/(dr**2*n**2)) + \
                             dt*ux1[m, n] * (ur1[m, n] - ur_in)/dx - \
@@ -696,7 +669,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                         print("ur1", ur1[m, n], "p_n+1, p_n", [p1[m, n+1], p1[m, n]],
                               "press term", dt *
                               (p1[m, n+1] - p1[m, n])/(rho1[m, n]*dr),
-                              "viscous", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ur1_n1 + (
+                              "viscous", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ur1 + (
                                   1/(n*dr))*grad_ur1_n1 + dt2nd_axial_ur1 - ur1[m, n]/(dr**2*n**2)),
                               "ux1 term", dt*ux1[m, n] *
                               (ur1[m, n] - ur_in)/dx,
