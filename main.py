@@ -506,16 +506,16 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
 
                     # Define second derivatives in radial direction (consider n as reference)
                     dt2nd_axial_ux1, dt2nd_axial_ur1 = dt2nd_axial(
-                        ux_in, ur_in, ux1, ur1, m, n, dx)
+                        ux_in, ur_in, ux1, ur1, m, n)
                     dt2nd_radial_ux1, dt2nd_radial_ur1 = dt2nd_radial(
-                        ux1, ur1, dr, m, n)
+                        ux1, ur1, m, n)
 
                     # Ux velocity calculation
                     # if ux2[m, n] < 1:
                     #     ux2[m, n] = 0
 
                     dp_dx, ux_dx, ux_dr = gradients_ux2(
-                        p_in, p1, ux_in, ux1, dx, dr, m, n)
+                        p_in, p1, ux_in, ux1, m, n)
 
                     ux2[m, n] = ux1[m, n] - dt*dp_dx/rho1[m, n] + mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (
                         1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1) - dt*ux1[m, n] * ux_dx - dt*ur1[m, n]*ux_dr
@@ -546,14 +546,13 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     #     print("second derivative", (ux1[m+1, n] + ux1[m-1, n] - 2*ux1[m, n])/(dx**2))
                     #     exit()
 
-
-                        # print("ur1", ur1[m, n], , "p_n+1, p_n", [p1[m, n+1], p1[m, n]], "press term", dt*(p1[m, n+1] - p1[m, n])/(rho1[m, n]*dr), "viscous", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ur1 + (1/(n*dr))*(
-                        #     ur1[m, n+1]-ur1[m, n])/dr + dt2nd_axial_ur1 - ur1[m, n]/(dr**2*n**2)), "ux1 term", dt*ux1[m, n] * (ur1[m, n] - ur1[m-1, n])/dx, "ur1 term", dt*ur1[m, n]*(ur1[m, n+1] - ur1[m, n])/dr)
+                    # print("ur1", ur1[m, n], , "p_n+1, p_n", [p1[m, n+1], p1[m, n]], "press term", dt*(p1[m, n+1] - p1[m, n])/(rho1[m, n]*dr), "viscous", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ur1 + (1/(n*dr))*(
+                    #     ur1[m, n+1]-ur1[m, n])/dr + dt2nd_axial_ur1 - ur1[m, n]/(dr**2*n**2)), "ux1 term", dt*ux1[m, n] * (ur1[m, n] - ur1[m-1, n])/dx, "ur1 term", dt*ur1[m, n]*(ur1[m, n+1] - ur1[m, n])/dr)
 
                     # if ur2[m, n] < 1:
                     #     ur2[m, n] = 0
 
-                    dp_dr, ur_dx, ur_dr = grad_ur2_calc(m,n, p1, ur1, ur_in)
+                    dp_dr, ur_dx, ur_dr = grad_ur2_calc(m, n, p1, ur1, ur_in)
 
                     ur2[m, n] = ur1[m, n] - dt*dp_dr/(rho1[m, n]) +\
                         mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * \
@@ -599,35 +598,8 @@ def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2,
                     e_in_x = eps_in + 1./2.*rho_in*ux_in**2.
                     e1[m, n] = eps + 1./2.*rho1[m, n] * u1[m, n]**2.
 
-                    # We dont need the surface case, this is the bulk...
-
-                    if (m == 0 and n == 1):  # NOTE: FIX DIFFERENCING # ur =0 at  n =0
-                        grad_x = e1[m, n]*ux1[m, n]-e_in_x*ux_in
-                        grad_r = n*dr*ur1[m, n]*e1[m, n]
-
-                    elif (m == 0 and n != 1):
-                        grad_x = e1[m, n]*ux1[m, n]-e_in_x*ux_in
-                        grad_r = n*dr*ur1[m, n]*e1[m, n] - \
-                            (n-1)*dr*ur1[m, n-1]*e1[m, n-1]
-
-                    elif (m == Nx and n == 1):  # NOTE: FIX DIFFERENCING
-                        grad_x = n*dr*ur1[m, n]*e1[m, n]  # ur=0 @ r=0
-                        grad_r = e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n]
-
-                    elif (m == Nx and n != 1):
-                        grad_x = e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n]
-                        grad_r = n*dr*ur1[m, n]*e1[m, n] - \
-                            (n-1)*dr*ur1[m, n-1]*e1[m, n-1]
-
-                    elif (m != 0 and m != Nx and n == 1):
-                        grad_x = e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n]
-                        grad_r = n*dr*ur1[m, n]*e1[m, n]
-
-                    else:  # 0 < m < Nx,  1 < n < Nr
-                        grad_x = e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n]
-                        grad_r = n*dr*ur1[m, n]*e1[m, n] - \
-                            (n-1)*dr*ur1[m, n-1]*e1[m, n-1]
-
+                    grad_x, grad_r = grad_e2_calc(
+                        m, n, dr, ur1, ux1, ux_in, e_in_x, e1)
                     e2[m, n] = e1[m, n]-dt/(n*dr*dr)*grad_r - dt/dx*grad_x
 
                     print("e1 bulk: ", e1[m, n], "e2 bulk: ", e2[m, n])

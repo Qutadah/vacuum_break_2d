@@ -16,6 +16,36 @@ np.set_printoptions(threshold=sys.maxsize)
 u_in_x = np.sqrt(7./5.*R*T_in/M_n)*1.0  # Inlet velocity, m/s (gamma*RT)
 
 
+def grad_e2_calc(m, n, dr, ur1, ux1, ux_in, e_in_x, e1):
+
+    # We dont need the surface case, this is the bulk...
+    if (m == 0 and n == 1):  # NOTE: FIX DIFFERENCING # ur =0 at  n =0
+        grad_x = e1[m, n]*ux1[m, n]-e_in_x*ux_in
+        grad_r = n*dr*ur1[m, n]*e1[m, n]
+
+    elif (m == 0 and n != 1):
+        grad_x = e1[m, n]*ux1[m, n]-e_in_x*ux_in
+        grad_r = n*dr*ur1[m, n]*e1[m, n] - (n-1)*dr*ur1[m, n-1]*e1[m, n-1]
+
+    elif (m == Nx and n == 1):  # NOTE: FIX DIFFERENCING
+        grad_x = n*dr*ur1[m, n]*e1[m, n]  # ur=0 @ r=0
+        grad_r = e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n]
+
+    elif (m == Nx and n != 1):
+        grad_x = e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n]
+        grad_r = n*dr*ur1[m, n]*e1[m, n] - (n-1)*dr*ur1[m, n-1]*e1[m, n-1]
+
+    elif (m != 0 and m != Nx and n == 1):
+        grad_x = e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n]
+        grad_r = n*dr*ur1[m, n]*e1[m, n]
+
+    else:  # 0 < m < Nx,  1 < n < Nr
+        grad_x = e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n]
+        grad_r = n*dr*ur1[m, n]*e1[m, n] - (n-1)*dr*ur1[m, n-1]*e1[m, n-1]
+
+    return grad_x, grad_r
+
+
 def grad_ur2_calc(m, n, p1, ur1, ur_in):
     if (m != 0 and m != Nx and n == 1):
         dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
@@ -42,7 +72,7 @@ def grad_ur2_calc(m, n, p1, ur1, ur_in):
     return dp_dr, ur_dx, ur_dr
 
 
-def dt2nd_radial(ux1, ur1, dr, m, n):
+def dt2nd_radial(ux1, ur1, m, n):
     if n == 1:
         # NOTE: Symmetry Boundary Condition assumed for ur1 radial derivative along x axis..
         # --------------------------- dt2nd radial ux1 ---------------------------------#
@@ -68,7 +98,7 @@ def dt2nd_radial(ux1, ur1, dr, m, n):
     return dt2nd_radial_ux1, dt2nd_radial_ur1
 
 
-def dt2nd_axial(ux_in, ur_in, ux1, ur1, m, n, dx):
+def dt2nd_axial(ux_in, ur_in, ux1, ur1, m, n):
     if m == 0:
         # --------------------------- dt2nd axial ux1 ---------------------------------#
         dt2nd_axial_ux1 = (ux_in - 2*ux1[m, n] + ux1[m+1, n]) / (dx**2)
@@ -106,7 +136,7 @@ def dt2nd_axial(ux_in, ur_in, ux1, ur1, m, n, dx):
     return dt2nd_axial_ux1, dt2nd_axial_ur1
 
 
-def gradients_ux2(p_in, p1, ux_in, ux1, dx, dr, m, n):
+def gradients_ux2(p_in, p1, ux_in, ux1, m, n):
     if m == 0 and n != 1:
         # 4-point CD
         dp_dx = (p_in - 8*p_in + 8 *
