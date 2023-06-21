@@ -31,35 +31,42 @@ def dt2nd_wall(m, Tw1):
     return dt2nd
 
 
-def gradient_rho2_bulk(m,n,ux_in,rho_in,ur1,ux1,rho1):
+def gradient_rho2_bulk(m, n, ux_in, rho_in, ur1, ux1, rho1):
     if m == 0:
         a = rho_in
         if n == 1:
             # NOTE: SYMMETRY BC
-            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m,n+2] - rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
+            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -
+                    rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
             m_dx = (rho1[m, n]*ux1[m, n]-rho_in*ux_in)/dx
         else:
-            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m,n+1] - rho1[m, n] * n*dr*ur1[m, n])/dr
+            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
+                    rho1[m, n] * n*dr*ur1[m, n])/dr
             m_dx = (rho1[m, n]*ux1[m, n]-rho_in*ux_in)/dx
     elif m == Nx:
-        a =  rho1[m, n]
+        a = rho1[m, n]
         if n == 1:
             # NOTE: SYMMETRY BC
-            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m,n+2] - rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
+            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -
+                    rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
             m_dx = (rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])/dx
         else:
-            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] - rho1[m, n]* n*dr*ur1[m, n])/dr
+            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
+                    rho1[m, n] * n*dr*ur1[m, n])/dr
             m_dx = (rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])/dx
     else:
-        a = rho1[m,n]
+        a = rho1[m, n]
         if n == 1:
             # NOTE: SYMMETRY BC
-            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m,n+2] - rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
-            m_dx =(rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])/dx
+            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -
+                    rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
+            m_dx = (rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])/dx
         else:
-            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m,n+1] - rho1[m, n] * n*dr*ur1[m, n])/dr
+            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
+                    rho1[m, n] * n*dr*ur1[m, n])/dr
             m_dx = (rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])/dx
     return a, d_dr, m_dx
+
 
 def gradients_ux2(p_in, p1, ux_in, ux1, m, n):
 
@@ -169,28 +176,28 @@ def grad_e2_calc(m, n, ur1, ux1, ux_in, e_in_x, e1):
 
     # We dont need the surface case, this is the bulk...
     if (m == 0 and n == 1):  # NOTE: FIX DIFFERENCING # ur =0 at  n =0
-        grad_x = e1[m, n]*ux1[m, n]-e_in_x*ux_in
-        grad_r = n*dr*ur1[m, n]*e1[m, n]
+        grad_x = (e1[m, n]*ux1[m, n]-e_in_x*ux_in)/dx
+        grad_r = (n*dr*ur1[m, n]*e1[m, n])/dr
 
     elif (m == 0 and n != 1):
-        grad_x = e1[m, n]*ux1[m, n]-e_in_x*ux_in
-        grad_r = n*dr*ur1[m, n]*e1[m, n] - (n-1)*dr*ur1[m, n-1]*e1[m, n-1]
+        grad_x = (e1[m, n]*ux1[m, n]-e_in_x*ux_in)/dx
+        grad_r = (n*dr*ur1[m, n]*e1[m, n] - (n-1)*dr*ur1[m, n-1]*e1[m, n-1])/dr
 
     elif (m == Nx and n == 1):  # NOTE: FIX DIFFERENCING
-        grad_x = n*dr*ur1[m, n]*e1[m, n]  # ur=0 @ r=0
-        grad_r = e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n]
+        grad_x = (n*dr*ur1[m, n]*e1[m, n])/dx  # ur=0 @ r=0
+        grad_r = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/dr
 
     elif (m == Nx and n != 1):
-        grad_x = e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n]
-        grad_r = n*dr*ur1[m, n]*e1[m, n] - (n-1)*dr*ur1[m, n-1]*e1[m, n-1]
+        grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/dx
+        grad_r = (n*dr*ur1[m, n]*e1[m, n] - (n-1)*dr*ur1[m, n-1]*e1[m, n-1])/dr
 
     elif (m != 0 and m != Nx and n == 1):
-        grad_x = e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n]
-        grad_r = n*dr*ur1[m, n]*e1[m, n]
+        grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/dx
+        grad_r = (n*dr*ur1[m, n]*e1[m, n])/dr
 
     else:  # 0 < m < Nx,  1 < n < Nr
-        grad_x = e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n]
-        grad_r = n*dr*ur1[m, n]*e1[m, n] - (n-1)*dr*ur1[m, n-1]*e1[m, n-1]
+        grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/dx
+        grad_r = (n*dr*ur1[m, n]*e1[m, n] - (n-1)*dr*ur1[m, n-1]*e1[m, n-1])/dr
 
     return grad_x, grad_r
 

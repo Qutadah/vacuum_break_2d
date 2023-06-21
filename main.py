@@ -589,7 +589,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
 
                     grad_x, grad_r = grad_e2_calc(
                         m, n, ur1, ux1, ux_in, e_in_x, e1)
-                    e2[m, n] = e1[m, n]-dt/(n*dr*dr)*grad_r - dt/dx*grad_x
+                    e2[m, n] = e1[m, n]-dt/(n*dr)*grad_r - dt*grad_x
 
                     print("e1 bulk: ", e1[m, n], "e2 bulk: ", e2[m, n])
                     check_negative(e1[m, n], n)
