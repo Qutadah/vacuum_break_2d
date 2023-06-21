@@ -48,7 +48,7 @@ def gradient_rho2_bulk(m,n,ux_in,rho_in,ur1,ux1,rho1):
             d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m,n+2] - rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
             m_dx = (rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])/dx
         else:
-            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] - rho1[m, n]* n*dr*ur1[m, n]))/dr
+            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] - rho1[m, n]* n*dr*ur1[m, n])/dr
             m_dx = (rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])/dx
     else:
         a = rho1[m,n]
