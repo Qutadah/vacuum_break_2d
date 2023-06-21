@@ -481,43 +481,11 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     # if dt2nd_axial_ux1 > 10000:
                     #     dt2nd_axial_ux1 = 1000
 
-                    if m == 0:
-                        if n == 1:
-                            # NOTE: SYMMETRY BC
-                            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m,
-                                    n+2] - rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
-                            rho2[m, n] = rho_in - dt / \
-                                (n*dr)*d_dr - dt/dx * \
-                                (rho1[m, n]*ux1[m, n]-rho_in*ux_in)
-                        else:
-                            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m,
-                                    n+1] - rho1[m, n] * n*dr*ur1[m, n])/dr
-                            rho2[m, n] = rho_in - dt / \
-                                (n*dr)*d_dr - dt/dx * \
-                                (rho1[m, n]*ux1[m, n]-rho_in*ux_in)
+                    # Return gradients from function
+                    a, d_dr, m_dx = gradient_rho2_bulk(
+                        m, n, ux_in, rho_in, ur1, ux1, rho1)
 
-                    elif m == Nx:
-                        if n == 1:
-                            # NOTE: SYMMETRY BC
-                            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m,
-                                    n+2] - rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
-                            rho2[m, n] = rho1[m, n] - dt/(n*dr)*d_dr - dt/dx*(
-                                rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])
-                        else:
-                            rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] - rho1[m, n]
-                                                                    * n*dr*ur1[m, n]) - dt/dx*(rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])
-                    else:
-                        if n == 1:
-                            # NOTE: SYMMETRY BC
-                            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m,
-                                    n+2] - rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
-                            rho2[m, n] = rho1[m, n] - dt/(n*dr)*d_dr - dt/dx*(
-                                rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])
-                        else:
-                            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m,
-                                    n+1] - rho1[m, n] * n*dr*ur1[m, n])/dr
-                            rho2[m, n] = rho1[m, n] - dt/(n*dr)*d_dr - dt/dx*(
-                                rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])
+                    rho2[m, n] = rho_in - dt / (n*dr)*d_dr - dt*m_dx
 
                     print("rho1 bulk", rho1[m, n], "rho2 bulk", rho2[m, n])
                     check_negative(rho2[m, n], n)

@@ -31,6 +31,36 @@ def dt2nd_wall(m, Tw1):
     return dt2nd
 
 
+def gradient_rho2_bulk(m,n,ux_in,rho_in,ur1,ux1,rho1):
+    if m == 0:
+        a = rho_in
+        if n == 1:
+            # NOTE: SYMMETRY BC
+            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m,n+2] - rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
+            m_dx = (rho1[m, n]*ux1[m, n]-rho_in*ux_in)/dx
+        else:
+            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m,n+1] - rho1[m, n] * n*dr*ur1[m, n])/dr
+            m_dx = (rho1[m, n]*ux1[m, n]-rho_in*ux_in)/dx
+    elif m == Nx:
+        a =  rho1[m, n]
+        if n == 1:
+            # NOTE: SYMMETRY BC
+            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m,n+2] - rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
+            m_dx = (rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])/dx
+        else:
+            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] - rho1[m, n]* n*dr*ur1[m, n]))/dr
+            m_dx = (rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])/dx
+    else:
+        a = rho1[m,n]
+        if n == 1:
+            # NOTE: SYMMETRY BC
+            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m,n+2] - rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
+            m_dx =(rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])/dx
+        else:
+            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m,n+1] - rho1[m, n] * n*dr*ur1[m, n])/dr
+            m_dx = (rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])/dx
+    return a, d_dr, m_dx
+
 def gradients_ux2(p_in, p1, ux_in, ux1, m, n):
 
     if m == 0 and n == 1:
