@@ -93,6 +93,7 @@ e3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
 T3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
 p3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
 
+
 # Initialization
 
 # ps = np.zeros(Nx+1, np.float64)
@@ -242,6 +243,8 @@ Tc2[:] = Ts1
 # Ts2[0] = 298.
 # print("Tw init:", Tw1)
 
+# NOTE: Initial Reconstuction: add
+
 
 # def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2, Tw2, Ts2, Tc2, de1, T3):
 def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
@@ -271,7 +274,13 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
         #         else:
         #             rho12[x, y] = (rho1[x, y] + rho1[x+1, y])/2.
 
-        # starts from np start [0,Nx]
+        # Field Reconstruction WENO and lagrange.
+
+        # Find linear interpolated array at midpoint in axial and radial direction using functions/ scipy interpolate?
+        # Reconstruct field using equations.
+        # send back reconstructed fields to u1, ux1, etc arrays.
+        # Use the reconstructed arrays in the equations.
+
         for m in np.arange(np.int64(0), np.int64(Nx+1)):
             for n in np.arange(np.int64(1), np.int64(Nr+1)):
                 print("[i,m,n]:", [i, m, n])

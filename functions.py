@@ -34,6 +34,17 @@ u_in_x = np.sqrt(7./5.*R*T_in/M_n)*1.0  # Inlet velocity, m/s (gamma*RT)
 
 #NOTE: Use x direction only first? since we have jump in the axial direction?
 
+def midpoint_field(F_array):
+    for m in np.arange(Nx):
+        F_mid[m,n] = (F_array[1:] + F_array[:-1]) / 2
+    return F_mid
+
+
+def smoothnes_operator(poly_axial):
+    smoothness_value = poly_axial
+
+    return smoothness_value
+
 def Polynomial_axial(f(x-2),f(x-1),f(x),f(x+1),f(x+2)):
     x = [x-2,x-1,x,x+1,x+2]
     y= [f(x-2),f(x-1),f(x),f(x+1),f(x+2)]
@@ -55,6 +66,15 @@ def coefficients_poly_axial(poly_axial):
 def coefficients_poly_radial(poly_radial):
 
     return d1,d2,d3,d4,d5
+
+def reconstruct_field(F_array, c1,c2,c3,c4,c5, d1,d2,d3,d4,d5):
+    for m in np.arange(Nx):
+        F_array_reconstructed[m,:] = c1*F_array[m-2,:] + c2* F_array[m-1,:] + c3* F_array[m,:]+ c4* F_array[m+1,:]+ c5* F_array[m+1,:]
+
+    for n in np.arange(Nr):
+        F_array_reconstructed[:,n] = d1*F_array[:,n-2] + d2* F_array[:,n-1] + d3* F_array[:,n]+ d4* F_array[:,n+1]+ d5* F_array[:,n+2]
+
+    return F_array_reconstructed
 
 
 def dt2nd_wall(m, Tw1):
