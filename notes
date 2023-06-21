@@ -80,3 +80,4 @@ CONCLUSIONS.
 - fix internal energy
 - fix symmetrical n=1 first gradient.. I used CD, is this correct?
   should i apply symmetry conditions for all points in the radial direction to find second derivatives for each respectively? or just at n=1? assuming n is the radial step
+- should i rewrite equations using the fluxes? Only have to change the array definitions as fluxes instead of variables and also the momentum equations need to be rewritten and redefined.
