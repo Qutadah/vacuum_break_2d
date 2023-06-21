@@ -68,8 +68,10 @@ def coefficients_poly_radial(poly_radial):
     return d1,d2,d3,d4,d5
 
 def reconstruct_field(F_array, c1,c2,c3,c4,c5, d1,d2,d3,d4,d5):
+    smoothness_value = smoothness_value(c1,)
     for m in np.arange(Nx):
-        F_array_reconstructed[m,:] = c1*F_array[m-2,:] + c2* F_array[m-1,:] + c3* F_array[m,:]+ c4* F_array[m+1,:]+ c5* F_array[m+1,:]
+
+        F_array_reconstructed[m,:] = c1*F_array[m-2,:] + c2* F_array[m-1,:] + c3* F_array[m,:]+ c4* F_array[m+1,:]+ c5* F_array[m+1,:] ( smoothness_value)
 
     for n in np.arange(Nr):
         F_array_reconstructed[:,n] = d1*F_array[:,n-2] + d2* F_array[:,n-1] + d3* F_array[:,n]+ d4* F_array[:,n+1]+ d5* F_array[:,n+2]
