@@ -62,7 +62,7 @@ dH_He_V = dH_He*125  # Latent heat of LHe, J/m^3
 
 rho_0 = 1e-2  # An arbitrary small initial density in pipe, kg/m3
 p_0 = rho_0/M_n*R*T_0  # Initial pressure, Pa
-e_0 = 5./2.*rho_0/M_n*R*T_0  # Initial internal energy
+e_0 = 7./2.*rho_0/M_n*R*T_0  # Initial internal energy
 
 # Kinetic energy
 

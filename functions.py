@@ -3,17 +3,58 @@
 import re
 import inspect
 from my_constants import *
+import sys
 import os
 import shutil
 
 import numpy as np
 from numba import jit
 # from scipy.ndimage.filters import laplace
-import sys
+from scipy.interpolate import lagrange
 import matplotlib.pyplot as plt
 np.set_printoptions(threshold=sys.maxsize)
 
 u_in_x = np.sqrt(7./5.*R*T_in/M_n)*1.0  # Inlet velocity, m/s (gamma*RT)
+
+
+# WENO 5th order RECONSTRUCTION functions
+
+# guide
+# 1 Reconstruct midpoint in matrices in 2d.
+# 2 Use them in lagrange polynomial generation function, returns polynomial and its respective coefficients for each grid point.
+# 3 Find weights and smoothness operators from lagrange polynomials
+# 4 Use weights to reconstruct field.
+# 5 Use this new field for calculations.
+# 6
+
+# Q: Do i need to make equations in a flux format?
+#Q : Do i need a lagrange interpolation in both radial and axial directions?
+# Q: Should i use midpoints to construct the polynomial?
+
+
+#NOTE: Use x direction only first? since we have jump in the axial direction?
+
+def Polynomial_axial(f(x-2),f(x-1),f(x),f(x+1),f(x+2)):
+    x = [x-2,x-1,x,x+1,x+2]
+    y= [f(x-2),f(x-1),f(x),f(x+1),f(x+2)]
+    poly_axial = lagrange(x, y)
+    return poly_axial
+
+
+
+def Polynomial_radial(f(r-2),f(r-1),f(r),f(r+1),f(r+2)):
+    r = [r-2,r-1,r,r+1,r+2]
+    y= [f(r-2),f(r-1),f(r),f(r+1),f(r+2)]
+    poly_radial = lagrange(r, y)
+    return poly_radial
+
+def coefficients_poly_axial(poly_axial):
+
+    return c1,c2,c3,c4,c5
+
+def coefficients_poly_radial(poly_radial):
+
+    return d1,d2,d3,d4,d5
 
 
 def dt2nd_wall(m, Tw1):
@@ -36,8 +77,7 @@ def gradient_rho2_bulk(m, n, ux_in, rho_in, ur1, ux1, rho1):
         a = rho_in
         if n == 1:
             # NOTE: SYMMETRY BC
-            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -
-                    rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
+            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1]) / (2*dr)  # CD fix
             m_dx = (rho1[m, n]*ux1[m, n]-rho_in*ux_in)/dx
         else:
             d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
@@ -47,8 +87,7 @@ def gradient_rho2_bulk(m, n, ux_in, rho_in, ur1, ux1, rho1):
         a = rho1[m, n]
         if n == 1:
             # NOTE: SYMMETRY BC
-            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -
-                    rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
+            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1]) / (2*dr)  # CD fix
             m_dx = (rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])/dx
         else:
             d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
@@ -58,8 +97,7 @@ def gradient_rho2_bulk(m, n, ux_in, rho_in, ur1, ux1, rho1):
         a = rho1[m, n]
         if n == 1:
             # NOTE: SYMMETRY BC
-            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -
-                    rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
+            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1]) / (2*dr)  # CD fix
             m_dx = (rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])/dx
         else:
             d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
@@ -76,7 +114,8 @@ def gradients_ux2(p_in, p1, ux_in, ux1, m, n):
                  p1[m+1, n] - p1[m+2, n])/(12*dx)
         ux_dx = (ux1[m, n] - ux_in)/dx
 
-        # NOTE: SYMMETRY CONDITION HERE done
+        # NOTE: SYMMETRY CONDITION HERE fix
+        # ux_max =7./5.*np.sqrt(7]) # from gamma*R*T
         ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
 
     elif m == 0 and n != 1:
@@ -95,14 +134,14 @@ def gradients_ux2(p_in, p1, ux_in, ux1, m, n):
         dp_dx = (p1[m, n] - p1[m-1, n])/dx
         ux_dx = (ux1[m, n] - ux1[m-1, n])/dx
 
-        # NOTE: SYMMETRY CONDITION HERE done
+        # NOTE: SYMMETRY CONDITION HERE fix
         ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
 
     elif m != 1 and m != Nx and n == 1:
         dp_dx = (p1[m+1, n] - p1[m-1, n])/(2*dx)
         ux_dx = (ux1[m+1, n] - ux1[m-1, n])/(2*dx)
 
-        # NOTE: SYMMETRY CONDITION HERE done
+        # NOTE: SYMMETRY CONDITION HERE fix
         ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
 
     elif m == n_trans and n == 1:
@@ -154,7 +193,7 @@ def grad_ur2_calc(m, n, p1, ur1, ur_in):
         ur_dx = (ur1[m-2, n] - 8*ur1[m-1, n] + 8 *
                  ur1[m+1, n] - ur1[m+2, n])/(12*dx)
         # NOTE: Symmetry BC done
-        ur_dr = ur1[m, n+2]/(2*dr)
+        ur_dr = ur1[m, n+2]/(2*dr)  # CD
         dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
 
     elif m == n_trans and n != 1:
