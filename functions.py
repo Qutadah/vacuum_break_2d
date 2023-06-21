@@ -113,7 +113,7 @@ def gradients_ux2(p_in, p1, ux_in, ux1, m, n):
                  ux1[m+1, n] - ux1[m+2, n])/(12*dx)
 
         # NOTE: SYMMETRY CONDITION HERE done
-        ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
+        ux_dr = (ux1[m, n+2] - ux1[m, n])/(2*dr)
 
     elif m == n_trans and n != 1:
         # NOTE Use four point CD at transition point.
@@ -136,14 +136,14 @@ def grad_ur2_calc(m, n, p1, ur1, ur_in):
     if (m != 0 and m != Nx and n == 1):
         ur_dx = (ur1[m+1, n] - ur1[m, n])/dx
         # NOTE: Symmetry BC done
-        ur_dr = (ur1[m, n+2] - ur1[m, n])/(4*dr)
-        dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
+        ur_dr = ur1[m, n+1]/(2*dr)
+        dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)  # NOTE WHATS THIS
 
     elif (m == 0 and n == 1):
         ur_dx = (ur1[m, n] - ur_in)/dx
         # NOTE: Symmetry BC done
         dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
-        ur_dr = (ur1[m, n+2] - ur1[m, n])/(4*dr)
+        ur_dr = ur1[m, n+1]/(2*dr)  # CD
 
     elif (m == 0 and n != 1):
         dp_dr = (p1[m, n+1] - p1[m, n])/dr
@@ -154,7 +154,7 @@ def grad_ur2_calc(m, n, p1, ur1, ur_in):
         ur_dx = (ur1[m-2, n] - 8*ur1[m-1, n] + 8 *
                  ur1[m+1, n] - ur1[m+2, n])/(12*dx)
         # NOTE: Symmetry BC done
-        ur_dr = (ur1[m, n+2] - ur1[m, n])/(4*dr)
+        ur_dr = ur1[m, n+2]/(2*dr)
         dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
 
     elif m == n_trans and n != 1:
@@ -178,8 +178,7 @@ def grad_e2_calc(m, n, ur1, ux1, ux_in, e_in_x, e1):
     if (m == 0 and n == 1):   # ur =0 at  n =0
         grad_x = (e1[m, n]*ux1[m, n]-e_in_x*ux_in)/dx
         # NOTE: Symmetry BC done
-        grad_r = ((n+2)*dr*ur1[m, n+2]*e1[m, n+2] -
-                  n*dr*ur1[m, n]*e1[m, n])/(4*dr)
+        grad_r = ((n+1)*dr*ur1[m, n+1]*e1[m, n+1])/(2*dr)  # CD
 
     elif (m == 0 and n != 1):
         grad_x = (e1[m, n]*ux1[m, n]-e_in_x*ux_in)/dx
@@ -188,8 +187,7 @@ def grad_e2_calc(m, n, ur1, ux1, ux_in, e_in_x, e1):
     elif (m == Nx and n == 1):
         grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/dx
         # NOTE: Symmetry BC done
-        grad_r = ((n+2)*dr*ur1[m, n+2]*e1[m, n+2] - n *
-                  dr*ur1[m, n]*e1[m, n])/(4*dr)  # ur=0 @ r=0
+        grad_r = ((n+1)*dr*ur1[m, n+1]*e1[m, n+1])/(2*dr)  # ur=0 @ r=0 # CD
 
     elif (m == Nx and n != 1):
         grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/dx
@@ -198,15 +196,13 @@ def grad_e2_calc(m, n, ur1, ux1, ux_in, e_in_x, e1):
     elif (m != 0 and m != Nx and n == 1):
         grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/dx  # Use CD
         # NOTE: Symmetry BC done
-        grad_r = ((n+2)*dr*ur1[m, n+2]*e1[m, n+2] - n *
-                  dr*ur1[m, n]*e1[m, n])/(4*dr)  # ur=0 @ r=0
+        grad_r = ((n+1)*dr*ur1[m, n+1]*e1[m, n+1])/(2*dr)  # ur=0 @ r=0 #CD
 
 # NOTE : add transition point central differencing.
     else:  # 0 < m < Nx,  1 < n < Nr
         grad_x = (e1[m+1, n]*ux1[m+1, n]-e1[m-1, n]
                   * ux1[m-1, n])/(2*dx)  # 2-point CD
-        grad_r = ((n+1)*dr*ur1[m, n+1]*e1[m, n+1] - (n-1)
-                  * dr*ur1[m, n-1]*e1[m, n-1])/(2*dr)  # 2-point CD
+        grad_r = ((n+1)*dr*ur1[m, n+1]*e1[m, n+1])/(2*dr)  # 2-point CD
 
     return grad_x, grad_r
 
@@ -229,7 +225,7 @@ def dt2nd_radial(ux1, ur1, m, n):
 
         # --------------------------- dt2nd radial ux1 ---------------------------------#
         dt2nd_radial_ux1 = (ux1[m, n+1] + ux1[m, n-1] -
-                            2*ux1[m, n])/dr**2  # CD
+                            2*ux1[m, n])/(dr**2)  # CD
     # --------------------------- dt2nd radial ur1 ---------------------------------#
         dt2nd_radial_ur1 = (ur1[m, n+1] + ur1[m, n-1] -
                             2*ur1[m, n])/(dr**2)  # CD
