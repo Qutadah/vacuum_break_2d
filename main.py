@@ -357,11 +357,11 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
 
                     # energy calculation
                     # radial kinetic energy on surface.
-                    grad_e2 = (n*dr*ur1[m, n]*e1[m, n] -
-                               (n-1)*dr*ur1[m, n-1]*e1[m, n-1])/dr  # BWD
-                    print("grad_e2", grad_e2)
+                    e2_dr = (n*dr*ur1[m, n]*e1[m, n] -
+                             (n-1)*dr*ur1[m, n-1]*e1[m, n-1])/dr  # BWD
+                    print("e2_dr", e2_dr)
                     e2[m, n] = e1[m, n]-dt / \
-                        (n*dr)*(grad_e2) - dt*4 / \
+                        (n*dr)*(e2_dr) - dt*4 / \
                         D*de1[m]*(e1[m, n]/rho1[m, n])
                     print("e1 surface", e1[m, n], "e2 surface", e2[m, n])
                     check_negative(e1[m, n], n)
@@ -591,8 +591,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     e_in_x = eps_in + 1./2.*rho_in*ux_in**2.
                     e1[m, n] = eps + 1./2.*rho1[m, n] * u1[m, n]**2.
 
-                    grad_x, grad_r = grad_e2(
-                        m, n, ur1, ux1, ux_in, e_in_x, e1)
+                    grad_x, grad_r = grad_e2(m, n, ur1, ux1, ux_in, e_in_x, e1)
                     e2[m, n] = e1[m, n]-dt/(n*dr)*grad_r - dt*grad_x
 
                     print("grad_x: ", grad_x, "grad_r: ", grad_r)
@@ -734,6 +733,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
         # d = Ts1[:]
         # e = Tw1[0,:]
         f = p3[0, :]
+        g = ur3[0, :]
 
         # AXIAL DIRECTION
         # a = rho3[:,Nr]
@@ -761,7 +761,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
         axs[2].scatter(r, f, label="Pressure", color='green')
         axs[2].set(ylabel='Pressure [Pa]')
         # plt.ylabel("Pressure [Pa]")
-        axs[3].scatter(r, b, label="Ur", color='yellow')
+        axs[3].scatter(r, g, label="Ur", color='yellow')
         axs[3].set(ylabel='Ur [m/s]')
         plt.xlabel("radius (m)")
 

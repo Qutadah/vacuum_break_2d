@@ -160,8 +160,7 @@ def grad_ur2(m, n, p1, ur1, ur_in):  # first derivatives BULK
         ur_dr = (ur1[m, n+1] - ur1[m, n-1])/(2*dr)
 
     elif (m == Nx and n == 1):
-        ur_dx = (ur1[m-2, n] - 8*ur1[m-1, n] + 8 *
-                 ur1[m+1, n] - ur1[m+2, n])/(12*dx)  # 4 point CD
+        ur_dx = (ur1[m, n] - ur1[m-1, n])/dx
         # NOTE: Symmetry BC done
         ur_dr = (ur1[m, n+2] - ur1[m, n])/(4*dr)
         dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
