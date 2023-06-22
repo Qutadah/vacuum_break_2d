@@ -132,18 +132,12 @@ def gradients_ux2(p_in, p1, ux_in, ux1, m, n):
     return dp_dx, ux_dx, ux_dr
 
 
-def grad_ur2_calc(m, n, p1, ur1, ur_in):
-    if (m != 0 and m != Nx and n == 1):
-        ur_dx = (ur1[m+1, n] - ur1[m, n])/dx
-        # NOTE: Symmetry BC done
-        ur_dr = ur1[m, n+1]/(2*dr)
-        dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)  # NOTE WHATS THIS
-
-    elif (m == 0 and n == 1):
+def grad_ur2_calc(m, n, p1, ur1, ur_in):  # first derivatives
+    if (m == 0 and n == 1):
         ur_dx = (ur1[m, n] - ur_in)/dx
         # NOTE: Symmetry BC done
         dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
-        ur_dr = ur1[m, n+1]/(2*dr)  # CD
+        ur_dr = (ur1[m, n+2]-ur1[m, n])/(4*dr)  # increased to 2dx
 
     elif (m == 0 and n != 1):
         dp_dr = (p1[m, n+1] - p1[m, n])/dr
@@ -152,21 +146,39 @@ def grad_ur2_calc(m, n, p1, ur1, ur_in):
 
     elif m == n_trans and n == 1:
         ur_dx = (ur1[m-2, n] - 8*ur1[m-1, n] + 8 *
-                 ur1[m+1, n] - ur1[m+2, n])/(12*dx)
+                 ur1[m+1, n] - ur1[m+2, n])/(12*dx)  # 4 point CD
         # NOTE: Symmetry BC done
-        ur_dr = ur1[m, n+2]/(2*dr)
+        ur_dr = (ur1[m, n+2] - ur1[m, n])/(4*dr)
         dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
 
     elif m == n_trans and n != 1:
         ur_dx = (ur1[m-2, n] - 8*ur1[m-1, n] + 8 *
-                 ur1[m+1, n] - ur1[m+2, n])/(12*dx)
+                 ur1[m+1, n] - ur1[m+2, n])/(12*dx)  # 4 point CD
         # NOTE: Use 2 point CD
         dp_dr = (p1[m, n+1] - p1[m, n-1])/(2*dr)
         ur_dr = (ur1[m, n+1] - ur1[m, n-1])/(2*dr)
 
-    else:  # case1: (m== Nx and n==1): case2" m ==Nx, n!=1
-        dp_dr = (p1[m, n+1] - p1[m, n])/dr
+    elif (m == Nx and n == 1):
+        ur_dx = (ur1[m-2, n] - 8*ur1[m-1, n] + 8 *
+                 ur1[m+1, n] - ur1[m+2, n])/(12*dx)  # 4 point CD
+        # NOTE: Symmetry BC done
+        ur_dr = (ur1[m, n+2] - ur1[m, n])/(4*dr)
+        dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
+
+    elif (m == Nx and n != 1):
         ur_dx = (ur1[m, n] - ur1[m-1, n])/dx
+        dp_dr = (p1[m, n+1] - p1[m, n])/dr
+        ur_dr = (ur1[m, n+1] - ur1[m, n])/dr
+
+    elif (m != 0 and m != Nx and n == 1):
+        ur_dx = (ur1[m+1, n] - ur1[m-1, n])/dx  # CD
+        # NOTE: Symmetry BC done
+        ur_dr = ur1[m, n+1]/(2*dr)
+        dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
+
+    else:  # case: (m != 0 and m != Nx and n != 1):
+        ur_dx = (ur1[m, n] - ur1[m-1, n])/dx
+        dp_dr = (p1[m, n+1] - p1[m, n])/dr
         ur_dr = (ur1[m, n+1] - ur1[m, n])/dr
 
     return dp_dr, ur_dx, ur_dr
