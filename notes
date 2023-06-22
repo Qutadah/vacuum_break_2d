@@ -59,7 +59,6 @@ NEXT:
 
 - WEEK 18.06:
 
-- NOTE: Is de2 needed ?? there is de1 input to m_de function.
 - can q1 be negative? Is Ts always higher than Tw? Am i considering this in the equations?
 - parabolic velocity profile at inlet, and calculating all corresponding properties.
 - checked all q*h, delta*, q1 functions for Ts, tw.
@@ -74,8 +73,10 @@ NEXT:
 - NOTE: check false tg = ts important
   NOTE Check Ts = Tg BC in surface loop.
   pressure is higher on surface because energy flux in the radial direction towards the wall. therefore all energy gets converted to
+- NOTE: Is de2 needed ?? there is de1 input to m_de function.
 
 CONCLUSIONS.
 
 - pressure energy and pressure rises, which creates a pressure gradient in the radial ddirection inwards towards the center of the duct and therefore a negative radial velocity.
 - the pressure in the time, energy equation.
+- should i include convective term, and last n away from wall? This will need mesh refinement, as m_de is very small and to give us correct ur values, it needs to be in the control volume, and if its away from the grid point, the values are not necessarily correct.
