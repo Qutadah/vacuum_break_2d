@@ -309,7 +309,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     # print("del_SN: ", del_SN)
                     # check_negative(del_SN, n)
 
-                    de1[m] = 0.
+                    de1[m] = 0
 
                     # density calculation
                     rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
@@ -704,10 +704,6 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
 
         # print("shape rho3", np.shape(rho3))
 
-        Tw2 = 0
-        Ts2 = 0
-        de0 = 0
-        de1 = 0
         save_data(i, dt, rho3, ux3, ur3, u3, e3, T3, Tw2, Ts2, de0, p3, de1)
 
 ## -------------------------------- value checks ----------------------------------------#
