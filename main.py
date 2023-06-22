@@ -482,8 +482,9 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     #     dt2nd_axial_ux1 = 1000
 
                     # Return gradients from function
-                    a, d_dr, m_dx = gradient_rho2_bulk(
+                    a, d_dr, m_dx = grad_rho2(
                         m, n, ux_in, rho_in, ur1, ux1, rho1)
+                    print("d_dr: ", d_dr, "m_dx: ", m_dx)
 
                     rho2[m, n] = rho_in - dt / (n*dr)*d_dr - dt*m_dx
 
@@ -500,9 +501,9 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     # if ux2[m, n] < 1:
                     #     ux2[m, n] = 0
 
-                    dp_dx, ux_dx, ux_dr = gradients_ux2(
+                    dp_dx, ux_dx, ux_dr = grad_ux2(
                         p_in, p1, ux_in, ux1, m, n)
-
+                    print("dp_dx: ", dp_dx, "ux_dx: ", ux_dx, "ux_dr: ", ux_dr)
                     ux2[m, n] = ux1[m, n] - dt*dp_dx/rho1[m, n] + mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (
                         1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1) - dt*ux1[m, n] * ux_dx - dt*ur1[m, n]*ux_dr
 
@@ -541,7 +542,8 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     # if ur2[m, n] < 1:
                     #     ur2[m, n] = 0
 
-                    dp_dr, ur_dx, ur_dr = grad_ur2_calc(m, n, p1, ur1, ur_in)
+                    dp_dr, ur_dx, ur_dr = grad_ur2(m, n, p1, ur1, ur_in)
+                    print("dp_dr: ", dp_dr, "ur_dx: ", ur_dx, "ur_dr: ", ur_dr)
 
                     ur2[m, n] = ur1[m, n] - dt*dp_dr/(rho1[m, n]) +\
                         mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * \
@@ -587,9 +589,11 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     e_in_x = eps_in + 1./2.*rho_in*ux_in**2.
                     e1[m, n] = eps + 1./2.*rho1[m, n] * u1[m, n]**2.
 
-                    grad_x, grad_r = grad_e2_calc(
+                    grad_x, grad_r = grad_e2(
                         m, n, ur1, ux1, ux_in, e_in_x, e1)
                     e2[m, n] = e1[m, n]-dt/(n*dr)*grad_r - dt*grad_x
+
+                    print("grad_x: ", grad_x, "grad_r: ", grad_r)
 
                     print("e1 bulk: ", e1[m, n], "e2 bulk: ", e2[m, n])
                     check_negative(e1[m, n], n)

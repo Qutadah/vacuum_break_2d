@@ -31,14 +31,14 @@ def dt2nd_wall(m, Tw1):
     return dt2nd
 
 
-def gradient_rho2_bulk(m, n, ux_in, rho_in, ur1, ux1, rho1):
+def grad_rho2(m, n, ux_in, rho_in, ur1, ux1, rho1):
     if m == 0:
         a = rho_in
         if n == 1:
+            m_dx = (rho1[m, n]*ux1[m, n]-rho_in*ux_in)/dx
             # NOTE: SYMMETRY BC
             d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -
                     rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
-            m_dx = (rho1[m, n]*ux1[m, n]-rho_in*ux_in)/dx
         else:
             d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
                     rho1[m, n] * n*dr*ur1[m, n])/dr
@@ -46,10 +46,10 @@ def gradient_rho2_bulk(m, n, ux_in, rho_in, ur1, ux1, rho1):
     elif m == Nx:
         a = rho1[m, n]
         if n == 1:
+            m_dx = (rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])/dx
             # NOTE: SYMMETRY BC
             d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -
                     rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
-            m_dx = (rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])/dx
         else:
             d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
                     rho1[m, n] * n*dr*ur1[m, n])/dr
@@ -57,18 +57,19 @@ def gradient_rho2_bulk(m, n, ux_in, rho_in, ur1, ux1, rho1):
     else:
         a = rho1[m, n]
         if n == 1:
+            m_dx = (rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])/dx
             # NOTE: SYMMETRY BC
             d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -
                     rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
-            m_dx = (rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])/dx
         else:
             d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
                     rho1[m, n] * n*dr*ur1[m, n])/dr
             m_dx = (rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])/dx
+
     return a, d_dr, m_dx
 
 
-def gradients_ux2(p_in, p1, ux_in, ux1, m, n):  # bulk
+def grad_ux2(p_in, p1, ux_in, ux1, m, n):  # bulk
 
     if m == 0 and n == 1:
         # 4-point CD
@@ -132,7 +133,7 @@ def gradients_ux2(p_in, p1, ux_in, ux1, m, n):  # bulk
     return dp_dx, ux_dx, ux_dr
 
 
-def grad_ur2_calc(m, n, p1, ur1, ur_in):  # first derivatives BULK
+def grad_ur2(m, n, p1, ur1, ur_in):  # first derivatives BULK
     if (m == 0 and n == 1):
         ur_dx = (ur1[m, n] - ur_in)/dx
         # NOTE: Symmetry BC done
@@ -184,7 +185,7 @@ def grad_ur2_calc(m, n, p1, ur1, ur_in):  # first derivatives BULK
     return dp_dr, ur_dx, ur_dr
 
 
-def grad_e2_calc(m, n, ur1, ux1, ux_in, e_in_x, e1):
+def grad_e2(m, n, ur1, ux1, ux_in, e_in_x, e1):
 
     # We dont need the surface case, this is the bulk...
     if (m == 0 and n == 1):   # ur =0 at  n =0
