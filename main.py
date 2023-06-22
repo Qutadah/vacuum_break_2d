@@ -623,6 +623,13 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
 
         ux1[:, Nr] = 0
 
+# ------------------------------------- Inlet boundary conditions --------------------------------------------- #
+
+        p2[0, :] = p_in
+        ux2[0, :] = ux_in
+        rho2[0, :] = rho_in
+        e2[0, :] = e_in
+
 # ------------------------------------ Outlet boundary conditions ------------------------------------------- #
         # print("This is the ", Nx)
         p1[Nx, n] = 2/5*(e1[Nx, n]-1/2*rho1[Nx, n]
@@ -728,12 +735,12 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
        # print("shape r", np.shape(r))
         # RADIAL DIRECTION
         # a = rho1[0,:]
-        b = u3[0, :]
-        c = T3[0, :]
+        b = u3[20, :]
+        c = T3[20, :]
         # d = Ts1[:]
         # e = Tw1[0,:]
-        f = p3[0, :]
-        g = ur3[0, :]
+        f = p3[20, :]
+        g = ur3[20, :]
 
         # AXIAL DIRECTION
         # a = rho3[:,Nr]
@@ -751,7 +758,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
 #        print("shape T3", np.shape(T3), "shape r", np.shape(r))
         fig, axs = plt.subplots(4)
         fig.tight_layout()
-        fig.suptitle('Properties along radial axis @ m=0')
+        fig.suptitle('Properties along radial axis @ m=20')
         axs[0].scatter(r, b, label="Velocity", color='red')
         axs[0].set(ylabel='U [m/s]')
         # plt.ylabel("Velocity [m/s]")

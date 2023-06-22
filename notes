@@ -68,7 +68,7 @@ NEXT:
 - subplots of all properties inlet conditions and calculated properties at each timestep.
 
 - make 2d contour plot of derivatives.
-- check all printing terms plus and minus signs.
+- add inlet BCs before plotting
 
 - NOTE: Calculate the gas temperature and ensure it's higher than the SN2 surface temperature .... VERY IMPORTANT
 - NOTE: check false tg = ts important
