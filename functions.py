@@ -191,7 +191,8 @@ def grad_e2(m, n, ur1, ux1, ux_in, e_in_x, e1):
     if (m == 0 and n == 1):   # ur =0 at  n =0
         grad_x = (e1[m, n]*ux1[m, n]-e_in_x*ux_in)/dx
         # NOTE: Symmetry BC done
-        grad_r = ((n+1)*dr*ur1[m, n+1]*e1[m, n+1])/(2*dr)  # CD
+        grad_r = ((n+2)*dr*ur1[m, n+2]*e1[m, n+2] - n *
+                  dr*ur1[m, n]*e1[m, n])/(4*dr)  # ur=0 @ r=0 #CD
 
     elif (m == 0 and n != 1):
         grad_x = (e1[m, n]*ux1[m, n]-e_in_x*ux_in)/dx
@@ -200,7 +201,8 @@ def grad_e2(m, n, ur1, ux1, ux_in, e_in_x, e1):
     elif (m == Nx and n == 1):
         grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/dx
         # NOTE: Symmetry BC done
-        grad_r = ((n+1)*dr*ur1[m, n+1]*e1[m, n+1])/(2*dr)  # ur=0 @ r=0 # CD
+        grad_r = ((n+2)*dr*ur1[m, n+2]*e1[m, n+2] - n *
+                  dr*ur1[m, n]*e1[m, n])/(4*dr)  # ur=0 @ r=0 #CD
 
     elif (m == Nx and n != 1):
         grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/dx
@@ -209,7 +211,8 @@ def grad_e2(m, n, ur1, ux1, ux_in, e_in_x, e1):
     elif (m != 0 and m != Nx and n == 1):
         grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/dx  # Use CD
         # NOTE: Symmetry BC done
-        grad_r = ((n+1)*dr*ur1[m, n+1]*e1[m, n+1])/(2*dr)  # ur=0 @ r=0 #CD
+        grad_r = ((n+2)*dr*ur1[m, n+2]*e1[m, n+2] - n *
+                  dr*ur1[m, n]*e1[m, n])/(4*dr)  # ur=0 @ r=0 #CD
 
 # NOTE : add transition point central differencing.
     else:  # 0 < m < Nx,  1 < n < Nr

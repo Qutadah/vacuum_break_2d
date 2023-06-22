@@ -66,9 +66,11 @@ NEXT:
 - radial velocity relation with mass deposition is a mistake... I think we need momentum R equation. The rate of change of thickness in SN2 layer is controlled by mass deposition.
 - do we use de1 or de2 for calculating ur2 ?
 - subplots of all properties inlet conditions and calculated properties at each timestep.
-- You reached bulk ur2 calculation, continue
+
+- make 2d contour plot of derivatives.
+- check all printing terms plus and minus signs.
+
 - NOTE: Calculate the gas temperature and ensure it's higher than the SN2 surface temperature .... VERY IMPORTANT
-- check all commits git
 - NOTE: check false tg = ts important
   NOTE Check Ts = Tg BC in surface loop.
   pressure is higher on surface because energy flux in the radial direction towards the wall. therefore all energy gets converted to
