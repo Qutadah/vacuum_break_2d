@@ -150,7 +150,7 @@ for i in np.arange(n_trans):
     v_max = np.sqrt(7./5.*R*T1[i, 4]/M_n)
     for y in np.arange(Nr+1):
         a = v_max
-        # a = v_max*(1.0 - ((y*dr)/R_cyl)**2)
+        a = v_max*(1.0 - ((y*dr)/R_cyl)**2)
         # print("parabolic y", y)
         ux1[i, y] = a
         u1[i, y] = ux1[i, y]

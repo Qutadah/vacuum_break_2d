@@ -33,38 +33,34 @@ def dt2nd_wall(m, Tw1):
 
 def grad_rho2(m, n, ux_in, rho_in, ur1, ux1, rho1):
     if m == 0:
-        a = rho_in
+        m_dx = (rho1[m, n]*ux1[m, n]-rho_in*ux_in)/dx
         if n == 1:
-            m_dx = (rho1[m, n]*ux1[m, n]-rho_in*ux_in)/dx
             # NOTE: SYMMETRY BC
             d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -
                     rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
         else:
             d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
                     rho1[m, n] * n*dr*ur1[m, n])/dr
-            m_dx = (rho1[m, n]*ux1[m, n]-rho_in*ux_in)/dx
     elif m == Nx:
         a = rho1[m, n]
+        m_dx = (rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])/dx
         if n == 1:
-            m_dx = (rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])/dx
             # NOTE: SYMMETRY BC
             d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -
                     rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
         else:
             d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
                     rho1[m, n] * n*dr*ur1[m, n])/dr
-            m_dx = (rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])/dx
     else:
         a = rho1[m, n]
+        m_dx = (rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])/dx
         if n == 1:
-            m_dx = (rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])/dx
             # NOTE: SYMMETRY BC
             d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -
                     rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
         else:
             d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
                     rho1[m, n] * n*dr*ur1[m, n])/dr
-            m_dx = (rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])/dx
 
     return a, d_dr, m_dx
 
