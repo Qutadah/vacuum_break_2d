@@ -1,9 +1,12 @@
 from inspect import currentframe
 from functions import *
 from my_constants import *
-
-
+import logging
+import openpyxl
+import pandas as pd
 # @numba.jit()
+
+
 def get_linenumber():
     cf = currentframe()
     return cf.f_back.f_lineno
@@ -32,6 +35,11 @@ def check_negative(var_in, n):  # CHECKS CALCULATIONS FOR NEGATIVE OR NAN VALUES
             assert not math.isnan(var_in)
 
 
+## ----------------------------------------- logging ----------------------------------------- ##
+# wb = openpyxl.Workbook()
+# ws = wb.active
+
+
 #### -----------------------------------------   Calculate initial values ----------------------------------------- #
 # Internal energy - defined in constants file
 
@@ -40,7 +48,6 @@ def check_negative(var_in, n):  # CHECKS CALCULATIONS FOR NEGATIVE OR NAN VALUES
 # e_0 = 5./2.*rho_0/M_n*R*T_0  # Initial internal energy
 
 # Kinetic energy
-
 u_in_x = np.sqrt(7./5.*R*T_in/M_n)*1.0  # Inlet velocity, m/s (gamma*RT)
 u_in_r = 0
 
@@ -114,7 +121,8 @@ p3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
 
 # Set Initial Conditions:
 
-q_in, ux_in, ur_in, rho_in, p_in, e_in = val_in(0)  # define inlet values
+q_in, ux_in, ur_in, rho_in, p_in, e_in, e_in_x = val_in(
+    0)  # define inlet values
 print("Initial conditions simulation start", val_in(0))
 
 # ux_in = 10
@@ -151,7 +159,8 @@ for i in np.arange(n_trans):
     # any temperature works, they are equl in the radial direction
     v_max = np.sqrt(7./5.*R*T1[i, 4]/M_n)
     for y in np.arange(Nr+1):
-        a = v_max
+        # a = v_max
+        a = 30.
         # a = v_max*(1.0 - ((y*dr)/R_cyl)**2)
         # print("parabolic y", y)
         ux1[i, y] = a
@@ -220,9 +229,11 @@ im = axs[4].imshow(e1.transpose())
 plt.colorbar(im, ax=axs[4])
 axs[4].set(ylabel='energy [kg/m3]')
 
+
 plt.xlabel("L(x)")
 plt.show()
 
+# plt.imsave('result.png', )
 
 ## ------------------------------------------------ BC INLET starting matrices  ------------------------------------------------- #
 
@@ -258,14 +269,30 @@ Tc2[:] = T_s
 
 def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
 
+    # values = (v1,v2,v3)
+    # ws.append(values)
+    # name= "simulation_values\," + str(i) +'\'
+    # wb.save(name)
+
     # NOTE: Nt+1, starts with first number
     for i in np.arange(np.int64(0), np.int64(Nt+1)):
 
         # REA += 1
         # print("REA", REA)
-        q_in, ux_in, ur_in, rho_in, p_in, e_in = val_in(
+        q_in, ux_in, ur_in, rho_in, p_in, e_in, e_in_x = val_in(
             i)  # define inlet values
         print("pressure value inlet", p_in)
+
+
+# ------------------------------------- Inlet boundary conditions --------------------------------------------- #
+
+        p1[0, :] = p_in
+        rho1[0, :] = rho_in
+        T1[0, :] = p1[0, :]/rho1[0, :]/R*M_n
+        ux1[0, :] = ux_in
+        u1[0, :] = ux_in
+        e1[0, :] = e_in_x
+
 
 #        rho1[1, :] = rho_in
  #       ux1[1, :] = ux_in
@@ -283,9 +310,15 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
         #         else:
         #             rho12[x, y] = (rho1[x, y] + rho1[x+1, y])/2.
 
+# l=-1 # counter for row number to append using pandas
+
+# Create pandas DataFrame
+        # my_data = pd.DataFrame({"m,n","v1", "v4", "x3"})
+
         # starts from np start [0,Nx]
         for m in np.arange(np.int64(0), np.int64(Nx+1)):
             for n in np.arange(np.int64(1), np.int64(Nr+1)):
+                # l+=1
                 print("[i,m,n]:", [i, m, n])
 
                 ############## Case 1: At boundaries (with mass deposition).##########################################################
@@ -377,7 +410,6 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     print("e1 surface", e1[m, n], "e2 surface", e2[m, n])
                     check_negative(e1[m, n], n)
                     check_negative(e2[m, n], n)
-
                     # Calculate Tg
                     T2[m, n] = 2./5.*(e2[m, n]-1./2.*rho2[m, n] *
                                       ur2[m, n]**2.)*M_n/rho2[m, n]/R
@@ -470,6 +502,25 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     print("P2 surface: ", p2[m, n])
                     check_negative(p2[m, n], n)
 #                    p2[m, n] = rho2[m, n] * R * T2[m, n]/M_n
+
+                # append [m,n]
+                # my_values = [de1[m], rho1[m, n], - dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
+                #         n-1)*dr*ur1[m, n-1]), - 4*dt/D * de1[m], rho2[m,n], ur2[m,n], u2[m,n], eps, p1[m,n], e1[m,n],-dt / \
+                #         (n*dr)*(e2_dr),  e2_dr, e2, T2, - dt*4 / \
+                #         D*de1[m]*(e1[m, n]/rho1[m, n]),p2[m,n]]    # Create list of values
+                # pd.DataFrame({"[m,n]":[[m,n]])
+                # df1.append(my_values)
+                # my_data.loc[l] = my_values      # Append values as new row
+
+                # # logging results
+
+                # ws["A"+str(m*n)] = [m,n]
+                # ws["B1"] =
+                # ws["C1"] =
+                # ws["D1"] =
+                # ws["E1"] =
+                # ws["F1"] =
+                # ws["G1"] =
 
 
 ################################################################### Case 2: no mass deposition (within flow field,away from wall in radial direction) ########
@@ -642,7 +693,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
         u2[0, :] = ux_in
         rho2[0, :] = rho_in
         T2[0, :] = p2[0, :]/rho2[0, :]/R*M_n
-        e2[0, :] = e_in
+        e2[0, :] = e_in_x
 
 # ------------------------------------ Outlet boundary conditions ------------------------------------------- #
         # print("This is the ", Nx)
@@ -717,6 +768,43 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
             rho2, ux2, ur2, u2, e2, T2, p2)
 
         # print("shape rho3", np.shape(rho3))
+
+        fig, axs = plt.subplots(5)
+        fig.suptitle('Fields along tube - x direction')
+
+        # PRESSURE DISTRIBUTION
+        im = axs[0].imshow(p2.transpose())
+        plt.colorbar(im, ax=axs[0])
+        # plt.colorbar(im, ax=ax[0])
+        axs[0].set(ylabel='Pressure [Pa]')
+        # plt.title("Pressure smoothing")
+
+        # VELOCITY DISTRIBUTION
+        # axs[1].imshow()
+        im = axs[1].imshow(ux2.transpose())
+        plt.colorbar(im, ax=axs[1])
+        # axs[1].colorbars(location="bottom")
+        axs[1].set(ylabel='Ux [m/s]')
+        # plt.title("velocity parabolic smoothing")
+
+        # Temperature DISTRIBUTION
+        im = axs[2].imshow(T2.transpose())
+        plt.colorbar(im, ax=axs[2])
+        axs[2].set(ylabel='Tg [K]')
+
+        # axs[1].colorbars(location="bottom")
+        # axs[2].set(ylabel='temperature [K]')
+
+        im = axs[3].imshow(rho2.transpose())
+        plt.colorbar(im, ax=axs[3])
+        axs[3].set(ylabel='Density [kg/m3]')
+
+        im = axs[4].imshow(e2.transpose())
+        plt.colorbar(im, ax=axs[4])
+        axs[4].set(ylabel='energy [kg/m3]')
+
+        plt.xlabel("L(x)")
+        plt.show()
 
         save_data(i, dt, rho3, ux3, ur3, u3, e3, T3, Tw2, Ts2, de0, p3, de1)
 

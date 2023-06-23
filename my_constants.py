@@ -19,7 +19,7 @@ Nx = 260  # Total length & spatial step - x direction 6.45
 R_cyl = 1.27e-2
 Nr = 10  # Total length & spatial step - r direction
 T = 3.
-Nt = 30000.  # Total time & time step
+Nt = 100000.  # Total time & time step
 dt = T/Nt
 dx = L/Nx
 dr = R_cyl/Nr
@@ -66,5 +66,6 @@ e_0 = 5./2.*rho_0/M_n*R*T_0  # Initial internal energy
 
 # Kinetic energy
 
-u_in_x = np.sqrt(7./5.*R*T_in/M_n)*1.0  # Inlet velocity, m/s (gamma*RT)
+# u_in_x = np.sqrt(7./5.*R*T_in/M_n)*1.0  # Inlet velocity, m/s (gamma*RT)
+u_in_x = 30.
 u_in_r = 0

@@ -20,7 +20,7 @@ warnings.simplefilter('ignore', category=NumbaDeprecationWarning)
 warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
 
 u_in_x = np.sqrt(7./5.*R*T_in/M_n)*1.0  # Inlet velocity, m/s (gamma*RT)
-
+u_in_x = 30.
 
 # @numba.jit('f8(f8,f8)')
 @jit(nopython=True)
@@ -50,11 +50,11 @@ def grad_rho2(m, n, ux_in, rho_in, ur1, ux1, rho1):
         a = rho1[m, n]
         m_dx = (rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])/dx
 
-    elif (m <= n_trans+4 and m >= n_trans+4):
-        # NOTE Use four point CD at transition point.
-        a = rho1[m, n]
-        m_dx = (rho1[m-2, n] - 8*rho1[m-1, n] + 8 *
-                rho1[m+1, n] - rho1[m+2, n])/(12*dx)
+    # elif (m <= n_trans+2 and m >= n_trans+2):
+    #     # NOTE Use four point CD at transition point.
+    #     a = rho1[m, n]
+    #     m_dx = (rho1[m-2, n] - 8*rho1[m-1, n] + 8 *
+    #             rho1[m+1, n] - rho1[m+2, n])/(12*dx)
 
     else:
         a = rho1[m, n]
@@ -97,12 +97,12 @@ def grad_ux2(p_in, p1, ux_in, ux1, m, n):  # bulk
                  p1[m+1, n] - p1[m+2, n])/(12*dx)
         ux_dx = (ux1[m+1, n] - ux_in)/(2*dx)
 
-    elif (m <= n_trans+4 and m >= n_trans-4):
-        # NOTE Use four point CD at transition point.
-        dp_dx = (p1[m-2, n] - 8*p1[m-1, n] + 8 *
-                 p1[m+1, n] - p1[m+2, n])/(12*dx)
-        ux_dx = (ux1[m-2, n] - 8*ux1[m-1, n] + 8 *
-                 ux1[m+1, n] - ux1[m+2, n])/(12*dx)
+    # elif (m <= n_trans+2 and m >= n_trans-2):
+    #     # NOTE Use four point CD at transition point.
+    #     dp_dx = (p1[m-2, n] - 8*p1[m-1, n] + 8 *
+    #              p1[m+1, n] - p1[m+2, n])/(12*dx)
+    #     ux_dx = (ux1[m-2, n] - 8*ux1[m-1, n] + 8 *
+    #              ux1[m+1, n] - ux1[m+2, n])/(12*dx)
 
     elif m == Nx:
         dp_dx = (p1[m, n] - p1[m-1, n])/dx  # BWD
@@ -135,9 +135,9 @@ def grad_ur2(m, n, p1, ur1, ur_in):  # first derivatives BULK
     if m == 0:
         ur_dx = (ur1[m+1, n] - ur_in)/(2*dx)  # CD
 
-    elif (m <= n_trans+4 and m >= n_trans-4):
-        ur_dx = (ur1[m-2, n] - 8*ur1[m-1, n] + 8 *
-                 ur1[m+1, n] - ur1[m+2, n])/(12*dx)  # 4 point CD
+    # elif (m <= n_trans+2 and m >= n_trans-2):
+    #     ur_dx = (ur1[m-2, n] - 8*ur1[m-1, n] + 8 *
+    #              ur1[m+1, n] - ur1[m+2, n])/(12*dx)  # 4 point CD
 
     elif m == Nx:
         ur_dx = (ur1[m, n] - ur1[m-1, n])/dx  # BWD
@@ -175,9 +175,9 @@ def grad_e2(m, n, ur1, ux1, ux_in, e_in_x, e1):
         #       "-e1[m-1, n]*ux1[m-1, n]: ", -e1[m-1, n]*ux1[m-1, n])
         grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/dx  # BWD
 
-    elif (m <= n_trans+4 and m >= n_trans-4):
-        grad_x = (e1[m-2, n]*ux1[m-2, n] - 8*e1[m-1, n]*ux1[m-1, n] + 8 *
-                  e1[m+1, n]*ux1[m+1, n] - e1[m+2, n]*ux1[m+2, n])/(12*dx)
+    # elif (m <= n_trans+2 and m >= n_trans-2):
+    #     grad_x = (e1[m-2, n]*ux1[m-2, n] - 8*e1[m-1, n]*ux1[m-1, n] + 8 *
+    #               e1[m+1, n]*ux1[m+1, n] - e1[m+2, n]*ux1[m+2, n])/(12*dx)
 
     else:  # 0 < m < Nx,  1 < n < Nr
         grad_x = (e1[m+1, n]*ux1[m+1, n]-e1[m-1, n]
@@ -447,11 +447,12 @@ def val_in(n):
     rho_in = ma_in_x/u_in_x
     p_in = rho_in/M_n*R*T_in
     ux_in = ma_in_x/rho_in
-    ux_in = 70.
+    ux_in = 30.
     ur_in = 0.
     e_in = 5./2.*rho_in/M_n*R*T_in + 1./2.*rho_in*ux_in**2
+    e_in_x = e_in
     # print("u_in_x", u_in_x)
-    out = np.array([q_in, ux_in, ur_in, rho_in, p_in, e_in])
+    out = np.array([q_in, ux_in, ur_in, rho_in, p_in, e_in, e_in_x])
     print(
         "val_in from function [q_in, ux_in, ur_in, rho_in, p_in, e_in]: ", out)
     return out
