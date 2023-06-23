@@ -65,7 +65,7 @@ def grad_rho2(m, n, ux_in, rho_in, ur1, ux1, rho1):
         d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -
                 rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
 
-    elif n=Nr-1:
+    elif n == Nr-1:
         d_dr = (rho1[m, n]*n*dr*ur1[m, n] -
                 rho1[m, n-1] * (n-1)*dr*ur1[m, n-1])/dr
 
@@ -81,15 +81,15 @@ def grad_rho2(m, n, ux_in, rho_in, ur1, ux1, rho1):
 @jit(nopython=True)
 def grad_ux2(p_in, p1, ux_in, ux1, m, n):  # bulk
 
-    if n==1:
+    if n == 1:
         # NOTE: SYMMETRY CONDITION HERE done
         ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
 
-    elif n==Nr-1:
-        ux_dr = (ux1[m, n] - ux1[m, n-1])/dr   #CD
+    elif n == Nr-1:
+        ux_dr = (ux1[m, n] - ux1[m, n-1])/dr  # CD
 
-    elif n!=1:
-        ux_dr = (ux1[m, n+1] - ux1[m, n-1])/(2*dr)   #CD
+    elif n != 1:
+        ux_dr = (ux1[m, n+1] - ux1[m, n-1])/(2*dr)  # CD
 
     if m == 0:
         # 4-point CD
@@ -135,14 +135,14 @@ def grad_ur2(m, n, p1, ur1, ur_in):  # first derivatives BULK
     if m == 0:
         ur_dx = (ur1[m+1, n] - ur_in)/(2*dx)  # CD
 
-    elif m == Nx:
-        ur_dx = (ur1[m, n] - ur1[m-1, n])/dx  # BWD
-
     elif (m <= n_trans+4 and m >= n_trans-4):
         ur_dx = (ur1[m-2, n] - 8*ur1[m-1, n] + 8 *
                  ur1[m+1, n] - ur1[m+2, n])/(12*dx)  # 4 point CD
 
-    elif (m != 0 and m != Nx):
+    elif m == Nx:
+        ur_dx = (ur1[m, n] - ur1[m-1, n])/dx  # BWD
+
+    else:
         ur_dx = (ur1[m+1, n] - ur1[m-1, n])/dx  # CD
 
     return dp_dr, ur_dx, ur_dr
@@ -175,14 +175,7 @@ def grad_e2(m, n, ur1, ux1, ux_in, e_in_x, e1):
         #       "-e1[m-1, n]*ux1[m-1, n]: ", -e1[m-1, n]*ux1[m-1, n])
         grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/dx  # BWD
 
-    elif m != 0 and m != Nx:
-        grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/(dx)  # BWD
-
-    elif (m <= n_trans+4 or m >= n_trans-4):
-        grad_x = (e1[m-2, n]*ux1[m-2, n] - 8*e1[m-1, n]*ux1[m-1, n] + 8 *
-                  e1[m+1, n]*ux1[m+1, n] - e1[m+2, n]*ux1[m+2, n])/(12*dx)
-
-    elif (m <= n_trans+4 or m >= n_trans-4):
+    elif (m <= n_trans+4 and m >= n_trans-4):
         grad_x = (e1[m-2, n]*ux1[m-2, n] - 8*e1[m-1, n]*ux1[m-1, n] + 8 *
                   e1[m+1, n]*ux1[m+1, n] - e1[m+2, n]*ux1[m+2, n])/(12*dx)
 
