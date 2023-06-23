@@ -639,7 +639,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
         p2[0, :] = p_in
         ux2[0, :] = ux_in
         rho2[0, :] = rho_in
-        T2[0,:] = p1[0,:]/rho2[0,:]/R*M_n
+        T2[0, :] = p2[0, :]/rho2[0, :]/R*M_n
         e2[0, :] = e_in
 
 # ------------------------------------ Outlet boundary conditions ------------------------------------------- #
