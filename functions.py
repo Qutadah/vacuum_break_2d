@@ -54,11 +54,14 @@ def grad_rho2(m, n, ux_in, rho_in, ur1, ux1, rho1):
                     rho1[m, n] * n*dr*ur1[m, n])/dr
     else:
         a = rho1[m, n]
-        m_dx = (rho1[m+1, n]*ux1[m+1, n]-rho1[m, n]*ux1[m, n])/dx
+        m_dx = (rho1[m+1, n]*ux1[m+1, n]-rho1[m-1, n]*ux1[m, n])/(2*dx)
         if n == 1:
             # NOTE: SYMMETRY BC
             d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -
                     rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
+
+# NOTE : add transition point central differencing.
+
         else:
             d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
                     rho1[m, n] * n*dr*ur1[m, n])/dr

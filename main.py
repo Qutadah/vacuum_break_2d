@@ -150,7 +150,7 @@ for i in np.arange(n_trans):
     v_max = np.sqrt(7./5.*R*T1[i, 4]/M_n)
     for y in np.arange(Nr+1):
         a = v_max
-        a = v_max*(1.0 - ((y*dr)/R_cyl)**2)
+        # a = v_max*(1.0 - ((y*dr)/R_cyl)**2)
         # print("parabolic y", y)
         ux1[i, y] = a
         u1[i, y] = ux1[i, y]
@@ -558,11 +558,10 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                         dt*ux1[m, n] * ur_dx - \
                         dt*ur1[m, n]*ur_dr
 
-                    # print("ur1", ur1[m, n], "p_n+1, p_n", [p1[m, n+1], p1[m, n]],"press term", dt *
-                    #           (p1[m, n+1] - p1[m, n])/(rho1[m, n]*dr),
-                    #           "viscous", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ur1 + (
-                    #               1/(n*dr))*ur_dr + dt2nd_axial_ur1 - ur1[m, n]/(dr**2*n**2)),
-                    #           "ux1 term", dt*ux1[m, n] *ur_dx, "ur1 term", dt *ur1[m, n]*ur_dr
+                    print("ur1", ur1[m, n], "p_term", - dt*dp_dr/(rho1[m, n]),
+                          "viscous", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ur1 + (
+                              1/(n*dr))*ur_dr + dt2nd_axial_ur1 - ur1[m, n]/(dr**2*n**2)),
+                          "ux1 term", -dt*ux1[m, n] * ur_dx, "ur1 term", -dt * ur1[m, n]*ur_dr)
 
                     print("ur1 bulk: ", ur1[m, n], "ur2 bulk: ", ur2[m, n])
                     check_negative(ur2[m, n], n)
