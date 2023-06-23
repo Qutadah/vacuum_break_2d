@@ -166,11 +166,11 @@ def grad_ur2(m, n, p1, ur1, ur_in):  # first derivatives BULK
         dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
         ur_dr = (ur1[m, n+2]-ur1[m, n])/(4*dr)  # increased to 2dx
 
-    elif n != 1 and n == Nr-1:
+    elif n == Nr-1:
         dp_dr = (p1[m, n] - p1[m, n-1])/dr  # CD
         ur_dr = (ur1[m, n] - ur1[m, n-1])/dr
 
-    elif n != 1:
+    elif n != 1 and n!=Nr-1:
         dp_dr = (p1[m, n+1] - p1[m, n-1])/(2*dr)  # CD
         ur_dr = (ur1[m, n+1] - ur1[m, n-1])/(2*dr)
 
