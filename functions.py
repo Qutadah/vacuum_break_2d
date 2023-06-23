@@ -215,50 +215,42 @@ def grad_ur2(m, n, p1, ur1, ur_in):  # first derivatives BULK
 def grad_e2(m, n, ur1, ux1, ux_in, e_in_x, e1):
 
     # We dont need the surface case, this is the bulk...
-    if (m == 0 and n == 1):   # ur =0 at  n =0
+
+    if n != 1 and n == Nr-1:
+        grad_r = ((n)*dr*ur1[m, n]*e1[m, n] - (n-1)
+                  * dr*ur1[m, n-1]*e1[m, n-1])/(dr)  # BWD
+
+    elif n != 1:
+        grad_r = ((n)*dr*ur1[m, n]*e1[m, n] - (n-1)
+                  * dr*ur1[m, n-1]*e1[m, n-1])/(dr)  # CD
+
+    elif n == 1:
+        # NOTE: Symmetry BC done
+        grad_r = ((n+2)*dr*ur1[m, n+2]*e1[m, n+2] - n *
+                  dr*ur1[m, n]*e1[m, n])/(4*dr)  # ur=0 @ r=0 #CD
+
+    if m == 0:
         grad_x = (e1[m+1, n]*ux1[m+1, n]-e_in_x*ux_in)/(2*dx)
-        # NOTE: Symmetry BC done
-        grad_r = ((n+2)*dr*ur1[m, n+2]*e1[m, n+2] - n *
-                  dr*ur1[m, n]*e1[m, n])/(4*dr)  # ur=0 @ r=0 #CD
 
-    elif (m == 0 and n != 1):
-        grad_x = (e1[m+1, n]*ux1[m+1, n]-e_in_x*ux_in)/(2*dx)
-        grad_r = ((n+1)*dr*ur1[m, n+1]*e1[m, n+1] - (n-1)
-                  * dr*ur1[m, n-1]*e1[m, n-1])/(2*dr)  # CD
-
-    elif (m == Nx and n == 1):
+    elif m == Nx:
+        # print("e1[m, n]*ux1[m, n]: ", e1[m, n]*ux1[m, n],
+        #       "-e1[m-1, n]*ux1[m-1, n]: ", -e1[m-1, n]*ux1[m-1, n])
         grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/dx  # BWD
-        # NOTE: Symmetry BC done
-        grad_r = ((n+2)*dr*ur1[m, n+2]*e1[m, n+2] - n *
-                  dr*ur1[m, n]*e1[m, n])/(4*dr)  # ur=0 @ r=0 #CD
 
-    elif (m == Nx and n != 1):
-        grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/dx  # BWD
-        grad_r = ((n+1)*dr*ur1[m, n+1]*e1[m, n+1] -
-                  (n-1)*dr*ur1[m, n-1]*e1[m, n-1])/(2*dr)
+    elif m != 0 and m != Nx:
+        grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/(dx)  # BWD
 
-    elif (m != 0 and m != Nx and n == 1):
-        grad_x = (e1[m+1, n]*ux1[m+1, n]-e1[m-1, n]*ux1[m-1, n])/(2*dx)  # CD
-        # NOTE: Symmetry BC done
-        grad_r = ((n+2)*dr*ur1[m, n+2]*e1[m, n+2] - n *
-                  dr*ur1[m, n]*e1[m, n])/(4*dr)  # ur=0 @ r=0 #CD
-
-    elif ((m <= n_trans+4 or m >= n_trans-4) and n == 1):
+    elif (m <= n_trans+4 or m >= n_trans-4):
         grad_x = (e1[m-2, n]*ux1[m-2, n] - 8*e1[m-1, n]*ux1[m-1, n] + 8 *
                   e1[m+1, n]*ux1[m+1, n] - e1[m+2, n]*ux1[m+2, n])/(12*dx)
-        # NOTE: Symmetry BC done
-        grad_r = ((n+2)*dr*ur1[m, n+2]*e1[m, n+2] - n *
-                  dr*ur1[m, n]*e1[m, n])/(4*dr)  # ur=0 @ r=0 #CD
-    elif ((m <= n_trans+4 or m >= n_trans-4) and n != 1):
+
+    elif (m <= n_trans+4 or m >= n_trans-4):
         grad_x = (e1[m-2, n]*ux1[m-2, n] - 8*e1[m-1, n]*ux1[m-1, n] + 8 *
                   e1[m+1, n]*ux1[m+1, n] - e1[m+2, n]*ux1[m+2, n])/(12*dx)
-        grad_r = ((n+1)*dr*ur1[m, n+1]*e1[m, n+1] -
-                  (n-1)*dr*ur1[m, n-1]*e1[m, n-1])/(2*dr)
 
     else:  # 0 < m < Nx,  1 < n < Nr
         grad_x = (e1[m+1, n]*ux1[m+1, n]-e1[m-1, n]
                   * ux1[m-1, n])/(2*dx)  # 2-point CD
-        grad_r = ((n+1)*dr*ur1[m, n+1]*e1[m, n+1])/(2*dr)  # 2-point CD
 
     return grad_x, grad_r
 

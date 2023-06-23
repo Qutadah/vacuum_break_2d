@@ -74,8 +74,8 @@ p2 = np.full((Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # Pressure
 
 Tw1 = np.full((Nx+1), T_s, dtype=(np.float64))  # Wall temperature
 Tw2 = np.full((Nx+1), T_s, dtype=(np.float64))
-Ts1 = np.full((Nx+1), T_s, dtype=(np.float64))  # Temperature of SN2 surface
-Ts2 = np.full((Nx+1), T_s, dtype=(np.float64))
+Ts1 = np.full((Nx+1), T_0, dtype=(np.float64))  # Temperature of SN2 surface
+Ts2 = np.full((Nx+1), T_0, dtype=(np.float64))
 
 # Average temperature of SN2 layer
 Tc1 = np.full((Nx+1), T_s, dtype=(np.float64))
@@ -160,8 +160,8 @@ for i in np.arange(n_trans):
 
 # fixing the n_transition 60th point velocity
 
-u1[n_trans, :] = 0
-ux1[n_trans, :] = 0
+# u1[n_trans, :] = 0
+# ux1[n_trans, :] = 0
 
 ### ---------------------------------------------------------- NO SLIP BOUNDARY CONDITION ----------------------------------------------------------###
 ux1[:, Nr] = 0
@@ -229,10 +229,10 @@ plt.show()
 # NOTE: BC INIT
 Ts1[:] = T1[:, Nr]
 Ts2[:] = Ts1
-Tw1[:] = Ts1
-Tw2[:] = Ts1
-Tc1[:] = Ts1
-Tc2[:] = Ts1
+Tw1[:] = T_s
+Tw2[:] = T_s
+Tc1[:] = T_s
+Tc2[:] = T_s
 
 #        ux_in = 50
 # e1[0,:] = e_in                #set energy BC
@@ -345,13 +345,12 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     # ur2[m, n] = de1[m]/rho2[m, n]
                     # u2[m, n] = ur2[m, n]  # no slip boundary condition.
 
-                    ur1[m, n] = de1[m]/rho1[m, n]
-                    u1[m, n] = ur1[m, n]  # no slip boundary condition.
-                    ux1[m, n] = 0.  # no slip boundary condition.
-
-                    u2[m, n] = u1[m, n]  # no momentum R equation
-                    ur2[m, n] = ur1[m, n]  # no slip boundary condition.
+                    ur2[m, n] = de1[m]/rho2[m, n]
+                    # u2[m, n] = u1[m, n]  # no momentum R equation
+                    # ur2[m, n] = ur1[m, n]  # no slip boundary condition.
                     ux2[m, n] = 0.  # no slip boundary condition.
+
+                    u2[m, n] = np.sqrt(ux1[m, n]**2 + ur1[m, n]**2)
 
                     print("ur1 surface", ur1[m, n], "u1 surface", u1[m, n],
                           "ur2 surface", ur2[m, n], "u2 surface", u2[m, n])
@@ -459,7 +458,8 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     #         "T2 surface recalculated to make it equal to wall temperature (BC)", T2[m, n])
                     #     check_negative(T2[m, n], n)
 
-                    # # Heat transfer rate helium
+
+                    # Heat transfer rate helium
                     # qhe[m] = q_h(Tw1[m], BW_coe)*np.pi*Do
 
                     # print("line 759", "Ts1", Ts1[m], "Ts2", Ts2[m], "Tc2", Tc2[m], "c_c(Ts1[m])", c_c(Ts1[m]), "qh", q_h(Ts1[m], BW_coe), "k_cu(Ts1[m])", k_cu(Ts1[m]), "dt2nd", dt2nd)
@@ -633,19 +633,22 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
 # ------------------------------------- surface boundary conditions --------------------------------------------- #
 
         ux1[:, Nr] = 0
+        ux2[:, Nr] = 0
+
 
 # ------------------------------------- Inlet boundary conditions --------------------------------------------- #
 
         p2[0, :] = p_in
         ux2[0, :] = ux_in
+        u2[0, :] = ux_in
         rho2[0, :] = rho_in
         T2[0, :] = p2[0, :]/rho2[0, :]/R*M_n
         e2[0, :] = e_in
 
 # ------------------------------------ Outlet boundary conditions ------------------------------------------- #
         # print("This is the ", Nx)
-        p1[Nx, n] = 2/5*(e1[Nx, n]-1/2*rho1[Nx, n]
-                         * u1[Nx, n]**2)  # Pressure
+        p2[Nx, n] = 2/5*(e2[Nx, n]-1/2*rho2[Nx, n]
+                         * u2[Nx, n]**2)  # Pressure
         # NOTE: check input de to the m_de equation.
         # de1[Nx] = m_de(T2[Nx, n], p1[Nx, n], Ts2[Nx], de1[Nx], 0.)
         # del_SN = de0[Nx]/np.pi/D/rho_sn

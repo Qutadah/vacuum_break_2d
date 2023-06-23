@@ -34,8 +34,8 @@ Sc_PP = 0.95  # Condensation\boiling coeffcient
 sample = 100  # Sample coeffcient
 n_trans = 60  # Smoothing control for initial condition
 T_in = 298.
-T_s = 298  # Temperature boundaries
-T_0 = 298
+T_s = 290.  # Temperature boundaries
+T_0 = 298.
 
 #   Constants
 M_n = 0.028
