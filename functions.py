@@ -1,21 +1,29 @@
 # ----------------- Helper Functions --------------------------------#
 
+import warnings
+from numba.core.errors import NumbaDeprecationWarning, NumbaPendingDeprecationWarning
 import re
 import inspect
 from my_constants import *
 import os
 import shutil
-
-import numpy as np
+import numba
 from numba import jit
+import numpy as np
 # from scipy.ndimage.filters import laplace
 import sys
 import matplotlib.pyplot as plt
 np.set_printoptions(threshold=sys.maxsize)
 
+
+warnings.simplefilter('ignore', category=NumbaDeprecationWarning)
+warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
+
 u_in_x = np.sqrt(7./5.*R*T_in/M_n)*1.0  # Inlet velocity, m/s (gamma*RT)
 
 
+# @numba.jit('f8(f8,f8)')
+@jit(nopython=True)
 def dt2nd_wall(m, Tw1):
 
     if m == 0:
@@ -31,6 +39,8 @@ def dt2nd_wall(m, Tw1):
     return dt2nd
 
 
+# @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8)')
+@jit(nopython=True)
 def grad_rho2(m, n, ux_in, rho_in, ur1, ux1, rho1):
     if m == 0:
         m_dx = (rho1[m, n]*ux1[m, n]-rho_in*ux_in)/dx
@@ -41,7 +51,7 @@ def grad_rho2(m, n, ux_in, rho_in, ur1, ux1, rho1):
                     rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
         else:
             d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
-                    rho1[m, n] * n*dr*ur1[m, n])/dr
+                    rho1[m, n-1] * (n-1)*dr*ur1[m, n-1])/(2*dr)
     elif m == Nx:
         a = rho1[m, n]
         m_dx = (rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])/dx
@@ -51,7 +61,21 @@ def grad_rho2(m, n, ux_in, rho_in, ur1, ux1, rho1):
                     rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
         else:
             d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
-                    rho1[m, n] * n*dr*ur1[m, n])/dr
+                    rho1[m, n-1] * (n-1)*dr*ur1[m, n-1])/(2*dr)
+
+    elif (m <= n_trans+4 or m >= n_trans+4):
+        # NOTE Use four point CD at transition point.
+        a = rho1[m, n]
+        m_dx = (rho1[m-2, n] - 8*rho1[m-1, n] + 8 *
+                rho1[m+1, n] - rho1[m+2, n])/(12*dx)
+        if n == 1:
+            # NOTE: SYMMETRY BC
+            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -
+                    rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
+        else:
+            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
+                    rho1[m, n-1] * (n-1)*dr*ur1[m, n-1])/(2*dr)
+
     else:
         a = rho1[m, n]
         m_dx = (rho1[m+1, n]*ux1[m+1, n]-rho1[m-1, n]*ux1[m, n])/(2*dx)
@@ -59,23 +83,23 @@ def grad_rho2(m, n, ux_in, rho_in, ur1, ux1, rho1):
             # NOTE: SYMMETRY BC
             d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -
                     rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
-
-# NOTE : add transition point central differencing.
-
         else:
             d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
-                    rho1[m, n] * n*dr*ur1[m, n])/dr
+                    rho1[m, n-1] * (n-1)*dr*ur1[m, n-1])/(2*dr)
 
     return a, d_dr, m_dx
 
 
+# @numba.jit('f8(f8,f8,f8,f8,f8,f8)')
+
+@jit(nopython=True)
 def grad_ux2(p_in, p1, ux_in, ux1, m, n):  # bulk
 
     if m == 0 and n == 1:
         # 4-point CD
         dp_dx = (p_in - 8*p_in + 8 *
                  p1[m+1, n] - p1[m+2, n])/(12*dx)
-        ux_dx = (ux1[m, n] - ux_in)/dx
+        ux_dx = (ux1[m+1, n] - ux_in)/(2*dx)
 
         # NOTE: SYMMETRY CONDITION HERE done
         ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
@@ -84,20 +108,20 @@ def grad_ux2(p_in, p1, ux_in, ux1, m, n):  # bulk
         # 4-point CD
         dp_dx = (p_in - 8*p_in + 8 *
                  p1[m+1, n] - p1[m+2, n])/(12*dx)
-        ux_dx = (ux1[m, n] - ux_in)/dx
-        ux_dr = (ux1[m, n+1] - ux1[m, n])/dr
+        ux_dx = (ux1[m+1, n] - ux_in)/(2*dx)
+        ux_dr = (ux1[m, n+1] - ux1[m, n-1])/(2*dr)
 
     elif m == Nx and n == 1:
-        dp_dx = (p1[m, n] - p1[m-1, n])/dx
-        ux_dx = (ux1[m, n] - ux1[m-1, n])/dx
+        dp_dx = (p1[m, n] - p1[m-1, n])/dx  # BWD
+        ux_dx = (ux1[m, n] - ux1[m-1, n])/dx  # BWD
 
         # NOTE: SYMMETRY CONDITION HERE done
         ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
 
     elif m == Nx and n != 1:
-        dp_dx = (p1[m, n] - p1[m-1, n])/dx
-        ux_dx = (ux1[m, n] - ux1[m-1, n])/dx
-        ux_dr = (ux1[m, n+1] - ux1[m, n])/dr
+        dp_dx = (p1[m, n] - p1[m-1, n])/dx  # BWD
+        ux_dx = (ux1[m, n] - ux1[m-1, n])/dx  # BWD
+        ux_dr = (ux1[m, n+1] - ux1[m, n-1])/(2*dr)  # CD
 
     elif m == n_trans and n == 1:
         # NOTE Use four point CD at transition point.
@@ -126,33 +150,35 @@ def grad_ux2(p_in, p1, ux_in, ux1, m, n):  # bulk
         ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
 
     else:
-        dp_dx = (p1[m+1, n] - p1[m, n])/dx
-        ux_dx = (ux1[m+1, n] - ux1[m, n])/dx
-        ux_dr = (ux1[m, n+1] - ux1[m, n])/dr
+        dp_dx = (p1[m+1, n] - p1[m-1, n])/(2*dx)
+        ux_dx = (ux1[m+1, n] - ux1[m-1, n])/(2*dx)
+        ux_dr = (ux1[m, n+1] - ux1[m, n-1])/(2*dr)
 
     return dp_dx, ux_dx, ux_dr
 
 
+# @numba.jit('f8(f8,f8,f8,f8,f8)')
+@jit(nopython=True)
 def grad_ur2(m, n, p1, ur1, ur_in):  # first derivatives BULK
     if (m == 0 and n == 1):
-        ur_dx = (ur1[m, n] - ur_in)/dx
+        ur_dx = (ur1[m+1, n] - ur_in)/(2*dx)  # CD
         # NOTE: Symmetry BC done
         dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
         ur_dr = (ur1[m, n+2]-ur1[m, n])/(4*dr)  # increased to 2dx
 
     elif (m == 0 and n != 1):
-        dp_dr = (p1[m, n+1] - p1[m, n])/dr
-        ur_dx = (ur1[m, n] - ur_in)/dx
-        ur_dr = (ur1[m, n+1] - ur1[m, n])/dr
+        dp_dr = (p1[m, n+1] - p1[m, n-1])/(2*dr)  # CD
+        ur_dx = (ur1[m, n+1] - ur_in)/(2*dx)  # NOTE: CHECK
+        ur_dr = (ur1[m, n+1] - ur1[m, n-1])/(2*dr)
 
-    elif (m == n_trans and n == 1):
+    elif ((m <= n_trans+4 or m >= n_trans-4) and n == 1):
         ur_dx = (ur1[m-2, n] - 8*ur1[m-1, n] + 8 *
                  ur1[m+1, n] - ur1[m+2, n])/(12*dx)  # 4 point CD
         # NOTE: Symmetry BC done
         ur_dr = (ur1[m, n+2] - ur1[m, n])/(4*dr)
         dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
 
-    elif (m == n_trans and n != 1):
+    elif ((m <= n_trans+4 or m >= n_trans-4) and n != 1):
         ur_dx = (ur1[m-2, n] - 8*ur1[m-1, n] + 8 *
                  ur1[m+1, n] - ur1[m+2, n])/(12*dx)  # 4 point CD
         # NOTE: Use 2 point CD
@@ -160,60 +186,75 @@ def grad_ur2(m, n, p1, ur1, ur_in):  # first derivatives BULK
         ur_dr = (ur1[m, n+1] - ur1[m, n-1])/(2*dr)
 
     elif (m == Nx and n == 1):
-        ur_dx = (ur1[m, n] - ur1[m-1, n])/dx
+        ur_dx = (ur1[m, n] - ur1[m-1, n])/dx  # BWD
         # NOTE: Symmetry BC done
         ur_dr = (ur1[m, n+2] - ur1[m, n])/(4*dr)
         dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
 
     elif (m == Nx and n != 1):
-        ur_dx = (ur1[m, n] - ur1[m-1, n])/dx
-        dp_dr = (p1[m, n+1] - p1[m, n])/dr
-        ur_dr = (ur1[m, n+1] - ur1[m, n])/dr
+        ur_dx = (ur1[m, n] - ur1[m-1, n])/dx  # BWD
+        dp_dr = (p1[m, n+1] - p1[m, n-1])/(2*dr)
+        ur_dr = (ur1[m, n+1] - ur1[m, n-1])/(2*dr)
 
     elif (m != 0 and m != Nx and n == 1):
         ur_dx = (ur1[m+1, n] - ur1[m-1, n])/dx  # CD
         # NOTE: Symmetry BC done
-        ur_dr = ur1[m, n+1]/(2*dr)
+        ur_dr = (ur1[m, n+2] - ur1[m, n])/(4*dr)
         dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
 
     else:  # case: (m != 0 and m != Nx and n != 1):
-        ur_dx = (ur1[m, n] - ur1[m-1, n])/dx
-        dp_dr = (p1[m, n+1] - p1[m, n])/dr
-        ur_dr = (ur1[m, n+1] - ur1[m, n])/dr
+        ur_dx = (ur1[m+1, n] - ur1[m-1, n])/(2*dx)
+        dp_dr = (p1[m, n+1] - p1[m, n-1])/(2*dr)  # CD
+        ur_dr = (ur1[m, n+1] - ur1[m, n-1])/(2*dr)  # CD
 
     return dp_dr, ur_dx, ur_dr
 
 
+# @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8)')
+@jit(nopython=True)
 def grad_e2(m, n, ur1, ux1, ux_in, e_in_x, e1):
 
     # We dont need the surface case, this is the bulk...
     if (m == 0 and n == 1):   # ur =0 at  n =0
-        grad_x = (e1[m, n]*ux1[m, n]-e_in_x*ux_in)/dx
+        grad_x = (e1[m+1, n]*ux1[m+1, n]-e_in_x*ux_in)/(2*dx)
         # NOTE: Symmetry BC done
         grad_r = ((n+2)*dr*ur1[m, n+2]*e1[m, n+2] - n *
                   dr*ur1[m, n]*e1[m, n])/(4*dr)  # ur=0 @ r=0 #CD
 
     elif (m == 0 and n != 1):
-        grad_x = (e1[m, n]*ux1[m, n]-e_in_x*ux_in)/dx
-        grad_r = (n*dr*ur1[m, n]*e1[m, n] - (n-1)*dr*ur1[m, n-1]*e1[m, n-1])/dr
+        grad_x = (e1[m+1, n]*ux1[m+1, n]-e_in_x*ux_in)/(2*dx)
+        grad_r = ((n+1)*dr*ur1[m, n+1]*e1[m, n+1] - (n-1)
+                  * dr*ur1[m, n-1]*e1[m, n-1])/(2*dr)  # CD
 
     elif (m == Nx and n == 1):
-        grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/dx
+        grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/dx  # BWD
         # NOTE: Symmetry BC done
         grad_r = ((n+2)*dr*ur1[m, n+2]*e1[m, n+2] - n *
                   dr*ur1[m, n]*e1[m, n])/(4*dr)  # ur=0 @ r=0 #CD
 
     elif (m == Nx and n != 1):
-        grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/dx
-        grad_r = (n*dr*ur1[m, n]*e1[m, n] - (n-1)*dr*ur1[m, n-1]*e1[m, n-1])/dr
+        grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/dx  # BWD
+        grad_r = ((n+1)*dr*ur1[m, n+1]*e1[m, n+1] -
+                  (n-1)*dr*ur1[m, n-1]*e1[m, n-1])/(2*dr)
 
     elif (m != 0 and m != Nx and n == 1):
-        grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/dx  # Use CD
+        grad_x = (e1[m+1, n]*ux1[m+1, n]-e1[m-1, n]*ux1[m-1, n])/(2*dx)  # CD
         # NOTE: Symmetry BC done
         grad_r = ((n+2)*dr*ur1[m, n+2]*e1[m, n+2] - n *
                   dr*ur1[m, n]*e1[m, n])/(4*dr)  # ur=0 @ r=0 #CD
 
-# NOTE : add transition point central differencing.
+    elif ((m <= n_trans+4 or m >= n_trans-4) and n == 1):
+        grad_x = (e1[m-2, n]*ux1[m-2, n] - 8*e1[m-1, n]*ux1[m-1, n] + 8 *
+                  e1[m+1, n]*ux1[m+1, n] - e1[m+2, n]*ux1[m+2, n])/(12*dx)
+        # NOTE: Symmetry BC done
+        grad_r = ((n+2)*dr*ur1[m, n+2]*e1[m, n+2] - n *
+                  dr*ur1[m, n]*e1[m, n])/(4*dr)  # ur=0 @ r=0 #CD
+    elif ((m <= n_trans+4 or m >= n_trans-4) and n != 1):
+        grad_x = (e1[m-2, n]*ux1[m-2, n] - 8*e1[m-1, n]*ux1[m-1, n] + 8 *
+                  e1[m+1, n]*ux1[m+1, n] - e1[m+2, n]*ux1[m+2, n])/(12*dx)
+        grad_r = ((n+1)*dr*ur1[m, n+1]*e1[m, n+1] -
+                  (n-1)*dr*ur1[m, n-1]*e1[m, n-1])/(2*dr)
+
     else:  # 0 < m < Nx,  1 < n < Nr
         grad_x = (e1[m+1, n]*ux1[m+1, n]-e1[m-1, n]
                   * ux1[m-1, n])/(2*dx)  # 2-point CD
@@ -222,6 +263,8 @@ def grad_e2(m, n, ur1, ux1, ux_in, e_in_x, e1):
     return grad_x, grad_r
 
 
+# @numba.jit('f8(f8,f8,f8,f8)')
+@jit(nopython=True)
 def dt2nd_radial(ux1, ur1, m, n):
     if n == 1:
         # NOTE: Symmetry Boundary Condition assumed for ur1 radial derivative along x axis..
@@ -248,6 +291,8 @@ def dt2nd_radial(ux1, ur1, m, n):
     return dt2nd_radial_ux1, dt2nd_radial_ur1
 
 
+# @numba.jit('f8(f8,f8,f8,f8,f8,f8)')
+@jit(nopython=True)
 def dt2nd_axial(ux_in, ur_in, ux1, ur1, m, n):
     if m == 0:
         # --------------------------- dt2nd axial ux1 ---------------------------------#
@@ -286,6 +331,8 @@ def dt2nd_axial(ux_in, ur_in, ux1, ur1, m, n):
     return dt2nd_axial_ux1, dt2nd_axial_ur1
 
 
+# @numba.jit('f8(f8)')
+@jit(nopython=True)
 def f_ps(ts):
     #   Calculate saturated vapor pressure (Pa)
     ts = float(ts)
@@ -302,6 +349,8 @@ def f_ps(ts):
     return p_sat
 
 
+# @numba.jit('f8(f8)')
+@jit(nopython=True)
 def f_ts(ps):
     #   Calculate saturated vapor temperature (K)
     print("Ps for f_ts calc: ", ps)
@@ -311,6 +360,8 @@ def f_ts(ps):
     return t_sat
 
 
+# @numba.jit('f8(f8,f8)')
+@jit(nopython=True)
 def delta_h(tg, ts):
     #   Calculate sublimation heat of nitrogen (J/kg)  ## needed for thermal resistance of SN2 layer when thickness is larger than reset value.
     print("Tg, Ts for delta_h calc: ", tg, ts)
@@ -330,6 +381,8 @@ def delta_h(tg, ts):
     return dH
 
 
+# @numba.jit('f8(f8)')
+@jit(nopython=True)
 def c_n(ts):
     #   Calculate specific heat of solid nitrogen (J/(kg*K))
     print("Ts for c_n specific heat SN2 calc: ", ts)
@@ -342,6 +395,8 @@ def c_n(ts):
     return cn
 
 
+# @numba.jit('f8(f8)')
+@jit(nopython=True)
 def v_m(tg):
     #   Calculate arithmetic mean speed of gas molecules (m/s)
     print("Tg for v_m gas: ", tg)
@@ -350,6 +405,8 @@ def v_m(tg):
     return v_mean
 
 
+# @numba.jit('f8(f8)')
+@jit(nopython=True)
 def c_c(ts):
     #   Calculate the heat capacity of copper (J/(kg*K))
     print("Ts for c_c (specific heat copper) calc: ", ts)
@@ -360,6 +417,8 @@ def c_c(ts):
     return c_copper
 
 
+# @numba.jit('f8(f8)')
+@jit(nopython=True)
 def k_cu(T):
     #   Calculate the coefficient of thermal conductivity of copper (RRR=10) (W/(m*K)) (for pde governing copper wall, heat conducted in the x axis.)
     print("Tw for k_cu copper: ", T)
@@ -371,6 +430,8 @@ def k_cu(T):
     return k3
 
 
+# @numba.jit('f8(f8,f8)')
+@jit(nopython=True)
 def D_nn(T_g, P_g):
     #   Calculate self mass diffusivity of nitrogen (m^2/s)
     if T_g > 63:
@@ -382,6 +443,8 @@ def D_nn(T_g, P_g):
     return D_n_p
 
 
+# @numba.jit('f8(f8,f8)')
+@jit(nopython=True)
 def mu_n(T, P):
     #   Calculate viscosity of nitrogen (Pa*s)
     print("viscosity temp and pressure", T, P)
@@ -414,12 +477,16 @@ def mu_n(T, P):
     return (mu_n_1+mu_n_2)/1e6
 
 
+# @numba.jit('f8(f8)')
+@jit(nopython=True)
 def gamma(a):
     #   Calculate the correction factor of mass flux
     gam1 = np.exp(-np.power(a, 2.))+a*np.sqrt(np.pi)*(1+math.erf(a))
     return gam1
 
 
+# @numba.jit('f8(f8,f8,f8,f8,f8)')
+@jit(nopython=True)
 def exp_smooth(grid, hv, lv, order, tran):  # Q: from where did we get this?
     #   Exponential smooth from hv to lv
     coe = ((hv+lv)/2-lv)/(np.exp(order*tran)-1)
@@ -435,6 +502,8 @@ def exp_smooth(grid, hv, lv, order, tran):  # Q: from where did we get this?
     return s_result
 
 
+# @numba.jit('f8(f8)')
+@jit(nopython=True)
 def val_in(n):
     #   Calculate instant flow rate (kg/s)
     # Fitting results
@@ -465,6 +534,8 @@ def val_in(n):
     return out
 
 
+# @numba.jit('f8(f8,f8,f8,f8)')
+@jit(nopython=True)
 def DN(T, P, u, T_w):
     #   Calculate dimensionless numbers
     rho = P*M_n/R/T
@@ -489,6 +560,8 @@ def DN(T, P, u, T_w):
 # NOTE: I am getting wrong mass deposition values... from 1d it is in the order of e-6
 
 
+# @numba.jit('f8(f8,f8,f8,f8,f8)')
+@jit(nopython=True)
 def m_de(T, P, T_s, de, dm):
     print("mdot calc: ", "Tg: ", T, " P: ",
           P, "Ts: ", T_s, "de: ", de, "dm: ", dm)
@@ -547,6 +620,8 @@ def m_de(T, P, T_s, de, dm):
     return m_out  # Output: mass deposition flux, no convective heat flux
 
 
+# @numba.jit('f8(f8,f8)')
+@jit(nopython=True)
 def q_h(tw, BW_coe):
     # Boiling heat transfer rate of helium (W/(m^2*K))
     # delT = ts-4.2
@@ -586,6 +661,7 @@ def q_h(tw, BW_coe):
 # Initialization
 
 
+# @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8)')
 def save_initial_conditions(rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1):
     pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/initial_conditions/'
     if os.path.exists(pathname):
@@ -610,17 +686,15 @@ def save_initial_conditions(rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1):
     np.savetxt("p.csv", p1, delimiter=",")
 
 
+# @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8)')
 def save_data(tx, dt, rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1):
     increment = (tx+1)*dt
+
     pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/' + \
         "{:.4f}".format(increment) + '/'
-    if os.path.exists(pathname):
-        location = "C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/"
-        dir = "timestepping"
-        path = os.path.join(location, dir)
-        shutil.rmtree(path)
-    if not os.path.exists(pathname):
-        os.makedirs(pathname)
+    newpath = pathname
+    if not os.path.exists(newpath):
+        os.makedirs(newpath)
     os.chdir(pathname)
     np.savetxt("rho.csv", rho1, delimiter=",")
     np.savetxt("Tg.csv", T1, delimiter=",")
@@ -635,6 +709,7 @@ def save_data(tx, dt, rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1):
     np.savetxt("p.csv", p1, delimiter=",")
 
 
+# @numba.jit('f8(f8,f8)')
 def namestr(obj, namespace):  # Returns variable name for check_negative function
     return [name for name in namespace if namespace[name] is obj]
 
@@ -702,7 +777,7 @@ def namestr(obj, namespace):  # Returns variable name for check_negative functio
 #             print("NAN " + value_name + " in " + S1)
 #             assert not math.isnan(var_in)
 
-
+# @numba.jit('f8(f8)')
 def check_array(array_in):
     if np.any(array_in < 0):
         array_name = namestr(array_in, globals())[0]
@@ -710,6 +785,7 @@ def check_array(array_in):
         exit()
 
 
+# @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8)')
 def delete_r0_point(rho2, ux2, ur2, u2, e2, T2, p1):
     rho3 = np.delete(rho2, 0, axis=1)
     ux3 = np.delete(ux2, 0, axis=1)

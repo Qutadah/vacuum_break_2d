@@ -3,11 +3,13 @@ from functions import *
 from my_constants import *
 
 
+# @numba.jit()
 def get_linenumber():
     cf = currentframe()
     return cf.f_back.f_lineno
 
 
+# @numba.jit()
 def check_negative(var_in, n):  # CHECKS CALCULATIONS FOR NEGATIVE OR NAN VALUES
     # at surface
     if n == Nr:
@@ -170,6 +172,15 @@ e1 = 5./2. * p1 + 1./2 * rho1 * u1**2
 
 ## ------------------------------------------------------------- SAVING INITIAL CONDITIONS ---------------------------------------------------------------- #####
 
+
+pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/'
+if os.path.exists(pathname):
+    location = "C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/"
+    dir = "timestepping"
+    path = os.path.join(location, dir)
+    shutil.rmtree(path)
+
+
 save_initial_conditions(rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1)
 
 ##### ----------------------------------------- PLOTTING INITIAL CONDITIONS ---------------------------------------------------------------------------####
@@ -244,6 +255,7 @@ Tc2[:] = Ts1
 
 
 # def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2, Tw2, Ts2, Tc2, de1, T3):
+
 def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
 
     # NOTE: Nt+1, starts with first number
@@ -627,6 +639,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
         p2[0, :] = p_in
         ux2[0, :] = ux_in
         rho2[0, :] = rho_in
+        T2 = [0,:] = p1[0,:]/rho2[0,:]/R*M_n
         e2[0, :] = e_in
 
 # ------------------------------------ Outlet boundary conditions ------------------------------------------- #
