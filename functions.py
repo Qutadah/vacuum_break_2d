@@ -34,6 +34,7 @@ def dt2nd_wall(m, Tw1):
 def grad_rho2(m, n, ux_in, rho_in, ur1, ux1, rho1):
     if m == 0:
         m_dx = (rho1[m, n]*ux1[m, n]-rho_in*ux_in)/dx
+        a = rho_in
         if n == 1:
             # NOTE: SYMMETRY BC
             d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -

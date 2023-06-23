@@ -54,9 +54,9 @@ w_coe = rho_cu*(Do**2.-D**2.)/4./D
 # w_coe_s = rho_ss*(Do_s**2.-D_s**2.)/4./D  # Interim parameters
 
 # Q How do I use the bath diameter
-D_b = 12.*2.54e-2  # Bath diameter, m
+# D_b = 12.*2.54e-2  # Bath diameter, m
 
-L_h = 0.7208/0.05  # Copper pipe length per bath depth, m/m
+# L_h = 0.7208/0.05  # Copper pipe length per bath depth, m/m
 dH_He = 12000  # 20720.59@1atm  # Latent heat of LHe, J/kg
 dH_He_V = dH_He*125  # Latent heat of LHe, J/m^3
 
