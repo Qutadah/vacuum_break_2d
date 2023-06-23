@@ -43,49 +43,35 @@ def dt2nd_wall(m, Tw1):
 @jit(nopython=True)
 def grad_rho2(m, n, ux_in, rho_in, ur1, ux1, rho1):
     if m == 0:
-        m_dx = (rho1[m, n]*ux1[m, n]-rho_in*ux_in)/dx
         a = rho_in
-        if n == 1:
-            # NOTE: SYMMETRY BC
-            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -
-                    rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
-        else:
-            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
-                    rho1[m, n-1] * (n-1)*dr*ur1[m, n-1])/(2*dr)
+        m_dx = (rho1[m, n]*ux1[m, n]-rho_in*ux_in)/dx
+
     elif m == Nx:
         a = rho1[m, n]
         m_dx = (rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])/dx
-        if n == 1:
-            # NOTE: SYMMETRY BC
-            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -
-                    rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
-        else:
-            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
-                    rho1[m, n-1] * (n-1)*dr*ur1[m, n-1])/(2*dr)
 
-    elif (m <= n_trans+4 or m >= n_trans+4):
+    elif (m <= n_trans+4 and m >= n_trans+4):
         # NOTE Use four point CD at transition point.
         a = rho1[m, n]
         m_dx = (rho1[m-2, n] - 8*rho1[m-1, n] + 8 *
                 rho1[m+1, n] - rho1[m+2, n])/(12*dx)
-        if n == 1:
-            # NOTE: SYMMETRY BC
-            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -
-                    rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
-        else:
-            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
-                    rho1[m, n-1] * (n-1)*dr*ur1[m, n-1])/(2*dr)
 
     else:
         a = rho1[m, n]
         m_dx = (rho1[m+1, n]*ux1[m+1, n]-rho1[m-1, n]*ux1[m, n])/(2*dx)
-        if n == 1:
-            # NOTE: SYMMETRY BC
-            d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -
-                    rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
-        else:
-            d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
-                    rho1[m, n-1] * (n-1)*dr*ur1[m, n-1])/(2*dr)
+
+    if n == 1:
+        # NOTE: SYMMETRY BC
+        d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -
+                rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
+
+    elif n=Nr-1:
+        d_dr = (rho1[m, n]*n*dr*ur1[m, n] -
+                rho1[m, n-1] * (n-1)*dr*ur1[m, n-1])/dr
+
+    else:
+        d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
+                rho1[m, n-1] * (n-1)*dr*ur1[m, n-1])/(2*dr)
 
     return a, d_dr, m_dx
 
@@ -167,10 +153,10 @@ def grad_ur2(m, n, p1, ur1, ur_in):  # first derivatives BULK
         ur_dr = (ur1[m, n+2]-ur1[m, n])/(4*dr)  # increased to 2dx
 
     elif n == Nr-1:
-        dp_dr = (p1[m, n] - p1[m, n-1])/dr  # CD
+        dp_dr = (p1[m, n] - p1[m, n-1])/dr  # BWD
         ur_dr = (ur1[m, n] - ur1[m, n-1])/dr
 
-    elif n != 1 and n!=Nr-1:
+    elif n != 1 and n != Nr-1:
         dp_dr = (p1[m, n+1] - p1[m, n-1])/(2*dr)  # CD
         ur_dr = (ur1[m, n+1] - ur1[m, n-1])/(2*dr)
 
@@ -180,7 +166,7 @@ def grad_ur2(m, n, p1, ur1, ur_in):  # first derivatives BULK
     elif m == Nx:
         ur_dx = (ur1[m, n] - ur1[m-1, n])/dx  # BWD
 
-    elif (m <= n_trans+4 or m >= n_trans-4):
+    elif (m <= n_trans+4 and m >= n_trans-4):
         ur_dx = (ur1[m-2, n] - 8*ur1[m-1, n] + 8 *
                  ur1[m+1, n] - ur1[m+2, n])/(12*dx)  # 4 point CD
 
