@@ -160,52 +160,32 @@ def grad_ux2(p_in, p1, ux_in, ux1, m, n):  # bulk
 # @numba.jit('f8(f8,f8,f8,f8,f8)')
 @jit(nopython=True)
 def grad_ur2(m, n, p1, ur1, ur_in):  # first derivatives BULK
-    if (m == 0 and n == 1):
-        ur_dx = (ur1[m+1, n] - ur_in)/(2*dx)  # CD
+
+    if n == 1:
         # NOTE: Symmetry BC done
         dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
         ur_dr = (ur1[m, n+2]-ur1[m, n])/(4*dr)  # increased to 2dx
 
-    elif (m == 0 and n != 1):
+    elif n != 1 and n == Nr-1:
+        dp_dr = (p1[m, n] - p1[m, n-1])/dr  # CD
+        ur_dr = (ur1[m, n] - ur1[m, n-1])/dr
+
+    elif n != 1:
         dp_dr = (p1[m, n+1] - p1[m, n-1])/(2*dr)  # CD
-        ur_dx = (ur1[m, n+1] - ur_in)/(2*dx)  # NOTE: CHECK
         ur_dr = (ur1[m, n+1] - ur1[m, n-1])/(2*dr)
 
-    elif ((m <= n_trans+4 or m >= n_trans-4) and n == 1):
+    if m == 0:
+        ur_dx = (ur1[m+1, n] - ur_in)/(2*dx)  # CD
+
+    elif m == Nx:
+        ur_dx = (ur1[m, n] - ur1[m-1, n])/dx  # BWD
+
+    elif (m <= n_trans+4 or m >= n_trans-4):
         ur_dx = (ur1[m-2, n] - 8*ur1[m-1, n] + 8 *
                  ur1[m+1, n] - ur1[m+2, n])/(12*dx)  # 4 point CD
-        # NOTE: Symmetry BC done
-        ur_dr = (ur1[m, n+2] - ur1[m, n])/(4*dr)
-        dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
 
-    elif ((m <= n_trans+4 or m >= n_trans-4) and n != 1):
-        ur_dx = (ur1[m-2, n] - 8*ur1[m-1, n] + 8 *
-                 ur1[m+1, n] - ur1[m+2, n])/(12*dx)  # 4 point CD
-        # NOTE: Use 2 point CD
-        dp_dr = (p1[m, n+1] - p1[m, n-1])/(2*dr)
-        ur_dr = (ur1[m, n+1] - ur1[m, n-1])/(2*dr)
-
-    elif (m == Nx and n == 1):
-        ur_dx = (ur1[m, n] - ur1[m-1, n])/dx  # BWD
-        # NOTE: Symmetry BC done
-        ur_dr = (ur1[m, n+2] - ur1[m, n])/(4*dr)
-        dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
-
-    elif (m == Nx and n != 1):
-        ur_dx = (ur1[m, n] - ur1[m-1, n])/dx  # BWD
-        dp_dr = (p1[m, n+1] - p1[m, n-1])/(2*dr)
-        ur_dr = (ur1[m, n+1] - ur1[m, n-1])/(2*dr)
-
-    elif (m != 0 and m != Nx and n == 1):
+    elif (m != 0 and m != Nx):
         ur_dx = (ur1[m+1, n] - ur1[m-1, n])/dx  # CD
-        # NOTE: Symmetry BC done
-        ur_dr = (ur1[m, n+2] - ur1[m, n])/(4*dr)
-        dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
-
-    else:  # case: (m != 0 and m != Nx and n != 1):
-        ur_dx = (ur1[m+1, n] - ur1[m-1, n])/(2*dx)
-        dp_dr = (p1[m, n+1] - p1[m, n-1])/(2*dr)  # CD
-        ur_dr = (ur1[m, n+1] - ur1[m, n-1])/(2*dr)  # CD
 
     return dp_dr, ur_dx, ur_dr
 
