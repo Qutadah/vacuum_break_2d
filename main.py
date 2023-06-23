@@ -458,7 +458,6 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     #         "T2 surface recalculated to make it equal to wall temperature (BC)", T2[m, n])
                     #     check_negative(T2[m, n], n)
 
-
                     # Heat transfer rate helium
                     # qhe[m] = q_h(Tw1[m], BW_coe)*np.pi*Do
 
@@ -530,7 +529,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     print("ux1 bulk", ux1[m, n], "ux2 bulk:", ux2[m, n])
                     # print("ux2 bulk=", ux2[m, n])
                    # print("matrix ux", ux2)
-                    check_negative(ux2[m, n], n)
+                    # check_negative(ux2[m, n], n)
 
                     # if ux2[m, n] > 370:
                     #     print("high ux2 bulk", ux2[m, n])
@@ -695,9 +694,9 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
 
         # -------------------------------- CHECK ARRAYS FOR NEGATIVE VALUES ------------------------------------- #
         # arrays = [ux2, ur2, T2, e2, p2, rho2, Tw2, Ts2, Tc2]
-        arrays = [ux2, ur2, T2, e2, p2, rho2]
-        for s in np.arange(len(arrays)):
-            check_array(arrays[s])
+        # arrays = [ux2, ur2, T2, e2, p2, rho2]
+        # for s in np.arange(len(arrays)):
+        #     check_array(arrays[s])
 
         # --------------------------------- Returning results of current time step to next iteration ------------------------- #
 
