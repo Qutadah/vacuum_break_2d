@@ -81,64 +81,36 @@ def grad_rho2(m, n, ux_in, rho_in, ur1, ux1, rho1):
 @jit(nopython=True)
 def grad_ux2(p_in, p1, ux_in, ux1, m, n):  # bulk
 
-    if m == 0 and n == 1:
+    if n==1:
+        # NOTE: SYMMETRY CONDITION HERE done
+        ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
+
+    elif n==Nr-1:
+        ux_dr = (ux1[m, n] - ux1[m, n-1])/dr   #CD
+
+    elif n!=1:
+        ux_dr = (ux1[m, n+1] - ux1[m, n-1])/(2*dr)   #CD
+
+    if m == 0:
         # 4-point CD
         dp_dx = (p_in - 8*p_in + 8 *
                  p1[m+1, n] - p1[m+2, n])/(12*dx)
         ux_dx = (ux1[m+1, n] - ux_in)/(2*dx)
 
-        # NOTE: SYMMETRY CONDITION HERE done
-        ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
-
-    elif m == 0 and n != 1:
-        # 4-point CD
-        dp_dx = (p_in - 8*p_in + 8 *
-                 p1[m+1, n] - p1[m+2, n])/(12*dx)
-        ux_dx = (ux1[m+1, n] - ux_in)/(2*dx)
-        ux_dr = (ux1[m, n+1] - ux1[m, n-1])/(2*dr)
-
-    elif m == Nx and n == 1:
-        dp_dx = (p1[m, n] - p1[m-1, n])/dx  # BWD
-        ux_dx = (ux1[m, n] - ux1[m-1, n])/dx  # BWD
-
-        # NOTE: SYMMETRY CONDITION HERE done
-        ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
-
-    elif m == Nx and n != 1:
-        dp_dx = (p1[m, n] - p1[m-1, n])/dx  # BWD
-        ux_dx = (ux1[m, n] - ux1[m-1, n])/dx  # BWD
-        ux_dr = (ux1[m, n+1] - ux1[m, n-1])/(2*dr)  # CD
-
-    elif m == n_trans and n == 1:
+    elif (m <= n_trans+4 and m >= n_trans-4):
         # NOTE Use four point CD at transition point.
         dp_dx = (p1[m-2, n] - 8*p1[m-1, n] + 8 *
                  p1[m+1, n] - p1[m+2, n])/(12*dx)
         ux_dx = (ux1[m-2, n] - 8*ux1[m-1, n] + 8 *
                  ux1[m+1, n] - ux1[m+2, n])/(12*dx)
 
-        # NOTE: SYMMETRY CONDITION HERE done
-        ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
-
-    elif m == n_trans and n != 1:
-        # NOTE Use four point CD at transition point.
-        dp_dx = (p1[m-2, n] - 8*p1[m-1, n] + 8 *
-                 p1[m+1, n] - p1[m+2, n])/(12*dx)
-        ux_dx = (ux1[m-2, n] - 8*ux1[m-1, n] + 8 *
-                 ux1[m+1, n] - ux1[m+2, n])/(12*dx)
-        # NOTE: Use 2 point CD
-        ux_dr = (ux1[m, n+1] - ux1[m, n-1])/(2*dr)
-
-    elif m != 1 and m != Nx and n == 1:
-        dp_dx = (p1[m+1, n] - p1[m-1, n])/(2*dx)
-        ux_dx = (ux1[m+1, n] - ux1[m-1, n])/(2*dx)
-
-        # NOTE: SYMMETRY CONDITION HERE done
-        ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
+    elif m == Nx:
+        dp_dx = (p1[m, n] - p1[m-1, n])/dx  # BWD
+        ux_dx = (ux1[m, n] - ux1[m-1, n])/dx  # BWD
 
     else:
         dp_dx = (p1[m+1, n] - p1[m-1, n])/(2*dx)
         ux_dx = (ux1[m+1, n] - ux1[m-1, n])/(2*dx)
-        ux_dr = (ux1[m, n+1] - ux1[m, n-1])/(2*dr)
 
     return dp_dx, ux_dx, ux_dr
 
