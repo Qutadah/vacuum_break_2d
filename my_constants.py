@@ -15,16 +15,16 @@ Pr_n = 0.72
 #   Time and spatial step
 L = 8.385  # With prepping region.
 # L = 6.45
-Nx = 260  # Total length & spatial step - x direction 6.45
+Nx = 200  # Total length & spatial step - x direction 6.45
 R_cyl = 1.27e-2
 Nr = 10  # Total length & spatial step - r direction
 T = 3.
-Nt = 100000.  # Total time & time step
+Nt = 40000.  # Total time & time step
 dt = T/Nt
 dx = L/Nx
 dr = R_cyl/Nr
-print("dx", dx, "dr", dr, "dt", dt, "Cou_x", 12*dt/dx, "Cou_r",
-      1.587*dt/dr, "Cou_x_entrance_region", 350*dt/dx,)
+print("dx", dx, "dr", dr, "dt", dt, "Cou_x", 20*dt/dx, "Cou_r",
+      1.587*dt/dr, "Cou_x_entrance_region", 30*dt/dx,)
 #   Tuning parameters
 # Coefficient for the film boiling of He I (we need to adjust optimal value)
 BW_coe = 0.021  # W/K
