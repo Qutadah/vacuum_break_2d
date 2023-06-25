@@ -10,8 +10,7 @@ import shutil
 import numba
 from numba import jit
 import numpy as np
-import vtk
-from vtk.util import numpy_support
+import vtk.util.numpy_support as numpy_support
 # from scipy.ndimage.filters import laplace
 import sys
 import matplotlib.pyplot as plt
@@ -126,48 +125,40 @@ def initialize_grid(p_0, rho_0, e_0, T_0, T_s):
 # end
 
 
+# adaptive timestep
+def calc_dt(cfl, gamma_n, q, nx, nr, dx, dr):
+    a = 30.0
+    a = np.max([a, 0.0])
+    for j in np.arange(nr):
+        for i in np.arange(nx):
+            rho, ma_x, ma_r, ma_energy = q[:, i, j]
+            ux, ur, e = ma_x/rho, ma_r/rho, ma_energy/rho
+            p = rho*(gamma_n-1)*(e-0.5*(ux ^ 2+ur ^ 2))
+            c = np.sqrt(gamma_n*p/rho)
+            a = np.max([a, abs(ux), abs(ux+c), abs(ux-c),
+                       abs(ur), abs(ur+c), abs(ur-c)])
+    dt = cfl*np.min([dx, dr])/a
+    return dt
 
-# #Calculate time step
-# def calc_dt(cfl,γ,q,nx,ny,nz,dx,dy,dz)
-#     a = 0.0
-#     a = maximum([a,0.0])
-#     for k in 0:nz
-#         for j in 0:ny
-#             for i in 0:nx
-#                 ρ,ρu,ρv,ρw,ρe = q[:,i,j,k]
-#                 u,v,w,e       = ρu/ρ, ρv/ρ, ρw/ρ, ρe/ρ
-#                 p = ρ*(γ-1)*(e-0.5*(u^2+v^2+w^2))
-#                 c = sqrt(γ*p/ρ)
-#                 a = maximum([a,abs(u),abs(u+c),abs(u-c)
-#                              ,abs(v),abs(v+c),abs(v-c)
-#                              ,abs(w),abs(w+c),abs(w-c)])
 
-#             end
-#         end
-#     end
+# def vtk_convert(rho3, ux3, ur3, u3, e3, T3, Tw3, Ts2, de0, p3, de1, Pe3):
 
-#     dt = cfl* minimum([dx,dy,dz])/a
+def numpyToVTK(data):
+    data_type = vtk.VTK_FLOAT
+    shape = data.shape
 
-#     return dt
-# end
+    flat_data_array = data.flatten()
+    vtk_data = numpy_support.numpy_to_vtk(
+        num_array=flat_data_array, deep=True, array_type=data_type)
 
-def vtk_convert(rho3, ux3, ur3, u3, e3, T3, Tw3, Ts2, de0, p3, de1, Pe3):
-    numpy_to_vtk(rho3, deep=0, array_type=None)
-    numpy_to_vtk(ux3, deep=0, array_type=None)
-    numpy_to_vtk(ur3, deep=0, array_type=None)
-    numpy_to_vtk(u3, deep=0, array_type=None)
-    numpy_to_vtk(e3, deep=0, array_type=None)
-    numpy_to_vtk(T3, deep=0, array_type=None)
-    numpy_to_vtk(Tw3, deep=0, array_type=None)
-    numpy_to_vtk(Ts2, deep=0, array_type=None)
-    numpy_to_vtk(de0, deep=0, array_type=None)
-    numpy_to_vtk(p3, deep=0, array_type=None)
-    numpy_to_vtk(de1, deep=0, array_type=None)
-    numpy_to_vtk(Pe3, deep=0, array_type=None)
-    return
+    img = vtk.vtkImageData()
+    img.GetPointData().SetScalars(vtk_data)
+    img.SetDimensions(shape[0], shape[1], shape[2])
+    return img
+
 
 def plot_imshow(p, ux, T, rho, e):
-        
+
     fig, axs = plt.subplots(5)
     fig.suptitle('Fields along tube for all R')
 
@@ -177,7 +168,6 @@ def plot_imshow(p, ux, T, rho, e):
     # plt.colorbar(im, ax=ax[0])
     axs[0].set(ylabel='Pressure [Pa]')
     # plt.title("Pressure smoothing")
-
 
     # VELOCITY DISTRIBUTION
     # axs[1].imshow()
@@ -203,11 +193,9 @@ def plot_imshow(p, ux, T, rho, e):
     plt.colorbar(im, ax=axs[4])
     axs[4].set(ylabel='energy [kg/m3]')
 
-
     plt.xlabel("L(x)")
     plt.show()
     return
-
 
 
 @jit(nopython=True)
@@ -727,7 +715,7 @@ def inlet_BC(ux, ur, u, p, rho, T, e, p_inl, ux_inl, rho_inl, T_inl, e_inl):
     # Tw2[:] = T_s
     # Tc1[:] = T_s
     # Tc2[:] = T_s
-    
+
     # recalculate energies
     e = 5./2. * p + 1./2 * rho * u**2
 
