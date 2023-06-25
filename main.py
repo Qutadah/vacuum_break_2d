@@ -100,6 +100,8 @@ Pe1 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))  # Peclet number
 
 # constant inlet
 p_in, ux_in, ur_in, rho_in, e_in, T_in = val_in_constant()
+
+# p_in, q_in, ux_in, ur_in, rho_in, e_in, T_in = val_in(0)
 print("p_in: ", p_in, "ux_in: ", ux_in, "ur_in: ", ur_in, "rho_in: ",
       rho_in, "e_in: ", e_in, "T_in: ", T_in)
 ### ------------------------------------- PREPPING AREA - smoothing ------------------------------------------------- ########
@@ -139,12 +141,12 @@ if os.path.exists(pathname):
 Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
 
 
-rho3, ux3, ur3, u3, e3, T3, p3, Pe3 = delete_r0_point(
-    rho1, ux1, ur1, u1, e1, T1, p1, Pe1)
+# rho3, ux3, ur3, u3, e3, T3, p3, Pe3 = delete_r0_point(
+#     rho1, ux1, ur1, u1, e1, T1, p1, Pe1)
 
 
-save_initial_conditions(rho3, ux3, ur3, u3, e3, T3,
-                        Tw1, Ts1, de0, p3, de1, Pe3)
+save_initial_conditions(rho1, ux1, ur1, u1, e1, T1,
+                        Tw1, Ts1, de0, p1, de1, Pe)
 
 ##### ----------------------------------------- PLOTTING INITIAL CONDITIONS ---------------------------------------------------------------------------####
 
@@ -221,6 +223,18 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
 
         # constant inlet
         p_in, ux_in, ur_in, rho_in, e_in, T_in = val_in_constant()
+
+        # p_in, q_in, ux_in, ur_in, rho_in, e_in, T_in = val_in(i)
+
+        # recalculating fields:
+        p1[0, :] = p_in
+        ux1[0, :] = ux_in
+        ur1[0, :] = ur_in
+        rho1[0, :] = rho_in
+        e1[0, :] = e_in
+        T1[0, :] = T_in
+        u1 = np.sqrt(ux1**2 + ur1**2)
+
 
 # ------------------------------------- Inlet boundary conditions --------------------------------------------- #
 # latest NOTE
@@ -465,7 +479,8 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
                     dp_dx, ux_dx, ux_dr = grad_ux2(
                         p_in, p1, ux_in, ux1, m, n)
                     print("dp_dx: ", dp_dx, "ux_dx: ", ux_dx, "ux_dr: ", ux_dr)
-
+                    if m == 1 and n == 6:
+                        exit()
                     ux2[m, n] = ux1[m, n] - dt*dp_dx/rho1[m, n] + mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (
                         1/(n*dr)) * (ux_dr) + dt2nd_axial_ux1) - dt*ux1[m, n] * ux_dx - dt*ur1[m, n]*ux_dr
 
@@ -519,22 +534,14 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
                     print("u2 bulk: ", u2[m, n])
                     check_negative(e2[m, n], n)
 
-                    # Energy calculation
-                    eps_in = 5./2.*p_in
-#                    eps_in = 5./2.*rho_in/M_n*R * T_in
-
-                    eps = 5./2.*p1[m, n]
-                    print("eps bulk:", eps)
-                    if eps < 0:
-                        print("negative eps Bulk ", eps)
-                        exit()
-                    if math.isnan(eps):
-                        print("NAN EPS Bulk ", eps)
-                        assert not math.isnan(eps)
-
-                    # Initial internal energy
-                    e_in = eps_in + 1./2.*rho_in*ux_in**2.
-                    e1[m, n] = eps + 1./2.*rho1[m, n] * u1[m, n]**2.
+                    # eps = 5./2.*p1[m, n]
+                    # print("eps bulk:", eps)
+                    # if eps < 0:
+                    #     print("negative eps Bulk ", eps)
+                    #     exit()
+                    # if math.isnan(eps):
+                    #     print("NAN EPS Bulk ", eps)
+                    #     assert not math.isnan(eps)
 
                     grad_x, grad_r = grad_e2(m, n, ur1, ux1, ux_in, e_in, e1)
                     e2[m, n] = e1[m, n]-dt/(n*dr)*grad_r - dt*grad_x
@@ -554,11 +561,11 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
                     check_negative(T1[m, n], n)
                     check_negative(T2[m, n], n)
 
-            # NOTE: added check artificial limit speed of sound
-                    if ux2[m, n] > np.sqrt(7./5.*R*T2[m, n]/M_n)*1.0:
-                        # Inlet velocity, m/s (gamma*RT)
-                        ux2[m, n] = np.sqrt(7./5.*R*T2[m, n]/M_n)*1.0
-                        print("sound velocity limited reached")
+            # # NOTE: added check artificial limit speed of sound
+            #         if ux2[m, n] > np.sqrt(7./5.*R*T2[m, n]/M_n)*1.0:
+            #             # Inlet velocity, m/s (gamma*RT)
+            #             ux2[m, n] = np.sqrt(7./5.*R*T2[m, n]/M_n)*1.0
+            #             print("sound velocity limited reached")
 
                     p2[m, n] = 2./5.*(e2[m, n] - 1./2.*rho2[m, n]*u2[m, n]**2)
                     print("P2 bulk:", p2[m, n])
@@ -570,10 +577,10 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
 
 ############################################## Boundary Conditions ############################################################
 
-# ------------------------------------- surface boundary conditions --------------------------------------------- #
+# ------------------------------------- surface boundary conditions --------------------------------------------- # Not appliccable inviscid flow.
 
-        ux1 = surface_BC(ux1)
-        ux2 = surface_BC(ux1)
+        # ux1 = surface_BC(ux1)
+        # ux2 = surface_BC(ux1)
 
 # ------------------------------------- Inlet boundary conditions --------------------------------------------- #
 # latest NOTE
@@ -581,8 +588,9 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
 
         ux2, ur2, u2, p2, rho2, T2, e2 = inlet_BC(
             ux2, ur2, u2, p2, rho2, T2, e2, p_in, ux_in, rho_in, T_in, e_in)
-# ------------------------------------ Outlet boundary conditions ------------------------------------------- #
-        p2, rho2, ux2, u2, e2 = outlet_BC(p2, e2, rho2, ux2, ur2, u2, rho_0)
+
+# ------------------------------------ Outlet boundary conditions ------------------------------------------- # NOTE: Check later
+        # p2, rho2, ux2, u2, e2 = outlet_BC(p2, e2, rho2, ux2, ur2, u2, rho_0)
 
 # -------------------------------- CHECK ARRAYS FOR NEGATIVE VALUES ------------------------------------- #
         # arrays = [ux2, ur2, T2, e2, p2, rho2, Tw2, Ts2, Tc2]
@@ -615,42 +623,42 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
 # --------------------------------------- PLOTTING FIELDS ---------------------------------------  #
         # print("shape rho3", np.shape(rho3))
 
-        fig, axs = plt.subplots(5)
-        fig.suptitle('Fields along tube - x direction')
+        # fig, axs = plt.subplots(5)
+        # fig.suptitle('Fields along tube - x direction')
 
-        # PRESSURE DISTRIBUTION
-        im = axs[0].imshow(p3.transpose())
-        plt.colorbar(im, ax=axs[0])
-        # plt.colorbar(im, ax=ax[0])
-        axs[0].set(ylabel='Pressure [Pa]')
-        # plt.title("Pressure smoothing")
+        # # PRESSURE DISTRIBUTION
+        # im = axs[0].imshow(p3.transpose())
+        # plt.colorbar(im, ax=axs[0])
+        # # plt.colorbar(im, ax=ax[0])
+        # axs[0].set(ylabel='Pressure [Pa]')
+        # # plt.title("Pressure smoothing")
 
-        # VELOCITY DISTRIBUTION
-        # axs[1].imshow()
-        im = axs[1].imshow(ux3.transpose())
-        plt.colorbar(im, ax=axs[1])
-        # axs[1].colorbars(location="bottom")
-        axs[1].set(ylabel='Ux [m/s]')
-        # plt.title("velocity parabolic smoothing")
+        # # VELOCITY DISTRIBUTION
+        # # axs[1].imshow()
+        # im = axs[1].imshow(ux3.transpose())
+        # plt.colorbar(im, ax=axs[1])
+        # # axs[1].colorbars(location="bottom")
+        # axs[1].set(ylabel='Ux [m/s]')
+        # # plt.title("velocity parabolic smoothing")
 
-        # Temperature DISTRIBUTION
-        im = axs[2].imshow(T3.transpose())
-        plt.colorbar(im, ax=axs[2])
-        axs[2].set(ylabel='Tg [K]')
+        # # Temperature DISTRIBUTION
+        # im = axs[2].imshow(T3.transpose())
+        # plt.colorbar(im, ax=axs[2])
+        # axs[2].set(ylabel='Tg [K]')
 
-        # axs[1].colorbars(location="bottom")
-        # axs[2].set(ylabel='temperature [K]')
+        # # axs[1].colorbars(location="bottom")
+        # # axs[2].set(ylabel='temperature [K]')
 
-        im = axs[3].imshow(rho3.transpose())
-        plt.colorbar(im, ax=axs[3])
-        axs[3].set(ylabel='Density [kg/m3]')
+        # im = axs[3].imshow(rho3.transpose())
+        # plt.colorbar(im, ax=axs[3])
+        # axs[3].set(ylabel='Density [kg/m3]')
 
-        im = axs[4].imshow(e3.transpose())
-        plt.colorbar(im, ax=axs[4])
-        axs[4].set(ylabel='energy [kg/m3]')
+        # im = axs[4].imshow(e3.transpose())
+        # plt.colorbar(im, ax=axs[4])
+        # axs[4].set(ylabel='energy [kg/m3]')
 
-        plt.xlabel("L(x)")
-        plt.show()
+        # plt.xlabel("L(x)")
+        # plt.show()
 
         save_data(i, dt, rho3, ux3, ur3, u3, e3,
                   T3, Tw2, Ts2, de0, p3, de1, Pe3)

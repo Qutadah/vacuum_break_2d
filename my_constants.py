@@ -3,7 +3,6 @@ import scipy
 from scipy import constants
 import numpy as np
 
-ux_in = 30.
 
 D = 2.54e-2
 M_n = 0.028
@@ -16,16 +15,16 @@ Pr_n = 0.72
 #   Time and spatial step
 L = 8.385  # With prepping region.
 # L = 6.45
-Nx = 140  # Total length & spatial step - x direction 6.45
+Nx = 400  # Total length & spatial step - x direction 6.45
 R_cyl = 1.27e-2
-Nr = 8  # Total length & spatial step - r direction
+Nr = 6  # Total length & spatial step - r direction
 T = 3.
-Nt = 6000.  # Total time & time step
+Nt = 200000.  # Total time & time step
 dt = T/Nt
 dx = L/Nx
 dr = R_cyl/Nr
 print("dx", dx, "dr", dr, "dt", dt, "Cou_r",
-      1.587*dt/dr, "Cou_x_Max", ux_in*dt/dx,)
+      1.587*dt/dr, "Cou_x_Max", 1*dt/dx,)
 
 #   Tuning parameters
 # Coefficient for the film boiling of He I (we need to adjust optimal value)

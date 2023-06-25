@@ -44,8 +44,12 @@ def dt2nd_wall(m, Tw1, T_in):
 # @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8)')
 @jit(nopython=True)
 def grad_rho2(m, n, ux_in, rho_in, ur, ux, rho):
-    if m == 0:
-        a = rho_in
+    # if m == 0:
+    #     a = rho_in
+    #     m_dx = (rho[m, n]*ux[m, n]-rho_in*ux_in)/dx
+
+    if m == 1:
+        a = rho[m, n]
         m_dx = (rho[m, n]*ux[m, n]-rho_in*ux_in)/dx
 
     elif m == Nx:
@@ -94,10 +98,10 @@ def grad_ux2(p_in, p, ux_in, ux, m, n):  # bulk
         # upwind 1st order  - positive flow - advection
         ux_dr = (ux[m, n] - ux[m, n-1])/(dr)  # CD
 
-    if m == 0:
-        # upwind 1st order  - positive flow - advection
-        dp_dx = (p[m, n] - p_in)/dx
-        ux_dx = (ux[m, n] - ux_in)/dx
+    # if m == 0:
+    #     # upwind 1st order  - positive flow - advection
+    #     dp_dx = (p[m, n] - p_in)/dx
+    #     ux_dx = (ux[m, n] - ux_in)/dx
         # 4-point CD
         # dp_dx = (p_in - 8*p_in + 8 *
         #          p1[m+1, n] - p1[m+2, n])/(12*dx)
@@ -109,6 +113,10 @@ def grad_ux2(p_in, p, ux_in, ux, m, n):  # bulk
     #              p1[m+1, n] - p1[m+2, n])/(12*dx)
     #     ux_dx = (ux1[m-2, n] - 8*ux1[m-1, n] + 8 *
     #              ux1[m+1, n] - ux1[m+2, n])/(12*dx)
+
+    if m == 1:
+        dp_dx = (p[m, n] - p_in)/dx  # BWD
+        ux_dx = (ux[m, n] - ux_in)/dx  # BWD
 
     elif m == Nx:
         dp_dx = (p[m, n] - p[m-1, n])/dx  # BWD
@@ -151,21 +159,21 @@ def grad_ur2(m, n, p, ur, ur_in):  # first derivatives BULK
     #     dp_dr = (p[m, n+1] - p[m, n-1])/(2*dr)  # CD
     #     ur_dr = (ur[m, n+1] - ur[m, n-1])/(2*dr)
 
-    if m == 0:
+    # if m == 0:
+    #     ur_dx = (ur[m+1, n] - ur_in)/(dx)  # upwind 1st order
+
+    if m == 1:
         ur_dx = (ur[m+1, n] - ur_in)/(dx)  # upwind 1st order
 
     # elif (m <= n_trans+2 and m >= n_trans-2):
     #     ur_dx = (ur1[m-2, n] - 8*ur1[m-1, n] + 8 *
     #              ur1[m+1, n] - ur1[m+2, n])/(12*dx)  # 4 point CD
 
-    elif (m >= 1 and m <= Nx - 2):
-        # upwind 1st order  - positive flow - advection
-        ur_dx = (ur[m, n] - ur[m-1, n])/dx
-
     elif m == Nx:
         ur_dx = (ur[m, n] - ur[m-1, n])/dx
 
-    elif (m >= 1 and m <= Nx - 2):
+    elif (m > 1 and m <= Nx - 2):
+        # upwind 1st order  - positive flow - advection
         ur_dx = (ur[m, n] - ur[m-1, n])/dx
 
     else:
@@ -191,10 +199,10 @@ def grad_e2(m, n, ur1, ux1, ux_in, e_in, e1):     # use upwind for Pe > 2
         grad_r = ((n)*dr*ur1[m, n]*e1[m, n] - (n-1)
                   * dr*ur1[m, n-1]*e1[m, n-1])/(dr)  # BWD
 
-    if m == 0:
-        grad_x = (e1[m+1, n]*ux1[m+1, n]-e_in*ux_in)/(dx)
+    # if m == 0:
+    #     grad_x = (e1[m+1, n]*ux1[m+1, n]-e_in*ux_in)/(dx)
 
-    elif m == Nx:
+    if m == Nx:
         # print("e1[m, n]*ux1[m, n]: ", e1[m, n]*ux1[m, n],
         #       "-e1[m-1, n]*ux1[m-1, n]: ", -e1[m-1, n]*ux1[m-1, n])
         grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/dx  # BWD
@@ -209,8 +217,8 @@ def grad_e2(m, n, ur1, ux1, ux_in, e_in, e1):     # use upwind for Pe > 2
         #                                      * ux1[m-1, n]) + (e1[m-2, n]
         #                                                        * ux1[m-2, n]) / dx  # upwind, captures shocks
     else:  # 0 < m < Nx,  1 < n < Nr
-        grad_x = (e1[m+1, n]*ux1[m+1, n]-e1[m, n]
-                  * ux1[m, n])/dx  # upwind
+        grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]
+                  * ux1[m-1, n])/dx  # upwind
 
     return grad_x, grad_r
 
@@ -420,8 +428,8 @@ def mu_n(T, P):
         7.402*tao**0.9*delta**2*np.exp(-1*delta**2) +\
         4.620*tao**0.3*delta**1*np.exp(-1*delta**3)
 #    print("viscosity from function:", (mu_n_1+mu_n_2)/1e6)
-    # mu_n_2 = 0
-    # mu_n_1 = 0
+    mu_n_2 = 0
+    mu_n_1 = 0
     # print("viscosity from function:", (mu_n_1+mu_n_2)/1e6)
 
     return (mu_n_1+mu_n_2)/1e6
@@ -591,6 +599,9 @@ def outlet_BC(p, e, rho, ux, ur, u, rho_0):
     # de0[Nx] += dt*np.pi*D*de1[Nx]
     return bc
 
+# def recalculating_fields(p,rho,T):
+    # recalculating fields:
+
 
 @jit(nopython=True)
 def val_in_constant():
@@ -608,7 +619,7 @@ def val_in_constant():
 
 
 @jit(nopython=True)
-def val_in(n, u_in_x):
+def val_in(n):
     #   Calculate instant flow rate (kg/s)
     # Fitting results
     #    A1 = 0.00277; C = 49995.15263  # 50 kPa
@@ -616,6 +627,7 @@ def val_in(n, u_in_x):
     A1 = 0.00261
     C = 100902.5175  # 100 kPa
    # A1 = 0.00277; C = 10000.15263  # 50 kPa
+    ux_in = 10.
     P_in_fit = np.power(A1*n*dt+np.power(C, -1./7.), -7.)
     # P_in_fit = 1000.
     # P_in_fit = 1./2.*P_in_fit
@@ -631,7 +643,7 @@ def val_in(n, u_in_x):
     ur_in = 0.
     e_in = 5./2.*rho_in/M_n*R*T_in + 1./2.*rho_in*u_in_x**2
     # print("u_in_x", u_in_x)
-    out = np.array([p_in, q_in, u_in_x, ur_in, rho_in, e_in, T_in])
+    out = np.array([p_in, q_in, ux_in, ur_in, rho_in, e_in, T_in])
     # print(
     #     "val_in from function [q_in, ux_in, ur_in, rho_in, p_in, e_in]: ", out)
     return out
