@@ -379,32 +379,36 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
                         m, n, ux_in, rho_in, ur1, ux1, rho1)
                     print("d_dr: ", d_dr, "m_dx: ", m_dx)
 
-                    rho2[m, n] = a - dt / (n*dr)*d_dr - dt*m_dx
-                    print("a: ", a, "radial term: ", - dt /
-                          (n*dr)*d_dr, "axial term: ", - dt*m_dx)
-                    print("rho1 bulk", rho1[m, n], "rho2 bulk", rho2[m, n])
-                    check_negative(rho2[m, n], n)
+                    rhs_rho = -1/n/dr*d_dr - m_dx
+
+                    rho2[m, n] = a + dt * rhs_rho
+
+                    # print("a: ", a, "radial term: ", - dt /
+                    #       (n*dr)*d_dr, "axial term: ", - dt*m_dx)
+                    # print("rho1 bulk", rho1[m, n], "rho2 bulk", rho2[m, n])
+                    # check_negative(rho2[m, n], n)
 
                     # Define second derivatives in radial direction
-                    dt2nd_axial_ux1, dt2nd_axial_ur1 = dt2nd_axial(
+                    dt2x_ux1, dt2x_ur1 = dt2nd_axial(
                         ux_in, ur_in, ux1, ur1, m, n)
-                    dt2nd_radial_ux1, dt2nd_radial_ur1 = dt2nd_radial(
+                    dt2r_ux1, dt2r_ur1 = dt2nd_radial(
                         ux1, ur1, m, n)
 
                     # Ux velocity calculation
-                    print("dt2nd_radial_ux1: ", dt2nd_radial_ux1,
-                          "dt2nd_axial_ux1: ", dt2nd_axial_ux1)
+                    # print("dt2nd_radial_ux1: ", dt2nd_radial_ux1,
+                    #       "dt2nd_axial_ux1: ", dt2nd_axial_ux1)
 
                     dp_dx, ux_dx, ux_dr = grad_ux2(
                         p_in, p1, ux_in, ux1, m, n)
-                    print("dp_dx: ", dp_dx, "ux_dx: ", ux_dx, "ux_dr: ", ux_dr)
-                    if m == 1 and n == 6:
-                        exit()
-                    ux2[m, n] = ux1[m, n] - dt*dp_dx/rho1[m, n] + mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (
-                        1/(n*dr)) * (ux_dr) + dt2nd_axial_ux1) - dt*ux1[m, n] * ux_dx - dt*ur1[m, n]*ux_dr
+                    # print("dp_dx: ", dp_dx, "ux_dx: ", ux_dx, "ux_dr: ", ux_dr)
 
-                    print("pressure term:", -dt*dp_dx/rho1[m, n], "ux1 term:", -
-                          dt*ux1[m, n] * ux_dx, "ur1 term:", - dt*ur1[m, n]*ux_dr)
+                    rhs_ux = -dp_dx/rho1[m, n] + mu_n(T1[m, n], p1[m, n])/rho1[m, n] * (
+                        dt2r_ux1 + 1/n/dr*ux_dr + dt2x_ux1) - ux1[m, n] * ux_dx - ur1[m, n]*ux_dr
+
+                    ux2[m, n] = ux1[m, n] + dt*rhs_ux
+
+                    # print("pressure term:", -dt*dp_dx/rho1[m, n], "ux1 term:", -
+                    #       dt*ux1[m, n] * ux_dx, "ur1 term:", - dt*ur1[m, n]*ux_dr)
 
                     print("ux1 bulk", ux1[m, n], "ux2 bulk:", ux2[m, n])
                     # check_negative(ux2[m, n], n)
@@ -425,23 +429,20 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
                     #     ur1[m, n+1]-ur1[m, n])/dr + dt2nd_axial_ur1 - ur1[m, n]/(dr**2*n**2)), "ux1 term", dt*ux1[m, n] * (ur1[m, n] - ur1[m-1, n])/dx, "ur1 term", dt*ur1[m, n]*(ur1[m, n+1] - ur1[m, n])/dr)
 
                     dp_dr, ur_dx, ur_dr = grad_ur2(m, n, p1, ur1, ur_in)
-                    print("dp_dr: ", dp_dr, "ur_dx: ", ur_dx, "ur_dr: ", ur_dr)
+                    # print("dp_dr: ", dp_dr, "ur_dx: ", ur_dx, "ur_dr: ", ur_dr)
 
                     # print("dt2nd_radial_ur1: ", dt2nd_radial_ur1,
                     #       "dt2nd_axial_ur1: ", dt2nd_axial_ur1)
 
-                    ur2[m, n] = ur1[m, n] - dt*dp_dr/(rho1[m, n]) +\
-                        mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * \
-                        (dt2nd_radial_ur1 +
-                         (1/(n*dr))*ur_dr + dt2nd_axial_ur1 -
-                         - ur1[m, n]/(dr**2*n**2)) - \
-                        dt*ux1[m, n] * ur_dx - \
-                        dt*ur1[m, n]*ur_dr
+                    rhs_ur = - dp_dr/(rho1[m, n]) + mu_n(T1[m, n], p1[m, n])/rho1[m, n] * (- ur1[m, n]/(
+                        dr**2*n**2) + 1/n/dr*ur_dr + dt2r_ur1 + dt2x_ur1) - ux1[m, n] * ur_dx - ur1[m, n]*ur_dr
 
-                    print("ur1", ur1[m, n], "p_term", - dt*dp_dr/(rho1[m, n]),
-                          "viscous", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ur1 + (
-                              1/(n*dr))*ur_dr + dt2nd_axial_ur1 - ur1[m, n]/(dr**2*n**2)),
-                          "ux1 term", -dt*ux1[m, n] * ur_dx, "ur1 term", -dt * ur1[m, n]*ur_dr)
+                    ur2[m, n] = ur1[m, n] + dt * rhs_ur
+
+                    # print("ur1", ur1[m, n], "p_term", - dt*dp_dr/(rho1[m, n]),
+                    #       "viscous", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ur1 + (
+                    #           1/(n*dr))*ur_dr + dt2nd_axial_ur1 - ur1[m, n]/(dr**2*n**2)),
+                    #       "ux1 term", -dt*ux1[m, n] * ur_dx, "ur1 term", -dt * ur1[m, n]*ur_dr)
 
                     print("ur1 bulk: ", ur1[m, n], "ur2 bulk: ", ur2[m, n])
                     check_negative(ur2[m, n], n)
@@ -463,7 +464,8 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
                     #     assert not math.isnan(eps)
 
                     grad_x, grad_r = grad_e2(m, n, ur1, ux1, ux_in, e_in, e1)
-                    e2[m, n] = e1[m, n]-dt/(n*dr)*grad_r - dt*grad_x
+                    rhs_e = - 1/n/dr*grad_r - grad_x
+                    e2[m, n] = e1[m, n] + dt*rhs_e
 
                     print("grad_x: ", grad_x, "grad_r: ", grad_r)
 

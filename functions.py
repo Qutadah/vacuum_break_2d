@@ -152,7 +152,7 @@ def initialize_grid(p_0, rho_0, e_0, T_0, T_s):
 def plot_imshow(p, ux, T, rho, e):
         
     fig, axs = plt.subplots(5)
-    fig.suptitle('Initial fields along tube for all R')
+    fig.suptitle('Fields along tube for all R')
 
     # PRESSURE DISTRIBUTION
     im = axs[0].imshow(p.transpose())
