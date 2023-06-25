@@ -42,6 +42,65 @@ def dt2nd_wall(m, Tw1, T_in):
 
 
 # @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8)')
+def initialize_grid(p_0, rho_0, e_0, T_0, T_s):
+
+    # rho12 = np.full((Nx+1, Nr+1), rho_0, dtype=(np.float64, np.float64))  # Density
+    p1 = np.full((Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # Pressure
+    rho1 = np.full((Nx+1, Nr+1), rho_0,
+                   dtype=(np.float64, np.float64))  # Density
+    ux1 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))  # velocity -x
+    ur1 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))  # velocity -r
+    u1 = np.sqrt(np.square(ux1) + np.square(ur1))  # total velocity
+    # Internal energy
+    e1 = np.full((Nx+1, Nr+1), e_0, dtype=(np.float64, np.float64))
+    # CHECK TODO: calculate using equation velocity.
+    # TODO: calculate using equation velocity.
+
+    T1 = np.full((Nx+1, Nr+1), T_0,
+                 dtype=(np.float64, np.float64))  # Temperature
+
+    rho2 = np.full((Nx+1, Nr+1), rho_0, dtype=(np.float64, np.float64))
+    ux2 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    ur2 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    u2 = np.sqrt(np.square(ux2) + np.square(ur2))  # total velocity
+    e2 = np.full((Nx+1, Nr+1), e_0, dtype=(np.float64, np.float64))
+    T2 = np.full((Nx+1, Nr+1), T_0, dtype=(np.float64, np.float64))
+    p2 = np.full((Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # Pressure
+
+    Tw1 = np.full((Nx+1), T_s, dtype=(np.float64))  # Wall temperature
+    Tw2 = np.full((Nx+1), T_s, dtype=(np.float64))
+    # Temperature of SN2 surface
+    Ts1 = np.full((Nx+1), T_0, dtype=(np.float64))
+    Ts2 = np.full((Nx+1), T_0, dtype=(np.float64))
+
+    # Average temperature of SN2 layer
+    Tc1 = np.full((Nx+1), T_s, dtype=(np.float64))
+    Tc2 = np.full((Nx+1), T_s, dtype=(np.float64))
+    de0 = np.zeros((Nx+1), dtype=(np.float64))  # Deposition mass, kg/m
+    de1 = np.full((Nx+1), 0., dtype=(np.float64))  # Deposition rate
+    # de2 = np.full((Nx+1), 0., dtype=(np.float64))  # Deposition rate
+    qhe = np.zeros_like(de0, dtype=np.float64)  # heat transfer
+
+    # These matrices are just place holder. These will be overwritten and saved. (remove r=0)
+    rho3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
+    ux3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
+    ur3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
+    u3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
+    e3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
+    T3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
+    p3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
+
+    # Dimensionless number in grid:
+    Pe = np.zeros((Nx+1, Nr+1), dtype=(np.float64,
+                  np.float64))  # Peclet number
+    Pe1 = np.zeros((Nx+1, Nr+1), dtype=(np.float64,
+                   np.float64))  # Peclet number
+    out = [p1, rho1, ux1, ur1, u1,e1, T1, rho2, ux2, ur2, u2,e2,T2,p2, Tw1, Tw2,Ts1,Ts2,Tc1,Tc2,de0,de1,qhe,rho3,ux3,ur3,u3,e3,T3,p3,Pe, Pe1]
+    return out
+
+# @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8)')
+
+
 @jit(nopython=True)
 def grad_rho2(m, n, ux_in, rho_in, ur, ux, rho):
     # if m == 0:
