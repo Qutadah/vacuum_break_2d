@@ -96,21 +96,6 @@ Pe = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))  # Peclet number
 Pe1 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))  # Peclet number
 
 
-# Initialization
-
-# ps = np.zeros(Nx+1, np.float64)
-# mdot = np.zeros(Nx+1, np.float64)
-# for x in np.arange(np.int64(0), np.int64(Nx+1)):
-#     dm = rho1[x, Nr]*Nr*dr*ur1[x, Nr]-rho1[x, Nr-1]*(Nr-1)*dr*ur1[x, Nr-1]
-#     ps[x] = f_ps(Ts1[x])
-#     mdot[x] = m_de(T1[x,Nr],p1[x],Tw1[x], de1[x], dm)
-# np.savetxt("ps.csv", ps, delimiter=",")
-# np.savetxt("m_de.csv", mdot, delimiter=",")
-
-# np.savetxt("ps.csv", ps, delimiter=",")
-# np.savetxt("mdot.csv", mdot, delimiter=",")
-
-
 # ---------------------  Smoothing inlet --------------------------------
 
 # constant inlet
@@ -126,11 +111,6 @@ p, rho, T, ux, u = smoothing_inlet(
 ####### ---------------------------- PARABOLIC VELOCITY PROFILE - inlet prepping area-------------------------------------------------------- ######
 
 # ux, u = parabolic_velocity(ux1, ux_in, T1)
-
-# fixing the n_transition 60th point velocity
-
-# u1[n_trans, :] = 0
-# ux1[n_trans, :] = 0
 
 ### ---------------------------------------------------------- NO SLIP BOUNDARY CONDITION - viscous flow ----------------------------------------------------------###
 ux1[:, Nr] = 0
@@ -246,18 +226,6 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
 # latest NOTE
         # ux1, u1, p1, rho1, T1, e1 = inlet_BC(ux1, u1, p1, rho1, T1, e1, p_in, ux_in, rho_in, T_in, e_in)
 
-# --------------
-
-        # for x in np.arange(Nx):
-        #     for y in np.arange(Nr):
-
-        #         if x == 0:
-        #             rho12[x, y] = (rho1[x, y] + rho_in)/2.
-        #         elif x == Nx:
-        #             rho12[x, y] = (rho1[x, y] + rho1[x-1, y])/2.
-        #         else:
-        #             rho12[x, y] = (rho1[x, y] + rho1[x+1, y])/2.
-
 # l=-1 # counter for row number to append using pandas
 
 # Create pandas DataFrame
@@ -275,7 +243,6 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
                 print("[i,m,n]:", [i, m, n])
 
                 ############## Case 1: At boundaries (with mass deposition).##########################################################
-                # print("looping" ,"m",m, "n", n)
                 if n == Nr:
                     continue
                     print("THIS IS A SURFACE, MASS DEPOSITION:")
@@ -326,17 +293,8 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
                         rho2[m, n] = 0.0001
                         print("Density went to zero")
 
-# NOTE: Check with Yolanda, should i use rho1 or rho2 ??? Also de1 or de2?
-
-                    # velocity calculation #  I think we need some momentum R equation... this is not correct.
-                    # ur2[m, n] = de1[m]/rho2[m, n]
-                    # u2[m, n] = ur2[m, n]  # no slip boundary condition.
-
                     ur2[m, n] = de1[m]/rho2[m, n]
-                    # u2[m, n] = u1[m, n]  # no momentum R equation
-                    # ur2[m, n] = ur1[m, n]  # no slip boundary condition.
                     ux2[m, n] = 0.  # no slip boundary condition.
-
                     u2[m, n] = np.sqrt(ux1[m, n]**2 + ur1[m, n]**2)
 
                     print("ur1 surface", ur1[m, n], "u1 surface", u1[m, n],
@@ -350,11 +308,7 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
                     print("rho1 ", rho1[m, n])
                     check_negative(rho1[m, n], n)
 
-                    # print("p1p", p1p, "e1[m,n]", e1[m, n], "rho1[m,n]", rho1[m, n], "u1[m,n]", u1[m, n])
-                    # print("printed",T1[m, n], p1p, Tw1[m], de1[m], rho1[m, n]*ur1[m, n]-rho1[m, n-1]*ur1[m, n-1])
-
                     # energy calculation
-                    # radial kinetic energy on surface.
                     e2_dr = (n*dr*ur1[m, n]*e1[m, n] -
                              (n-1)*dr*ur1[m, n-1]*e1[m, n-1])/dr  # BWD
                     print("e2_dr", e2_dr)
@@ -364,6 +318,7 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
                     print("e1 surface", e1[m, n], "e2 surface", e2[m, n])
                     check_negative(e1[m, n], n)
                     check_negative(e2[m, n], n)
+
                     # Calculate Tg
                     T2[m, n] = 2./5.*(e2[m, n]-1./2.*rho2[m, n] *
                                       ur2[m, n]**2.)*M_n/rho2[m, n]/R
@@ -484,18 +439,7 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
                     print("rho1 bulk: ",
                           rho1[m, n], "T1 bulk:", T1[m, n])
 
-#                    print("u1 for p1 calculation:", u1[m, n])
-
                     # Calculate mass\momentum\energy at time n+1 with no mass deposition - no heat transfer
-
-# -------------------------------------------- Different Boundary Solutions ------------------------------------------------------#
-
-                    # Find density at next timestep.
-                    # Define second derivative ux axial direction. (consider m as reference)
-
-                    # NOTE:A add dt2nd limiter...
-                    # if dt2nd_axial_ux1 > 10000:
-                    #     dt2nd_axial_ux1 = 1000
 
                     # Return gradients from function
                     a, d_dr, m_dx = grad_rho2(
@@ -508,7 +452,7 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
                     print("rho1 bulk", rho1[m, n], "rho2 bulk", rho2[m, n])
                     check_negative(rho2[m, n], n)
 
-                    # Define second derivatives in radial direction (consider n as reference)
+                    # Define second derivatives in radial direction
                     dt2nd_axial_ux1, dt2nd_axial_ur1 = dt2nd_axial(
                         ux_in, ur_in, ux1, ur1, m, n)
                     dt2nd_radial_ux1, dt2nd_radial_ur1 = dt2nd_radial(
@@ -525,24 +469,13 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
                     ux2[m, n] = ux1[m, n] - dt*dp_dx/rho1[m, n] + mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (
                         1/(n*dr)) * (ux_dr) + dt2nd_axial_ux1) - dt*ux1[m, n] * ux_dx - dt*ur1[m, n]*ux_dr
 
-                    # print("pressure term:", -dt*dp_dx/rho1[m, n], "viscosity:", + mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (
- #                       1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1), "ux1 term:", - dt*ux1[m, n] * ux_dx, "ur1 term:", - dt*ur1[m, n]*ux_dr)
-
                     print("pressure term:", -dt*dp_dx/rho1[m, n], "ux1 term:", -
                           dt*ux1[m, n] * ux_dx, "ur1 term:", - dt*ur1[m, n]*ux_dr)
 
                     print("ux1 bulk", ux1[m, n], "ux2 bulk:", ux2[m, n])
-                    # print("ux2 bulk=", ux2[m, n])
-                   # print("matrix ux", ux2)
                     # check_negative(ux2[m, n], n)
 
-                    # if ux2[m, n] > 370:
-                    #     print("high ux2 bulk", ux2[m, n])
-                    #     exit()
-
                     # if ux2[m, n] > 350:
-                    #     print("ux2 bulk larger than ux_in", ux2[m, n])
-                    #     print("m,n",m,n,"dtux1 term:", -dt*ux1[m, n] * (ux1[m, n] - ux1[m-1, n])/dx, "dtur1 term:", dt*ur1[m, n]*(ux1[m, n+1] - ux1[m, n])/dr)
                     #     print("ux1[m,n]",ux1[m,n], ux1[m-1,n])
                     #     print("ur1[m,n]", ux1[m, n+1], ux1[m, n])
                     #     print("pressure term: ",- dt*(p1[m+1, n] - p1[m, n])/(rho1[m, n]*dx))
@@ -557,14 +490,11 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
                     # print("ur1", ur1[m, n], , "p_n+1, p_n", [p1[m, n+1], p1[m, n]], "press term", dt*(p1[m, n+1] - p1[m, n])/(rho1[m, n]*dr), "viscous", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ur1 + (1/(n*dr))*(
                     #     ur1[m, n+1]-ur1[m, n])/dr + dt2nd_axial_ur1 - ur1[m, n]/(dr**2*n**2)), "ux1 term", dt*ux1[m, n] * (ur1[m, n] - ur1[m-1, n])/dx, "ur1 term", dt*ur1[m, n]*(ur1[m, n+1] - ur1[m, n])/dr)
 
-                    # if ur2[m, n] < 1:
-                    #     ur2[m, n] = 0
-
                     dp_dr, ur_dx, ur_dr = grad_ur2(m, n, p1, ur1, ur_in)
                     print("dp_dr: ", dp_dr, "ur_dx: ", ur_dx, "ur_dr: ", ur_dr)
 
-                    print("dt2nd_radial_ur1: ", dt2nd_radial_ur1,
-                          "dt2nd_axial_ur1: ", dt2nd_axial_ur1)
+                    # print("dt2nd_radial_ur1: ", dt2nd_radial_ur1,
+                    #       "dt2nd_axial_ur1: ", dt2nd_axial_ur1)
 
                     ur2[m, n] = ur1[m, n] - dt*dp_dr/(rho1[m, n]) +\
                         mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * \
@@ -616,8 +546,8 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
                     check_negative(e2[m, n], n)
 
                     # NOTE: Check temperature calculation..
-                    print("temp calculation: [e2, rho2, u2]",
-                          [e2[m, n], rho2[m, n], u2[m, n]])
+                    # print("temp calculation: [e2, rho2, u2]",
+                    #       [e2[m, n], rho2[m, n], u2[m, n]])
                     T2[m, n] = 2./5.*(e2[m, n]-1/2*rho2[m, n] *
                                       u2[m, n]**2)*M_n/rho2[m, n]/R
                     print("T1 bulk: ", T1[m, n], "T2 bulk:", T2[m, n])
@@ -652,7 +582,7 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
         ux2, ur2, u2, p2, rho2, T2, e2 = inlet_BC(
             ux2, ur2, u2, p2, rho2, T2, e2, p_in, ux_in, rho_in, T_in, e_in)
 # ------------------------------------ Outlet boundary conditions ------------------------------------------- #
-        p2, rho2, u2, e2 = outlet_BC(m, n, p2, e2, rho2, ux2, ur2, u2, rho_0)
+        p2, rho2, ux2, u2, e2 = outlet_BC(p2, e2, rho2, ux2, ur2, u2, rho_0)
 
 # -------------------------------- CHECK ARRAYS FOR NEGATIVE VALUES ------------------------------------- #
         # arrays = [ux2, ur2, T2, e2, p2, rho2, Tw2, Ts2, Tc2]
@@ -679,6 +609,8 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
         rho3, ux3, ur3, u3, e3, T3, p3, Pe3 = delete_r0_point(
             rho2, ux2, ur2, u2, e2, T2, p2, Pe1)
 
+        # rho3, ux3, ur3, u3, e3, T3, p3, Pe3 = delete_surface_inviscid(
+        #     rho3, ux3, ur3, u3, e3, T3, p3, Pe3)
 
 # --------------------------------------- PLOTTING FIELDS ---------------------------------------  #
         # print("shape rho3", np.shape(rho3))

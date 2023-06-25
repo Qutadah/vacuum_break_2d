@@ -43,14 +43,14 @@ def dt2nd_wall(m, Tw1, T_in):
 
 # @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8)')
 @jit(nopython=True)
-def grad_rho2(m, n, ux_in, rho_in, ur1, ux1, rho1):
+def grad_rho2(m, n, ux_in, rho_in, ur, ux, rho):
     if m == 0:
         a = rho_in
-        m_dx = (rho1[m, n]*ux1[m, n]-rho_in*ux_in)/dx
+        m_dx = (rho[m, n]*ux[m, n]-rho_in*ux_in)/dx
 
     elif m == Nx:
-        a = rho1[m, n]
-        m_dx = (rho1[m, n]*ux1[m, n]-rho1[m-1, n]*ux1[m-1, n])/dx
+        a = rho[m, n]
+        m_dx = (rho[m, n]*ux[m, n]-rho[m-1, n]*ux[m-1, n])/dx
 
     # elif (m <= n_trans+2 and m >= n_trans+2):
     #     # NOTE Use four point CD at transition point.
@@ -59,21 +59,21 @@ def grad_rho2(m, n, ux_in, rho_in, ur1, ux1, rho1):
     #             rho1[m+1, n] - rho1[m+2, n])/(12*dx)
 
     else:
-        a = rho1[m, n]
-        m_dx = (rho1[m+1, n]*ux1[m+1, n]-rho1[m-1, n]*ux1[m, n])/(2*dx)
+        a = rho[m, n]
+        m_dx = (rho[m, n]*ux[m, n]-rho[m-1, n]*ux[m-1, n])/(dx)
 
     if n == 1:
         # NOTE: SYMMETRY BC
-        d_dr = (rho1[m, n+2]*(n+2)*dr*ur1[m, n+2] -
-                rho1[m, n] * n*dr*ur1[m, n]) / (4*dr)
+        d_dr = (rho[m, n+2]*(n+2)*dr*ur[m, n+2] -
+                rho[m, n] * n*dr*ur[m, n]) / (4*dr)
 
     elif n == Nr-1:
-        d_dr = (rho1[m, n]*n*dr*ur1[m, n] -
-                rho1[m, n-1] * (n-1)*dr*ur1[m, n-1])/dr
+        d_dr = (rho[m, n]*n*dr*ur[m, n] -
+                rho[m, n-1] * (n-1)*dr*ur[m, n-1])/dr
 
     else:
-        d_dr = (rho1[m, n+1]*(n+1)*dr*ur1[m, n+1] -
-                rho1[m, n-1] * (n-1)*dr*ur1[m, n-1])/(2*dr)
+        d_dr = (rho[m, n+1]*(n+1)*dr*ur[m, n+1] -
+                rho[m, n-1] * (n-1)*dr*ur[m, n-1])/(2*dr)
 
     return a, d_dr, m_dx
 
@@ -81,21 +81,23 @@ def grad_rho2(m, n, ux_in, rho_in, ur1, ux1, rho1):
 # @numba.jit('f8(f8,f8,f8,f8,f8,f8)')
 
 @jit(nopython=True)
-def grad_ux2(p_in, p1, ux_in, ux1, m, n):  # bulk
+def grad_ux2(p_in, p, ux_in, ux, m, n):  # bulk
 
     if n == 1:
         # NOTE: SYMMETRY CONDITION HERE done
-        ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
+        ux_dr = (ux[m, n+2] - ux[m, n])/(4*dr)
 
     elif n == Nr-1:
-        ux_dr = (ux1[m, n] - ux1[m, n-1])/dr  # BWD
+        ux_dr = (ux[m, n] - ux[m, n-1])/dr  # BWD
 
-    elif n != 1:
-        ux_dr = (ux1[m, n+1] - ux1[m, n-1])/(2*dr)  # CD
+    else:
+        # upwind 1st order  - positive flow - advection
+        ux_dr = (ux[m, n] - ux[m, n-1])/(dr)  # CD
 
     if m == 0:
-        dp_dx = (p1[m+1, n] - p1[m, n])/dx  # upwind 1st order
-        ux_dx = (ux1[m+1, n] - ux1[m, n])/dx  # upwind 1st order
+        # upwind 1st order  - positive flow - advection
+        dp_dx = (p[m, n] - p_in)/dx
+        ux_dx = (ux[m, n] - ux_in)/dx
         # 4-point CD
         # dp_dx = (p_in - 8*p_in + 8 *
         #          p1[m+1, n] - p1[m+2, n])/(12*dx)
@@ -109,56 +111,66 @@ def grad_ux2(p_in, p1, ux_in, ux1, m, n):  # bulk
     #              ux1[m+1, n] - ux1[m+2, n])/(12*dx)
 
     elif m == Nx:
-        dp_dx = (p1[m, n] - p1[m-1, n])/dx  # BWD
-        ux_dx = (ux1[m, n] - ux1[m-1, n])/dx  # BWD
+        dp_dx = (p[m, n] - p[m-1, n])/dx  # BWD
+        ux_dx = (ux[m, n] - ux[m-1, n])/dx  # BWD
 
-    elif (m >= 2 and m <= Nx - 2):
-        dp_dx = (p1[m+1, n] - p1[m, n])/dx  # upwind 1st order
-        ux_dx = (ux1[m+1, n] - ux1[m, n])/dx  # upwind 1st order
+    # elif (m >= 1 and m <= Nx - 2):
+
+    else:
+        # upwind 1st order  - positive flow - advection
+        dp_dx = (p[m, n] - p[m-1, n])/dx
+        ux_dx = (ux[m, n] - ux[m-1, n])/dx
         # dp_dx = (3*p1[m, n] - 4*p1[m-1, n] + p1[m-2, n]) / \
         #     dx  # # upwind, captures shocks
         # ux_dx = (3*ux1[m, n] - 4*ux1[m-1, n] + ux1[m-2, n]) / \
         #     dx  # # upwind, captures shocks
 
-    else:
-        dp_dx = (p1[m+1, n] - p1[m-1, n])/(2*dx)
-        ux_dx = (ux1[m+1, n] - ux1[m-1, n])/(2*dx)
+    # else:
+    #     dp_dx = (p[m+1, n] - p[m-1, n])/(2*dx)
+    #     ux_dx = (ux[m+1, n] - ux[m-1, n])/(2*dx)
 
     return dp_dx, ux_dx, ux_dr
 
 
 # @numba.jit('f8(f8,f8,f8,f8,f8)')
 @jit(nopython=True)
-def grad_ur2(m, n, p1, ur1, ur_in):  # first derivatives BULK
+def grad_ur2(m, n, p, ur, ur_in):  # first derivatives BULK
 
     if n == 1:
         # NOTE: Symmetry BC done
-        dp_dr = (p1[m, n+2] - p1[m, n])/(4*dr)
-        ur_dr = (ur1[m, n+2]-ur1[m, n])/(4*dr)  # increased to 2dx
+        dp_dr = (p[m, n+2] - p[m, n])/(4*dr)
+        ur_dr = (ur[m, n+2]-ur[m, n])/(4*dr)  # increased to 2dx
 
-    elif n == Nr-1:
-        dp_dr = (p1[m, n] - p1[m, n-1])/dr  # BWD
-        ur_dr = (ur1[m, n] - ur1[m, n-1])/dr
+# n == Nr-1
 
-    elif n != 1 and n != Nr-1:
-        dp_dr = (p1[m, n+1] - p1[m, n-1])/(2*dr)  # CD
-        ur_dr = (ur1[m, n+1] - ur1[m, n-1])/(2*dr)
+    else:
+        dp_dr = (p[m, n] - p[m, n-1])/dr  # BWD
+        ur_dr = (ur[m, n] - ur[m, n-1])/dr
+
+    # elif (n != 1 and n != Nr-1):
+    #     dp_dr = (p[m, n+1] - p[m, n-1])/(2*dr)  # CD
+    #     ur_dr = (ur[m, n+1] - ur[m, n-1])/(2*dr)
 
     if m == 0:
-        ur_dx = (ur1[m+1, n] - ur_in)/(dx)  # upwind 1st order
+        ur_dx = (ur[m+1, n] - ur_in)/(dx)  # upwind 1st order
 
     # elif (m <= n_trans+2 and m >= n_trans-2):
     #     ur_dx = (ur1[m-2, n] - 8*ur1[m-1, n] + 8 *
     #              ur1[m+1, n] - ur1[m+2, n])/(12*dx)  # 4 point CD
 
-    elif (m >= 2 and m <= Nx - 2):
-        ur_dx = (ur1[m+1, n] - ur1[m, n])/dx  # BWD
+    elif (m >= 1 and m <= Nx - 2):
+        # upwind 1st order  - positive flow - advection
+        ur_dx = (ur[m, n] - ur[m-1, n])/dx
 
     elif m == Nx:
-        ur_dx = (ur1[m, n] - ur1[m-1, n])/dx  # BWD
+        ur_dx = (ur[m, n] - ur[m-1, n])/dx
+
+    elif (m >= 1 and m <= Nx - 2):
+        ur_dx = (ur[m, n] - ur[m-1, n])/dx
 
     else:
-        ur_dx = (ur1[m+1, n] - ur1[m-1, n])/(2*dx)  # CD
+        # upwind 1st order  - positive flow - advection
+        ur_dx = (ur[m, n] - ur[m-1, n])/(dx)  # CD
 
     return dp_dr, ur_dx, ur_dr
 
@@ -169,21 +181,18 @@ def grad_e2(m, n, ur1, ux1, ux_in, e_in, e1):     # use upwind for Pe > 2
 
     # We dont need the surface case, this is the bulk...
 
-    if n == Nr-1:
-        grad_r = ((n)*dr*ur1[m, n]*e1[m, n] - (n-1)
-                  * dr*ur1[m, n-1]*e1[m, n-1])/(dr)  # BWD
-
-    elif n == 1:
+    if n == 1:
         # NOTE: Symmetry BC done
         grad_r = ((n+2)*dr*ur1[m, n+2]*e1[m, n+2] - n *
                   dr*ur1[m, n]*e1[m, n])/(4*dr)  # ur=0 @ r=0 #CD
 
-    elif n != 1 and n != Nr-1:
-        grad_r = ((n+1)*dr*ur1[m, n+1]*e1[m, n+1] - (n-1)
-                  * dr*ur1[m, n-1]*e1[m, n-1])/(2*dr)  # CD
+# n == Nr-1:
+    else:
+        grad_r = ((n)*dr*ur1[m, n]*e1[m, n] - (n-1)
+                  * dr*ur1[m, n-1]*e1[m, n-1])/(dr)  # BWD
 
     if m == 0:
-        grad_x = (e1[m+1, n]*ux1[m+1, n]-e_in*ux_in)/(2*dx)
+        grad_x = (e1[m+1, n]*ux1[m+1, n]-e_in*ux_in)/(dx)
 
     elif m == Nx:
         # print("e1[m, n]*ux1[m, n]: ", e1[m, n]*ux1[m, n],
@@ -193,10 +202,12 @@ def grad_e2(m, n, ur1, ux1, ux_in, e_in, e1):     # use upwind for Pe > 2
     # elif (m <= n_trans+2 and m >= n_trans-2):
     #     grad_x = (e1[m-2, n]*ux1[m-2, n] - 8*e1[m-1, n]*ux1[m-1, n] + 8 *
     #               e1[m+1, n]*ux1[m+1, n] - e1[m+2, n]*ux1[m+2, n])/(12*dx)
-    elif (m >= 2 and m <= Nx - 2):
-        grad_x = 3*(e1[m, n]*ux1[m, n]) - 4*(e1[m-1, n]
-                                             * ux1[m-1, n]) + (e1[m-2, n]
-                                                               * ux1[m-2, n]) / dx  # upwind, captures shocks
+    elif (m >= 1 and m <= Nx - 2):
+        # upwind 1st order  - positive flow - advection
+        grad_x = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/dx
+        # grad_x = 3*(e1[m, n]*ux1[m, n]) - 4*(e1[m-1, n]
+        #                                      * ux1[m-1, n]) + (e1[m-2, n]
+        #                                                        * ux1[m-2, n]) / dx  # upwind, captures shocks
     else:  # 0 < m < Nx,  1 < n < Nr
         grad_x = (e1[m+1, n]*ux1[m+1, n]-e1[m, n]
                   * ux1[m, n])/dx  # upwind
@@ -544,10 +555,21 @@ def inlet_BC(ux, ur, u, p, rho, T, e, p_inl, ux_inl, rho_inl, T_inl, e_inl):
 
 
 @jit(nopython=True)
-def outlet_BC(m, n, p, e, rho, ux, ur, u, rho_0):
-    # print("This is the ", Nx)
-    p[Nx, n] = 2/5*(e[Nx, n]-1/2*rho[Nx, n]
-                    * u[Nx, n]**2)  # Pressure
+def outlet_BC(p, e, rho, ux, ur, u, rho_0):
+
+    for n in np.arange(Nr):
+        p[Nx, n] = 2/5*(e[Nx, n]-1/2*rho[Nx, n]
+                        * u[Nx, n]**2)  # Pressure
+
+        rho[Nx, n] = max(2*rho[Nx-1, n]-rho[Nx-2, n], rho_0)  # Free outflow
+        ux[Nx, n] = max(2*rho[Nx-1, n]*ux[Nx-1, n] -
+                        rho[Nx-2, n]*ux[Nx-2, n], 0) / rho[Nx, n]
+        u = np.sqrt(ux**2. + ur**2.)
+        # e[Nx, n] = 2*e[Nx-1, n]-e[Nx-2, n]
+        e = 5./2.*rho/M_n*R*T + 1./2.*rho*u**2
+
+    bc = [p, rho, ux, u, e]
+
     # NOTE: check input de to the m_de equation.
     # de1[Nx] = m_de(T2[Nx, n], p1[Nx, n], Ts2[Nx], de1[Nx], 0.)
     # del_SN = de0[Nx]/np.pi/D/rho_sn
@@ -567,13 +589,6 @@ def outlet_BC(m, n, p, e, rho, ux, ur, u, rho_0):
     # Tw2[Nx] = 2*Tc2[Nx]-Ts2[Nx]
     # qhe[Nx] = q_h(Tw1[Nx], BW_coe)*np.pi*Do
     # de0[Nx] += dt*np.pi*D*de1[Nx]
-    rho[Nx, n] = max(2*rho[Nx-1, n]-rho[Nx-2, n], rho_0)  # Free outflow
-    ux[Nx, n] = max(2*rho[Nx-1, n]*ux[Nx-1, n] -
-                    rho[Nx-2, n]*ux[Nx-2, n], 0) / rho[Nx, n]
-    u = np.sqrt(ux**2. + ur**2.)
-    # e[Nx, n] = 2*e[Nx-1, n]-e[Nx-2, n]
-    e = 5./2.*rho/M_n*R*T + 1./2.*rho*u**2
-    bc = [p, rho, u, e]
     return bc
 
 
@@ -820,6 +835,18 @@ def check_array(array_in):
         array_name = namestr(array_in, globals())[0]
         print(array_name + " has at least one negative value.")
         exit()
+
+
+def delete_surface_inviscid(rho, ux, ur, u, e, T, p, pe):
+    rho3 = np.delete(rho, Nr-1, axis=1)
+    ux3 = np.delete(ux, Nr-1, axis=1)
+    ur3 = np.delete(ur, Nr-1, axis=1)
+    u3 = np.delete(u, Nr-1, axis=1)
+    e3 = np.delete(e, Nr-1, axis=1)
+    T3 = np.delete(T, Nr-1, axis=1)
+    p3 = np.delete(p, Nr-1, axis=1)
+    pe3 = np.delete(pe, Nr-1, axis=1)
+    return [rho3, ux3, ur3, u3, e3, T3, p3, pe3]
 
 
 # @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8)')
