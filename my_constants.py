@@ -3,6 +3,7 @@ import scipy
 from scipy import constants
 import numpy as np
 
+ux_in = 30.
 
 D = 2.54e-2
 M_n = 0.028
@@ -15,16 +16,17 @@ Pr_n = 0.72
 #   Time and spatial step
 L = 8.385  # With prepping region.
 # L = 6.45
-Nx = 200  # Total length & spatial step - x direction 6.45
+Nx = 140  # Total length & spatial step - x direction 6.45
 R_cyl = 1.27e-2
-Nr = 10  # Total length & spatial step - r direction
+Nr = 7  # Total length & spatial step - r direction
 T = 3.
-Nt = 40000.  # Total time & time step
+Nt = 6000.  # Total time & time step
 dt = T/Nt
 dx = L/Nx
 dr = R_cyl/Nr
-print("dx", dx, "dr", dr, "dt", dt, "Cou_x", 20*dt/dx, "Cou_r",
-      1.587*dt/dr, "Cou_x_entrance_region", 30*dt/dx,)
+print("dx", dx, "dr", dr, "dt", dt, "Cou_r",
+      1.587*dt/dr, "Cou_x_Max", ux_in*dt/dx,)
+
 #   Tuning parameters
 # Coefficient for the film boiling of He I (we need to adjust optimal value)
 BW_coe = 0.021  # W/K
@@ -33,9 +35,7 @@ Sc_PP = 0.95  # Condensation\boiling coeffcient
 #   Parameters
 sample = 100  # Sample coeffcient
 n_trans = 60  # Smoothing control for initial condition
-T_in = 298.
 T_s = 290.  # Temperature boundaries
-T_0 = 298.
 
 #   Constants
 M_n = 0.028
@@ -51,6 +51,9 @@ rho_cu = 8960.  # Copper density
 rho_sn = 1020.
 k_sn = 0.9  # Density and thermal conductivity of SN2
 w_coe = rho_cu*(Do**2.-D**2.)/4./D
+W_p = np.pi * D
+D_hyd = 4 * A / W_p
+
 # w_coe_s = rho_ss*(Do_s**2.-D_s**2.)/4./D  # Interim parameters
 
 # Q How do I use the bath diameter
@@ -60,12 +63,7 @@ w_coe = rho_cu*(Do**2.-D**2.)/4./D
 dH_He = 12000  # 20720.59@1atm  # Latent heat of LHe, J/kg
 dH_He_V = dH_He*125  # Latent heat of LHe, J/m^3
 
-rho_0 = 1e-2  # An arbitrary small initial density in pipe, kg/m3
-p_0 = rho_0/M_n*R*T_0  # Initial pressure, Pa
-e_0 = 5./2.*rho_0/M_n*R*T_0  # Initial internal energy
 
-# Kinetic energy
-
-# u_in_x = np.sqrt(7./5.*R*T_in/M_n)*1.0  # Inlet velocity, m/s (gamma*RT)
-u_in_x = 30.
-u_in_r = 0
+# Stability factors
+F = 1.*dt/dx**2.  # Stability indictor   ### Q:
+artv = 0.06  # Control parameter for the artificial viscosity

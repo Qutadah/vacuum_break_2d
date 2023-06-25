@@ -19,19 +19,21 @@ np.set_printoptions(threshold=sys.maxsize)
 warnings.simplefilter('ignore', category=NumbaDeprecationWarning)
 warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
 
-u_in_x = np.sqrt(7./5.*R*T_in/M_n)*1.0  # Inlet velocity, m/s (gamma*RT)
-u_in_x = 30.
+# u_in_x = np.sqrt(7./5.*R*T_in/M_n)*1.0  # Inlet velocity, m/s (gamma*RT)
+u_in_x = 1.
 
 # @numba.jit('f8(f8,f8)')
+
+
 @jit(nopython=True)
-def dt2nd_wall(m, Tw1):
+def dt2nd_wall(m, Tw1, T_in):
 
     if m == 0:
         dt2nd = (T_in - 2 * Tw1[m] +
                  Tw1[m+1])/(dx**2)  # 3-point CD
 #       dt2nd = Tw1[m+1]-Tw1[m]-Tw1[m-1]+T_in
     elif m == Nx:
-        print("m=Nx", m)
+        # print("m=Nx", m)
         dt2nd = (-Tw1[m-3] + 4*Tw1[m-2] - 5*Tw1[m-1] +
                  2*Tw1[m]) / (dx**2)  # Four point BWD
     else:
@@ -86,16 +88,18 @@ def grad_ux2(p_in, p1, ux_in, ux1, m, n):  # bulk
         ux_dr = (ux1[m, n+2] - ux1[m, n])/(4*dr)
 
     elif n == Nr-1:
-        ux_dr = (ux1[m, n] - ux1[m, n-1])/dr  # CD
+        ux_dr = (ux1[m, n] - ux1[m, n-1])/dr  # BWD
 
     elif n != 1:
         ux_dr = (ux1[m, n+1] - ux1[m, n-1])/(2*dr)  # CD
 
     if m == 0:
+        dp_dx = (p1[m+1, n] - p1[m, n])/dx  # upwind 1st order
+        ux_dx = (ux1[m+1, n] - ux1[m, n])/dx  # upwind 1st order
         # 4-point CD
-        dp_dx = (p_in - 8*p_in + 8 *
-                 p1[m+1, n] - p1[m+2, n])/(12*dx)
-        ux_dx = (ux1[m+1, n] - ux_in)/(2*dx)
+        # dp_dx = (p_in - 8*p_in + 8 *
+        #          p1[m+1, n] - p1[m+2, n])/(12*dx)
+        # ux_dx = (ux1[m+1, n] - ux_in)/(2*dx)
 
     # elif (m <= n_trans+2 and m >= n_trans-2):
     #     # NOTE Use four point CD at transition point.
@@ -107,6 +111,14 @@ def grad_ux2(p_in, p1, ux_in, ux1, m, n):  # bulk
     elif m == Nx:
         dp_dx = (p1[m, n] - p1[m-1, n])/dx  # BWD
         ux_dx = (ux1[m, n] - ux1[m-1, n])/dx  # BWD
+
+    elif (m >= 2 and m <= Nx - 2):
+        dp_dx = (p1[m+1, n] - p1[m, n])/dx  # upwind 1st order
+        ux_dx = (ux1[m+1, n] - ux1[m, n])/dx  # upwind 1st order
+        # dp_dx = (3*p1[m, n] - 4*p1[m-1, n] + p1[m-2, n]) / \
+        #     dx  # # upwind, captures shocks
+        # ux_dx = (3*ux1[m, n] - 4*ux1[m-1, n] + ux1[m-2, n]) / \
+        #     dx  # # upwind, captures shocks
 
     else:
         dp_dx = (p1[m+1, n] - p1[m-1, n])/(2*dx)
@@ -133,42 +145,45 @@ def grad_ur2(m, n, p1, ur1, ur_in):  # first derivatives BULK
         ur_dr = (ur1[m, n+1] - ur1[m, n-1])/(2*dr)
 
     if m == 0:
-        ur_dx = (ur1[m+1, n] - ur_in)/(2*dx)  # CD
+        ur_dx = (ur1[m+1, n] - ur_in)/(dx)  # upwind 1st order
 
     # elif (m <= n_trans+2 and m >= n_trans-2):
     #     ur_dx = (ur1[m-2, n] - 8*ur1[m-1, n] + 8 *
     #              ur1[m+1, n] - ur1[m+2, n])/(12*dx)  # 4 point CD
 
+    elif (m >= 2 and m <= Nx - 2):
+        ur_dx = (ur1[m+1, n] - ur1[m, n])/dx  # BWD
+
     elif m == Nx:
         ur_dx = (ur1[m, n] - ur1[m-1, n])/dx  # BWD
 
     else:
-        ur_dx = (ur1[m+1, n] - ur1[m-1, n])/dx  # CD
+        ur_dx = (ur1[m+1, n] - ur1[m-1, n])/(2*dx)  # CD
 
     return dp_dr, ur_dx, ur_dr
 
 
 # @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8)')
 @jit(nopython=True)
-def grad_e2(m, n, ur1, ux1, ux_in, e_in_x, e1):
+def grad_e2(m, n, ur1, ux1, ux_in, e_in, e1):     # use upwind for Pe > 2
 
     # We dont need the surface case, this is the bulk...
 
-    if n != 1 and n == Nr-1:
+    if n == Nr-1:
         grad_r = ((n)*dr*ur1[m, n]*e1[m, n] - (n-1)
                   * dr*ur1[m, n-1]*e1[m, n-1])/(dr)  # BWD
-
-    elif n != 1:
-        grad_r = ((n)*dr*ur1[m, n]*e1[m, n] - (n-1)
-                  * dr*ur1[m, n-1]*e1[m, n-1])/(dr)  # CD
 
     elif n == 1:
         # NOTE: Symmetry BC done
         grad_r = ((n+2)*dr*ur1[m, n+2]*e1[m, n+2] - n *
                   dr*ur1[m, n]*e1[m, n])/(4*dr)  # ur=0 @ r=0 #CD
 
+    elif n != 1 and n != Nr-1:
+        grad_r = ((n+1)*dr*ur1[m, n+1]*e1[m, n+1] - (n-1)
+                  * dr*ur1[m, n-1]*e1[m, n-1])/(2*dr)  # CD
+
     if m == 0:
-        grad_x = (e1[m+1, n]*ux1[m+1, n]-e_in_x*ux_in)/(2*dx)
+        grad_x = (e1[m+1, n]*ux1[m+1, n]-e_in*ux_in)/(2*dx)
 
     elif m == Nx:
         # print("e1[m, n]*ux1[m, n]: ", e1[m, n]*ux1[m, n],
@@ -178,10 +193,13 @@ def grad_e2(m, n, ur1, ux1, ux_in, e_in_x, e1):
     # elif (m <= n_trans+2 and m >= n_trans-2):
     #     grad_x = (e1[m-2, n]*ux1[m-2, n] - 8*e1[m-1, n]*ux1[m-1, n] + 8 *
     #               e1[m+1, n]*ux1[m+1, n] - e1[m+2, n]*ux1[m+2, n])/(12*dx)
-
+    elif (m >= 2 and m <= Nx - 2):
+        grad_x = 3*(e1[m, n]*ux1[m, n]) - 4*(e1[m-1, n]
+                                             * ux1[m-1, n]) + (e1[m-2, n]
+                                                               * ux1[m-2, n]) / dx  # upwind, captures shocks
     else:  # 0 < m < Nx,  1 < n < Nr
-        grad_x = (e1[m+1, n]*ux1[m+1, n]-e1[m-1, n]
-                  * ux1[m-1, n])/(2*dx)  # 2-point CD
+        grad_x = (e1[m+1, n]*ux1[m+1, n]-e1[m, n]
+                  * ux1[m, n])/dx  # upwind
 
     return grad_x, grad_r
 
@@ -192,15 +210,13 @@ def dt2nd_radial(ux1, ur1, m, n):
     if n == 1:
         # NOTE: Symmetry Boundary Condition assumed for ur1 radial derivative along x axis..
         # --------------------------- dt2nd radial ux1 ---------------------------------#
-        grad_ux1 = (ux1[m, n+2] - ux1[m, n])/(4*dr)
         dt2nd_radial_ux1 = (ux1[m, n+2] - ux1[m, n]) / (4*dr**2)
 
         # --------------------------- dt2nd radial ur1 ---------------------------------#
-        grad_ur1 = (ur1[m, n+2] - ur1[m, n])/(4*dr)
         dt2nd_radial_ur1 = (ur1[m, n+2] - ur1[m, n]) / (4*dr**2)
 
-        print("dt2nd_radial_ux1_n1:", dt2nd_radial_ux1)
-        print("dt2nd_radial_ur1_n1:", dt2nd_radial_ur1)
+        # print("dt2nd_radial_ux1_n1:", dt2nd_radial_ux1)
+        # print("dt2nd_radial_ur1_n1:", dt2nd_radial_ur1)
 
     else:  # (n is between 1 and Nr)
 
@@ -210,7 +226,7 @@ def dt2nd_radial(ux1, ur1, m, n):
     # --------------------------- dt2nd radial ur1 ---------------------------------#
         dt2nd_radial_ur1 = (ur1[m, n+1] + ur1[m, n-1] -
                             2*ur1[m, n])/(dr**2)  # CD
-        print("dt2nd_radial_ur1:", dt2nd_radial_ur1)
+        # print("dt2nd_radial_ur1:", dt2nd_radial_ur1)
     return dt2nd_radial_ux1, dt2nd_radial_ur1
 
 
@@ -227,7 +243,7 @@ def dt2nd_axial(ux_in, ur_in, ux1, ur1, m, n):
         # FWD
         dt2nd_axial_ur1 = (-ur_in + ur_in - 30 *
                            ur1[m, n] + 16*ur1[m+1, n] - ur1[m+2, n])/(12*dx**2)
-        print("dt2nd_axial_ur1:", dt2nd_axial_ur1)
+        # print("dt2nd_axial_ur1:", dt2nd_axial_ur1)
  #                        dt2nd_axial_ur1 = (2*ur1[m,n] - 5*ur1[m+1,n] + 4*ur1[m+2,n] -ur1[m+3,n])/(dx**3)  # FWD
 
     elif m == Nx:
@@ -239,7 +255,7 @@ def dt2nd_axial(ux_in, ur_in, ux1, ur1, m, n):
         # --------------------------- dt2nd axial ur1 ---------------------------------#
     # Three-point BWD
         dt2nd_axial_ur1 = (ur1[m-2, n] - 2*ur1[m-1, n] + ur1[m, n])/(dx**2)
-        print("dt2nd_axial_ur1:", dt2nd_axial_ur1)
+        # print("dt2nd_axial_ur1:", dt2nd_axial_ur1)
 
     else:
         # --------------------------- dt2nd axial ux1 ---------------------------------#
@@ -249,7 +265,7 @@ def dt2nd_axial(ux_in, ur_in, ux1, ur1, m, n):
     # --------------------------- dt2nd axial ur1 ---------------------------------#
         dt2nd_axial_ur1 = (ur1[m+1, n] + ur1[m-1, n] -
                            2*ur1[m, n])/(dx**2)  # CD
-        print("dt2nd_axial_ur1:", dt2nd_axial_ur1)
+        # print("dt2nd_axial_ur1:", dt2nd_axial_ur1)
 
     return dt2nd_axial_ux1, dt2nd_axial_ur1
 
@@ -370,7 +386,7 @@ def D_nn(T_g, P_g):
 @jit(nopython=True)
 def mu_n(T, P):
     #   Calculate viscosity of nitrogen (Pa*s)
-    print("viscosity temp and pressure", T, P)
+    # print("viscosity temp and pressure", T, P)
     if T == 0:
         T = 0.0001
     tao = 126.192/T
@@ -393,9 +409,9 @@ def mu_n(T, P):
         7.402*tao**0.9*delta**2*np.exp(-1*delta**2) +\
         4.620*tao**0.3*delta**1*np.exp(-1*delta**3)
 #    print("viscosity from function:", (mu_n_1+mu_n_2)/1e6)
-    mu_n_2 = 0
-    mu_n_1 = 0
-    print("viscosity from function:", (mu_n_1+mu_n_2)/1e6)
+    # mu_n_2 = 0
+    # mu_n_1 = 0
+    # print("viscosity from function:", (mu_n_1+mu_n_2)/1e6)
 
     return (mu_n_1+mu_n_2)/1e6
 
@@ -425,17 +441,168 @@ def exp_smooth(grid, hv, lv, order, tran):  # Q: from where did we get this?
     return s_result
 
 
-# @numba.jit('f8(f8)')
 @jit(nopython=True)
-def val_in(n):
+def bulk_values():
+    T_0 = 298.
+    rho_0 = 1e-2  # An arbitrary small initial density in pipe, kg/m3
+    p_0 = rho_0/M_n*R*T_0  # Initial pressure, Pa
+    e_0 = 5./2.*rho_0/M_n*R*T_0  # Initial internal energy
+    ux_0 = 0
+    bulk = [T_0, rho_0, p_0, e_0, ux_0]
+    return bulk
+
+
+# @jit(nopython=True)
+# def val_in_bulk_constant_T_P():
+#     #   Calculate instant flow rate (kg/s)
+#     T_0, rho_0, p_0, e_0, ux_0 = bulk_values()
+#     p_in = p_0
+#     T_in = T_0
+#     rho_in = p_in / T_in/R*M_n
+#     ux_in = 30.
+#     ur_in = 0.
+#     e_in = 5./2.*rho_in/M_n*R*T_in + 1./2.*rho_in*ux_in**2
+#     e_in_x = e_in
+#     out = np.array([p_in, ux_in, ur_in, rho_in, e_in, e_in_x, T_in])
+#     return out
+
+
+@jit(nopython=True)
+def surface_BC(ux):
+    ux[:, Nr] = 0
+    return ux
+
+
+def parabolic_velocity(T, ux, ux_in):
+    for i in np.arange(n_trans):
+        # diatomic gas gamma = 7/5   WE USED ANY POINT, since this preparation area is constant along R direction.
+        # any temperature works, they are equl in the radial direction
+        v_max = np.sqrt(7./5.*R*T[i, 4]/M_n)
+        for y in np.arange(Nr+1):
+            # a = v_max
+            a = ux_in
+            # a = v_max*(1.0 - ((y*dr)/R_cyl)**2)
+            # print("parabolic y", y)
+            ux[i, y] = a
+            u[i, y] = ux[i, y]
+
+    # print("parabolic ux at center: ", ux1[i, 0])
+    out = ux, u
+    return out
+
+
+@jit(nopython=True)
+def smoothing_inlet(p, rho, T, ux, ur, ux_in, u, p_in, p_0, rho_in, rho_0, n_trans):
+    for i in range(0, Nx+1):
+        p[i, :] = exp_smooth(i+n_trans, p_in*2.-p_0, p_0, 0.4, n_trans)
+    # print("P1 smoothing values", p1[i,:])
+        rho[i, :] = exp_smooth(i + n_trans, rho_in*2 -
+                               rho_0, rho_0, 0.4, n_trans)
+    #    T1[i, :] = T_neck(i)
+        # if i<51: T1[i]=T_in
+        T[i, :] = p[i, :]/rho[i, :]/R*M_n
+        ux[i, :] = exp_smooth(i + n_trans, ux_in*2, 0, 0.4, n_trans)
+        u = np.sqrt(ux**2. + ur**2.)
+        # v_max = np.sqrt(7./5.*R*T/M_n)  # diatomic gas gamma = 7/5
+    #    u1[i, :] = exp_smooth(i + n_trans, ux_in*2, 0, 0.4, n_trans)
+
+        # if i < n_trans+1:
+        #     e1[i, :] = 5./2.*p1[i, :]+1./2.*rho1[i, :]*u1[i, :]**2
+
+    #        rho1[i, :] = p1[i, :]*M_n/R/T1[i, :]  # IDEAL GAS LAW
+
+        # print("p1 matrix after smoothing", p1)
+        # else:
+        #     e1[i, :] = 5/2*rho1[i, :]/M_n*R*T_in+1/2**rho1[i, :]*u1[i, :]**2
+
+    # for i in range(0, Nx+1):
+    out = p, rho, T, ux, u
+    return out
+
+
+@jit(nopython=True)
+def inlet_BC(ux, ur, u, p, rho, T, e, p_inl, ux_inl, rho_inl, T_inl, e_inl):
+    ux[0, :] = ux_inl
+    u[0, :] = ux_inl
+    p[0, :] = p_inl
+    rho[0, :] = rho_inl
+    T[0, :] = T_inl
+    e[0, :] = e_inl
+    u = np.sqrt(ux**2. + ur**2.)
+# val_in(i)
+# Tw2[0] = T_inl
+# Ts2[0] = T_inl
+# Tc2[0] = T_inl
+# NOTE: BC INIT
+    # Ts1[:] = T1[:, Nr]
+    # Ts2[:] = Ts1
+    # Tw1[:] = T_s
+    # Tw2[:] = T_s
+    # Tc1[:] = T_s
+    # Tc2[:] = T_s
+    return [ux, ur, u, p, rho, T, e]
+
+
+@jit(nopython=True)
+def outlet_BC(m, n, p, e, rho, ux, ur, u, rho_0):
+    # print("This is the ", Nx)
+    p[Nx, n] = 2/5*(e[Nx, n]-1/2*rho[Nx, n]
+                    * u[Nx, n]**2)  # Pressure
+    # NOTE: check input de to the m_de equation.
+    # de1[Nx] = m_de(T2[Nx, n], p1[Nx, n], Ts2[Nx], de1[Nx], 0.)
+    # del_SN = de0[Nx]/np.pi/D/rho_sn
+    #     if del_SN > 1e-5:
+    #         q1 = k_sn*(Tw1[Nx]-Ts1[Nx])/del_SN
+    # #           print("line 848", "q1", q1,"Tw1", Tw1[Nx],"Ts1", Ts1[Nx],"ksn", k_sn)
+    #         assert not math.isnan(Ts1[Nx])
+    #         Ts2[Nx] = Ts1[Nx]+dt/(w_coe*c_c(Tw1[Nx])) * \
+    #             (q1-q_h(Tw1[Nx], BW_coe)*Do/D)
+    #         Tc2[Nx] = Tc1[Nx]+dt/(de0[m]*c_n(Tc1[Nx])/D/np.pi)*(de1[Nx]
+    #                                                             * (1/2*(u1[Nx, n])**2+delta_h(T1[Nx, n], Ts1[Nx])-q1))
+    #     else:
+    #         q1 = de1[Nx]*(1/2*(u1[Nx, n])**2+delta_h(T1[Nx, n], Ts1[Nx]))
+    #         Ts2[Nx] = Ts1[Nx]+dt/(w_coe*c_c(Tw1[Nx])) * \
+    #             (q1-q_h(Tw1[Nx], BW_coe)*Do/D)
+    #         Tc2[Nx] = Ts2[Nx]
+    # Tw2[Nx] = 2*Tc2[Nx]-Ts2[Nx]
+    # qhe[Nx] = q_h(Tw1[Nx], BW_coe)*np.pi*Do
+    # de0[Nx] += dt*np.pi*D*de1[Nx]
+    rho[Nx, n] = max(2*rho[Nx-1, n]-rho[Nx-2, n], rho_0)  # Free outflow
+    ux[Nx, n] = max(2*rho[Nx-1, n]*ux[Nx-1, n] -
+                    rho[Nx-2, n]*ux[Nx-2, n], 0) / rho[Nx, n]
+    u = np.sqrt(ux**2. + ur**2.)
+    # e[Nx, n] = 2*e[Nx-1, n]-e[Nx-2, n]
+    e = 5./2.*rho/M_n*R*T + 1./2.*rho*u**2
+    bc = [p, rho, u, e]
+    return bc
+
+
+@jit(nopython=True)
+def val_in_constant():
+    #   Calculate instant flow rate (kg/s)
+    p_in = 1000.
+    T_in = 298.
+    rho_in = p_in / T_in/R*M_n
+    ux_in = 1.
+    ur_in = 0.
+    e_in = 5./2.*rho_in/M_n*R*T_in + 1./2.*rho_in*ux_in**2
+    out = np.array([p_in, ux_in, ur_in, rho_in, e_in, T_in])
+    return out
+
+# @numba.jit('f8(f8)')
+
+
+@jit(nopython=True)
+def val_in(n, u_in_x):
     #   Calculate instant flow rate (kg/s)
     # Fitting results
     #    A1 = 0.00277; C = 49995.15263  # 50 kPa
+    T_in = 298.
     A1 = 0.00261
     C = 100902.5175  # 100 kPa
    # A1 = 0.00277; C = 10000.15263  # 50 kPa
     P_in_fit = np.power(A1*n*dt+np.power(C, -1./7.), -7.)
-
+    # P_in_fit = 1000.
     # P_in_fit = 1./2.*P_in_fit
     # print("pressure is halved P_in_fit", P_in_fit)
 
@@ -446,25 +613,23 @@ def val_in(n):
     ma_in_x = q_in/A
     rho_in = ma_in_x/u_in_x
     p_in = rho_in/M_n*R*T_in
-    ux_in = ma_in_x/rho_in
-    ux_in = 30.
     ur_in = 0.
-    e_in = 5./2.*rho_in/M_n*R*T_in + 1./2.*rho_in*ux_in**2
-    e_in_x = e_in
+    e_in = 5./2.*rho_in/M_n*R*T_in + 1./2.*rho_in*u_in_x**2
     # print("u_in_x", u_in_x)
-    out = np.array([q_in, ux_in, ur_in, rho_in, p_in, e_in, e_in_x])
-    print(
-        "val_in from function [q_in, ux_in, ur_in, rho_in, p_in, e_in]: ", out)
+    out = np.array([p_in, q_in, u_in_x, ur_in, rho_in, e_in, T_in])
+    # print(
+    #     "val_in from function [q_in, ux_in, ur_in, rho_in, p_in, e_in]: ", out)
     return out
 
 
 # @numba.jit('f8(f8,f8,f8,f8)')
 @jit(nopython=True)
-def DN(T, P, u, T_w):
+def DN(T, P, u, T_w, rho):
     #   Calculate dimensionless numbers
     rho = P*M_n/R/T
     # rho_w=f_ps(T_w)*M_n/R/T #_w
     mu = mu_n(T, P)
+    neu = mu/rho
     # print("mu", mu)
     Re = rho*(u)*D/mu  # Reynolds number
     D_n = D_nn(T, P)
@@ -474,10 +639,18 @@ def DN(T, P, u, T_w):
     Sh = 0.027*Re**0.8*Sc**(1/3)*(mu/mu_w)**0.14  # Sherwood number
     Nu = 0.027*Re**0.8*Pr_n**(1/3)*(mu/mu_w)**0.14  # Nusselt number
     Cou = u*dt/dx  # Courant Number
-    DN_all = np.array([Re, Sc, Kn, Sh, Nu, Cou])
-    print(DN_all)
+    Pe = u * L/neu
+    DN_all = np.array([Re, Sc, Kn, Sh, Nu, Cou, Pe])
+    # print(DN_all)
     # print("Courant Number is: ", Cou)
     return DN_all
+
+
+def Peclet_grid(pe, u, D_hyd, p, T):
+    for m in np.arange(np.int64(1), np.int64(Nx+1)):
+        for n in np.arange(np.int64(1), np.int64(Nr+1)):
+            pe[m, n] = u[m, n]*D_hyd / mu_n(T[m, n], p[m, n])
+    return pe
 
 # de1[m] = m_de(T1[m, n], p1[m, n], Tw1[m], de1[m], rho1[m, n]*ur1[m, n]-rho1[m, n-1]*ur1[m, n-1])
 
@@ -487,8 +660,9 @@ def DN(T, P, u, T_w):
 # @numba.jit('f8(f8,f8,f8,f8,f8)')
 @jit(nopython=True)
 def m_de(T, P, T_s, de, dm):
-    print("mdot calc: ", "Tg: ", T, " P: ",
-          P, "Ts: ", T_s, "de: ", de, "dm: ", dm)
+    p_0 = bulk_values[2]
+    # print("mdot calc: ", "Tg: ", T, " P: ",
+    #       P, "Ts: ", T_s, "de: ", de, "dm: ", dm)
     #   Calculate deposition rate (kg/(m^2*s))
     if T == 0:
         T = 0.00001
@@ -501,7 +675,7 @@ def m_de(T, P, T_s, de, dm):
     beta = u_mean1/v_m1  # this is Beta from Hertz Knudson
     gam1 = gamma(beta)  # deviation from Maxwellian velocity.
     P_s = f_ps(T_s)
-    print("Saturation pressure at this Ts", P_s)
+    # print("Saturation pressure at this Ts", P_s)
 
     if P > P_s and P > p_0:
         # Correlated Hertz-Knudsen Relation #####
@@ -520,18 +694,18 @@ def m_de(T, P, T_s, de, dm):
         # Used Conti in X-direction, since its absolute flux.
         m_max = D/4./dt*(rho-rho_min)-D/4./dx*dm
   # sqrt(7./5.*R*T/M_n)*rho
-        print("m_max_sound:", m_max, "rho", rho, "rho_min", rho_min)
+        # print("m_max_sound:", m_max, "rho", rho, "rho_min", rho_min)
 #        m_max = ((rho-rho_min)/dt - 1/(Nr*dr**2)*dm) * \
  #           D/4.         # From continuity equation
 #        m_max = 2.564744575054553e-26  #NOTE: added to limit condensation rate...
 #        print("m_max_sound:",m_max)
-        print("saturation temp: ", f_ts(P*np.sqrt(T_s/T)))
-        print("mout calculated: ", m_out)
+        # print("saturation temp: ", f_ts(P*np.sqrt(T_s/T)))
+        # print("mout calculated: ", m_out)
         if m_out > m_max:
             m_out = m_max
             print("mout = mmax")
     else:
-        print("P<P0")
+        # print("P<P0")
         m_out = 0
 #    m_out = 0
     rho_min = p_0*M_n/R/T
@@ -586,7 +760,7 @@ def q_h(tw, BW_coe):
 
 
 # @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8)')
-def save_initial_conditions(rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1):
+def save_initial_conditions(rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1, pe):
     pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/initial_conditions/'
     if os.path.exists(pathname):
         location = "C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/"
@@ -608,10 +782,11 @@ def save_initial_conditions(rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1):
     # np.savetxt("de.csv", de0, delimiter=",")
     # np.savetxt("de_rate.csv", de1, delimiter=",")
     np.savetxt("p.csv", p1, delimiter=",")
+    np.savetxt("pe.csv", pe, delimiter=",")
 
 
 # @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8)')
-def save_data(tx, dt, rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1):
+def save_data(tx, dt, rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1, pe):
     increment = (tx+1)*dt
 
     pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/' + \
@@ -631,11 +806,191 @@ def save_data(tx, dt, rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1):
     # np.savetxt("de_mass.csv", de0, delimiter=",")
     # np.savetxt("de_rate.csv", de1, delimiter=",")
     np.savetxt("p.csv", p1, delimiter=",")
+    np.savetxt("peclet.csv", pe, delimiter=",")
 
 
 # @numba.jit('f8(f8,f8)')
 def namestr(obj, namespace):  # Returns variable name for check_negative function
     return [name for name in namespace if namespace[name] is obj]
+
+
+# @numba.jit('f8(f8)')
+def check_array(array_in):
+    if np.any(array_in < 0):
+        array_name = namestr(array_in, globals())[0]
+        print(array_name + " has at least one negative value.")
+        exit()
+
+
+# @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8)')
+def delete_r0_point(rho2, ux2, ur2, u2, e2, T2, p1, pe):
+    rho3 = np.delete(rho2, 0, axis=1)
+    ux3 = np.delete(ux2, 0, axis=1)
+    ur3 = np.delete(ur2, 0, axis=1)
+    u3 = np.delete(u2, 0, axis=1)
+    e3 = np.delete(e2, 0, axis=1)
+    T3 = np.delete(T2, 0, axis=1)
+    p3 = np.delete(p1, 0, axis=1)
+    pe3 = np.delete(pe, 0, axis=1)
+    return [rho3, ux3, ur3, u3, e3, T3, p3, pe3]
+
+
+if __name__ == '__main__':
+    t_sat = 70
+    # p_test = f_ps(t_sat)
+    # print("p_test", p_test)
+
+    p_sat = 10000
+    # t_test = f_ts(p_sat)
+    # print("t_test", t_test)
+
+#    p_before = np.log(-2)
+
+    # Nx = 20; Nr =20
+    # rho1 = np.full((Nx+1, Nr+1), rho_0, dtype=(np.float64, np.float64))  # Density
+    # T1 = np.full((Nx+1, Nr+1), rho_0, dtype=(np.float64, np.float64))  # Density
+    # T1[2,5] = -2
+    # eps = 5./2.*rho1[2, 2]/M_n*R * \
+    #                     T1[2, 5]
+    # check_negative(eps, eps, 1)
+
+    # p_before = -3
+    # check_negative(p_before, p_before, 1)
+
+#   Nx = 10; Nr =10
+#    rho12 = np.full((Nx+1, Nr+1), rho_0, dtype=(np.float64, np.float64))  # Density
+ #    check_negative(rho12[1,2],rho12, 1)
+
+# ------------------------- Sublimation heat ------------------------------- #
+
+    tg = 298
+    ts = 4.2
+    # print("delta_h ", delta_h(tg, ts))
+
+# ------------------------- specific heat of solid nitrogen (J/(kg*K)) ------------------------------- #
+
+    # print("c_n ", c_n(ts))
+# ------------------------- thermal velocity ------------------------------- #
+
+    # print("vm ", v_m(tg))
+
+# ------------------------- heat capacity of copper (J/(kg*K)) ------------------------------- #
+
+    # print("c_c ", c_c(ts))
+
+# ------------------------- coefficient of thermal conductivity of copper (RRR=10) (W/(m*K)) ------------------------------- #
+
+    T = 4.2
+    # print("k_cu", k_cu(T))
+
+# ------------------------- self mass diffusivity of nitrogen (m^2/s) ------------------------------- #
+
+    T_g = 298
+    P_g = 1000
+    # print("D_nn", D_nn(T_g, P_g))
+
+# ------------------------- Viscosity ------------------------------- #
+
+    T = 273.15
+    P = 9806649
+    # print("mu_n ", mu_n(T, P))
+
+# ------------------------- Error function ------------------------------- #
+
+#    a = umean/vm1
+    a = 0.5
+    # print("gamma ", gamma(a))
+
+
+# ------------------------- Inlet values ------------------------------- #
+
+    # print("val_in ", val_in(0))
+
+# ------------------------- Dimensionless numbers ------------------------------- #
+
+    T = 30
+    P = 3000
+    u = 100
+    T_w = 15
+    # print("DN ", DN(T, P, u, T_w))
+
+# ------------------------- Mass Deposition ------------------------------- #
+
+    #   Time and spatial step
+    L = 6.45
+    Nx = 120.  # Total length & spatial step - x direction 6.45
+    R_cyl = 1.27e-2
+    Nr = 5.  # Total length & spatial step - r direction
+    T = 3.
+    Nt = 70000.  # Total time & time step
+    dt = T/Nt
+    dx = L/Nx
+    dr = R_cyl/Nr
+    ur = 3
+
+    T = 100
+    P = 4000
+    T_s = 30
+    de = 20
+    dm = -10
+    # print("m_de", m_de(T, P, T_w, de, dm))
+
+
+# ------------------------- Heat transferred ------------------------------- #
+
+    tw = 298
+    BW_coe = 0.02
+    print("q_h ", q_h(tw, BW_coe))
+
+# ------------------------- Exponential Smoothing ------------------------------- #
+    # p_in = 8000
+    # p_0 = 2000
+    # n_trans = 70
+    # Nx = 200
+    # L = 6.45
+    # p1 = np.full((Nx+1), p_0, dtype=np.float64)  # Pressure
+    # for i in np.arange(0, Nx+1):
+    #     p1[i] = exp_smooth(i+n_trans, p_in*2.-p_0, p_0, 0.3, n_trans)
+
+    # x = np.linspace(0, L, Nx+1)
+    # plt.plot(x, p1)
+    # plt.show()
+
+# ended here plotting
+
+    # print("p1 array", p1)
+    # print("P1 smoothing values", p1[i,:])
+    #    rho1[i,:]=exp_smooth(i,rho_in,rho_0,0.75,n_trans)
+    #    T1[i, :] = T_neck(i)
+    # if i<51: T1[i]=T_in
+    #    rho1[i, :] = p1[i, :]*M_n/R/T1[i, :]       #NOTE: CHECK TRANSITIONS
+    # if i < n_trans+1:
+    #     e1[i, :] = 5./2.*p1[i, :]+1./2.*rho1[i, :]*u1[i, :]**2
+    #     rho1[i, :] = p1[i, :]*M_n/R/T1[i, :]  # IDEAL GAS LAW
+
+    # # print("p1 matrix after smoothing", p1)
+    # else:
+    #     e1[i, :] = 5/2*rho1[i, :]/M_n*R*T_in+1/2**rho1[i, :]*u1[i, :]**2
+
+
+## ----------- plot val_in ------------------- #
+
+    # plt.figure()
+    # final_i = 100
+    # y = np.zeros((final_i+1), dtype=np.int64)  # heat transfer
+    # x = np.linspace(0, 101, 101)
+    # print(np.shape(x), np.shape(y))
+    # for i in np.arange(0, final_i+1):
+    #     y[i] = val_in(i)[0]
+    #     print(y[i])
+    # plt.scatter(x, y, label="pressure", color='red')
+    # plt.title("pressure with i in val_in fcn")
+    # plt.xlabel("iteration (i)")
+    # plt.ylabel("pressure [Pa]")
+    # plt.show()
+
+
+# EXTRAS
 
 
 # def check_negative(var_in, n):  # CHECKS CALCULATIONS FOR NEGATIVE OR NAN VALUES
@@ -700,156 +1055,3 @@ def namestr(obj, namespace):  # Returns variable name for check_negative functio
 #         if math.isnan(var_in):
 #             print("NAN " + value_name + " in " + S1)
 #             assert not math.isnan(var_in)
-
-# @numba.jit('f8(f8)')
-def check_array(array_in):
-    if np.any(array_in < 0):
-        array_name = namestr(array_in, globals())[0]
-        print(array_name + " has at least one negative value.")
-        exit()
-
-
-# @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8)')
-def delete_r0_point(rho2, ux2, ur2, u2, e2, T2, p1):
-    rho3 = np.delete(rho2, 0, axis=1)
-    ux3 = np.delete(ux2, 0, axis=1)
-    ur3 = np.delete(ur2, 0, axis=1)
-    u3 = np.delete(u2, 0, axis=1)
-    e3 = np.delete(e2, 0, axis=1)
-    T3 = np.delete(T2, 0, axis=1)
-    p3 = np.delete(p1, 0, axis=1)
-    return [rho3, ux3, ur3, u3, e3, T3, p3]
-
-
-if __name__ == '__main__':
-    t_sat = 70
-    p_test = f_ps(t_sat)
-    print("p_test", p_test)
-
-    p_sat = 10000
-    t_test = f_ts(p_sat)
-    print("t_test", t_test)
-
-#    p_before = np.log(-2)
-
-    # Nx = 20; Nr =20
-    # rho1 = np.full((Nx+1, Nr+1), rho_0, dtype=(np.float64, np.float64))  # Density
-    # T1 = np.full((Nx+1, Nr+1), rho_0, dtype=(np.float64, np.float64))  # Density
-    # T1[2,5] = -2
-    # eps = 5./2.*rho1[2, 2]/M_n*R * \
-    #                     T1[2, 5]
-    # check_negative(eps, eps, 1)
-
-    # p_before = -3
-    # check_negative(p_before, p_before, 1)
-
-#   Nx = 10; Nr =10
-#    rho12 = np.full((Nx+1, Nr+1), rho_0, dtype=(np.float64, np.float64))  # Density
- #    check_negative(rho12[1,2],rho12, 1)
-
-# ------------------------- Sublimation heat ------------------------------- #
-
-    tg = 298
-    ts = 4.2
-    print("delta_h ", delta_h(tg, ts))
-
-# ------------------------- specific heat of solid nitrogen (J/(kg*K)) ------------------------------- #
-
-    print("c_n ", c_n(ts))
-# ------------------------- thermal velocity ------------------------------- #
-
-    print("vm ", v_m(tg))
-
-# ------------------------- heat capacity of copper (J/(kg*K)) ------------------------------- #
-
-    print("c_c ", c_c(ts))
-
-# ------------------------- coefficient of thermal conductivity of copper (RRR=10) (W/(m*K)) ------------------------------- #
-
-    T = 4.2
-    print("k_cu", k_cu(T))
-
-# ------------------------- self mass diffusivity of nitrogen (m^2/s) ------------------------------- #
-
-    T_g = 298
-    P_g = 1000
-    print("D_nn", D_nn(T_g, P_g))
-
-# ------------------------- Viscosity ------------------------------- #
-
-    T = 273.15
-    P = 9806649
-    print("mu_n ", mu_n(T, P))
-
-# ------------------------- Error function ------------------------------- #
-
-#    a = umean/vm1
-    a = 0.5
-    print("gamma ", gamma(a))
-
-
-# ------------------------- Inlet values ------------------------------- #
-
-    print("val_in ", val_in(5))
-
-# ------------------------- Dimensionless numbers ------------------------------- #
-
-    T = 30
-    P = 3000
-    u = 100
-    T_w = 15
-    print("DN ", DN(T, P, u, T_w))
-
-# ------------------------- Mass Deposition ------------------------------- #
-
-    #   Time and spatial step
-    L = 6.45
-    Nx = 120.  # Total length & spatial step - x direction 6.45
-    R_cyl = 1.27e-2
-    Nr = 5.  # Total length & spatial step - r direction
-    T = 3.
-    Nt = 70000.  # Total time & time step
-    dt = T/Nt
-    dx = L/Nx
-    dr = R_cyl/Nr
-    ur = 3
-
-    T = 100
-    P = 4000
-    T_s = 30
-    de = 20
-    dm = -10
-    print("m_de", m_de(T, P, T_w, de, dm))
-
-
-# ------------------------- Heat transferred ------------------------------- #
-
-    tw = 298
-    BW_coe = 0.02
-    print("q_h ", q_h(tw, BW_coe))
-
-# ------------------------- Exponential Smoothing ------------------------------- #
-    p_in = 8000
-    p_0 = 2000
-    n_trans = 70
-    Nx = 200
-    L = 6.45
-    p1 = np.full((Nx+1), p_0, dtype=np.float64)  # Pressure
-    for i in np.arange(0, Nx+1):
-        p1[i] = exp_smooth(i+n_trans, p_in*2.-p_0, p_0, 0.3, n_trans)
-    # print("p1 array", p1)
-    # print("P1 smoothing values", p1[i,:])
-    #    rho1[i,:]=exp_smooth(i,rho_in,rho_0,0.75,n_trans)
-    #    T1[i, :] = T_neck(i)
-    # if i<51: T1[i]=T_in
-    #    rho1[i, :] = p1[i, :]*M_n/R/T1[i, :]       #NOTE: CHECK TRANSITIONS
-    # if i < n_trans+1:
-    #     e1[i, :] = 5./2.*p1[i, :]+1./2.*rho1[i, :]*u1[i, :]**2
-    #     rho1[i, :] = p1[i, :]*M_n/R/T1[i, :]  # IDEAL GAS LAW
-
-    # # print("p1 matrix after smoothing", p1)
-    # else:
-    #     e1[i, :] = 5/2*rho1[i, :]/M_n*R*T_in+1/2**rho1[i, :]*u1[i, :]**2
-    x = np.linspace(0, L, Nx+1)
-    plt.plot(x, p1)
-    plt.show()

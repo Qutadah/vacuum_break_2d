@@ -1,6 +1,6 @@
 from inspect import currentframe
-from functions import *
 from my_constants import *
+from functions import *
 import logging
 import openpyxl
 import pandas as pd
@@ -41,22 +41,11 @@ def check_negative(var_in, n):  # CHECKS CALCULATIONS FOR NEGATIVE OR NAN VALUES
 
 
 #### -----------------------------------------   Calculate initial values ----------------------------------------- #
-# Internal energy - defined in constants file
-
-# rho_0 = 1e-2  # An arbitrary small initial density in pipe, kg/m3
-# p_0 = rho_0/M_n*R*T_0  # Initial pressure, Pa
-# e_0 = 5./2.*rho_0/M_n*R*T_0  # Initial internal energy
-
-# Kinetic energy
-u_in_x = np.sqrt(7./5.*R*T_in/M_n)*1.0  # Inlet velocity, m/s (gamma*RT)
-u_in_r = 0
-
-# Stability factors
-F = 1.*dt/dx**2.  # Stability indictor   ### Q:
-artv = 0.06  # Control parameter for the artificial viscosity
-
+T_0, rho_0, p_0, e_0, ux_0 = bulk_values()
 
 # ----------------- Array initialization ----------------------------
+
+
 # rho12 = np.full((Nx+1, Nr+1), rho_0, dtype=(np.float64, np.float64))  # Density
 p1 = np.full((Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # Pressure
 rho1 = np.full((Nx+1, Nr+1), rho_0, dtype=(np.float64, np.float64))  # Density
@@ -102,6 +91,11 @@ e3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
 T3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
 p3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
 
+# Dimensionless number in grid:
+Pe = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))  # Peclet number
+Pe1 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))  # Peclet number
+
+
 # Initialization
 
 # ps = np.zeros(Nx+1, np.float64)
@@ -119,67 +113,38 @@ p3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
 
 # ---------------------  Smoothing inlet --------------------------------
 
-# Set Initial Conditions:
-
-q_in, ux_in, ur_in, rho_in, p_in, e_in, e_in_x = val_in(
-    0)  # define inlet values
-print("Initial conditions simulation start", val_in(0))
-
-# ux_in = 10
-
+# constant inlet
+p_in, ux_in, ur_in, rho_in, e_in, T_in = val_in_constant()
+print("p_in: ", p_in, "ux_in: ", ux_in, "ur_in: ", ur_in, "rho_in: ",
+      rho_in, "e_in: ", e_in, "T_in: ", T_in)
 ### ------------------------------------- PREPPING AREA - smoothing ------------------------------------------------- ########
 
-for i in range(0, Nx+1):
-    p1[i, :] = exp_smooth(i+n_trans, p_in*2.-p_0, p_0, 0.4, n_trans)
-   # print("P1 smoothing values", p1[i,:])
-    rho1[i, :] = exp_smooth(i + n_trans, rho_in*2, rho_0, 0.4, n_trans)
-#    T1[i, :] = T_neck(i)
-    # if i<51: T1[i]=T_in
-    T1[i, :] = p1[i, :]/rho1[i, :]/R*M_n
-    # v_max = np.sqrt(7./5.*R*T/M_n)  # diatomic gas gamma = 7/5
-#    u1[i, :] = exp_smooth(i + n_trans, ux_in*2, 0, 0.4, n_trans)
-
-    # if i < n_trans+1:
-    #     e1[i, :] = 5./2.*p1[i, :]+1./2.*rho1[i, :]*u1[i, :]**2
-
-#        rho1[i, :] = p1[i, :]*M_n/R/T1[i, :]  # IDEAL GAS LAW
-
-    # print("p1 matrix after smoothing", p1)
-    # else:
-    #     e1[i, :] = 5/2*rho1[i, :]/M_n*R*T_in+1/2**rho1[i, :]*u1[i, :]**2
-
-
-# for i in range(0, Nx+1):
+p, rho, T, ux, u = smoothing_inlet(
+    p1, rho1, T1, ux1, ur1, ux_in, u1, p_in, p_0, rho_in, rho_0, n_trans)
 
 
 ####### ---------------------------- PARABOLIC VELOCITY PROFILE - inlet prepping area-------------------------------------------------------- ######
 
-for i in np.arange(n_trans):
-    # diatomic gas gamma = 7/5   WE USED ANY POINT, since this preparation area is constant along R direction.
-    # any temperature works, they are equl in the radial direction
-    v_max = np.sqrt(7./5.*R*T1[i, 4]/M_n)
-    for y in np.arange(Nr+1):
-        # a = v_max
-        a = 30.
-        # a = v_max*(1.0 - ((y*dr)/R_cyl)**2)
-        # print("parabolic y", y)
-        ux1[i, y] = a
-        u1[i, y] = ux1[i, y]
-        # print("parabolic ux at center: ", ux1[i, 0])
+# ux, u = parabolic_velocity(ux1, ux_in, T1)
 
 # fixing the n_transition 60th point velocity
 
 # u1[n_trans, :] = 0
 # ux1[n_trans, :] = 0
 
-### ---------------------------------------------------------- NO SLIP BOUNDARY CONDITION ----------------------------------------------------------###
+### ---------------------------------------------------------- NO SLIP BOUNDARY CONDITION - viscous flow ----------------------------------------------------------###
 ux1[:, Nr] = 0
 u1[:, Nr] = 0
 
-e1 = 5./2. * p1 + 1./2 * rho1 * u1**2
 # recalculate energies
+e1 = 5./2. * p1 + 1./2 * rho1 * u1**2
 
-## ------------------------------------------------------------- SAVING INITIAL CONDITIONS ---------------------------------------------------------------- #####
+### ----------------------------------------------------------  inlet BC  ----------------------------------------------------------###
+
+ux1, ur1, u1, p1, rho1, T1, e1 = inlet_BC(
+    ux1, ur1, u1, p1, rho1, T1, e1, p_in, ux_in, rho_in, T_in, e_in)
+
+## ------------------------------------------------------------- SAVING INITIAL MATRICES ---------------------------------------------------------------- #####
 
 
 pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/'
@@ -190,7 +155,16 @@ if os.path.exists(pathname):
     shutil.rmtree(path)
 
 
-save_initial_conditions(rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1)
+# Calculating Peclet number in the grid points to determine differencing scheme
+Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
+
+
+rho3, ux3, ur3, u3, e3, T3, p3, Pe3 = delete_r0_point(
+    rho1, ux1, ur1, u1, e1, T1, p1, Pe1)
+
+
+save_initial_conditions(rho3, ux3, ur3, u3, e3, T3,
+                        Tw1, Ts1, de0, p3, de1, Pe3)
 
 ##### ----------------------------------------- PLOTTING INITIAL CONDITIONS ---------------------------------------------------------------------------####
 
@@ -237,25 +211,6 @@ plt.show()
 
 ## ------------------------------------------------ BC INLET starting matrices  ------------------------------------------------- #
 
-# NOTE: BC INIT
-Ts1[:] = T1[:, Nr]
-Ts2[:] = Ts1
-Tw1[:] = T_s
-Tw2[:] = T_s
-Tc1[:] = T_s
-Tc2[:] = T_s
-
-#        ux_in = 50
-# e1[0,:] = e_in                #set energy BC
-# rho1[0, :] = rho_in
-# ux1[0, :] = ux_in
-# ur1[0, :] = ur_in
-# u1[0, :] = ux_in
-#        print("u1 matrix before starting timestep",u1)
-# p1[0,:] = p_in
-# print(out)
-#        e1[0, :] = 5/2*p_in + 1/2
-# T1[0, :] = 298.
 
 # NOTE: This means at m=0 no mass deposition and no helium...We dont want the surface to freeze.
 # Tw1[0] = 298.
@@ -267,38 +222,31 @@ Tc2[:] = T_s
 
 # def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2, Tw2, Ts2, Tc2, de1, T3):
 
-def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
+def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de1, p3, rho3, T3, ux3, ur3, u3, e3, pe):
 
     # values = (v1,v2,v3)
     # ws.append(values)
     # name= "simulation_values\," + str(i) +'\'
     # wb.save(name)
 
-    # NOTE: Nt+1, starts with first number
     for i in np.arange(np.int64(0), np.int64(Nt+1)):
 
         # REA += 1
         # print("REA", REA)
-        q_in, ux_in, ur_in, rho_in, p_in, e_in, e_in_x = val_in(
-            i)  # define inlet values
-        print("pressure value inlet", p_in)
 
+        # variable inl et
+        # p_in, q_in, ux_in, ur_in, rho_in, e_in = val_in(
+        #     i, ux_in)  # define inlet values
+        # print("pressure value inlet", p_in)
+
+        # constant inlet
+        p_in, ux_in, ur_in, rho_in, e_in, T_in = val_in_constant()
 
 # ------------------------------------- Inlet boundary conditions --------------------------------------------- #
+# latest NOTE
+        # ux1, u1, p1, rho1, T1, e1 = inlet_BC(ux1, u1, p1, rho1, T1, e1, p_in, ux_in, rho_in, T_in, e_in)
 
-        p1[0, :] = p_in
-        rho1[0, :] = rho_in
-        T1[0, :] = p1[0, :]/rho1[0, :]/R*M_n
-        ux1[0, :] = ux_in
-        u1[0, :] = ux_in
-        e1[0, :] = e_in_x
-
-
-#        rho1[1, :] = rho_in
- #       ux1[1, :] = ux_in
-
-  #      u1[1, :] = ux_in
-   #     e1[1, :] = 5/2*p_in
+# --------------
 
         # for x in np.arange(Nx):
         #     for y in np.arange(Nr):
@@ -315,9 +263,14 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
 # Create pandas DataFrame
         # my_data = pd.DataFrame({"m,n","v1", "v4", "x3"})
 
+        # Calculating Peclet number in the grid points to determine differencing scheme
+        Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
+
         # starts from np start [0,Nx]
+        # m=0 neglected, because we apply BCs anyway.
         for m in np.arange(np.int64(1), np.int64(Nx+1)):
             for n in np.arange(np.int64(1), np.int64(Nr+1)):
+
                 # l+=1
                 print("[i,m,n]:", [i, m, n])
 
@@ -570,7 +523,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     print("dp_dx: ", dp_dx, "ux_dx: ", ux_dx, "ux_dr: ", ux_dr)
 
                     ux2[m, n] = ux1[m, n] - dt*dp_dx/rho1[m, n] + mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (
-                        1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1) - dt*ux1[m, n] * ux_dx - dt*ur1[m, n]*ux_dr
+                        1/(n*dr)) * (ux_dr) + dt2nd_axial_ux1) - dt*ux1[m, n] * ux_dx - dt*ur1[m, n]*ux_dr
 
                     # print("pressure term:", -dt*dp_dx/rho1[m, n], "viscosity:", + mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ux1 + (
  #                       1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) + dt2nd_axial_ux1), "ux1 term:", - dt*ux1[m, n] * ux_dx, "ur1 term:", - dt*ur1[m, n]*ux_dr)
@@ -650,10 +603,10 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                         assert not math.isnan(eps)
 
                     # Initial internal energy
-                    e_in_x = eps_in + 1./2.*rho_in*ux_in**2.
+                    e_in = eps_in + 1./2.*rho_in*ux_in**2.
                     e1[m, n] = eps + 1./2.*rho1[m, n] * u1[m, n]**2.
 
-                    grad_x, grad_r = grad_e2(m, n, ur1, ux1, ux_in, e_in_x, e1)
+                    grad_x, grad_r = grad_e2(m, n, ur1, ux1, ux_in, e_in, e1)
                     e2[m, n] = e1[m, n]-dt/(n*dr)*grad_r - dt*grad_x
 
                     print("grad_x: ", grad_x, "grad_r: ", grad_r)
@@ -675,6 +628,7 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
                     if ux2[m, n] > np.sqrt(7./5.*R*T2[m, n]/M_n)*1.0:
                         # Inlet velocity, m/s (gamma*RT)
                         ux2[m, n] = np.sqrt(7./5.*R*T2[m, n]/M_n)*1.0
+                        print("sound velocity limited reached")
 
                     p2[m, n] = 2./5.*(e2[m, n] - 1./2.*rho2[m, n]*u2[m, n]**2)
                     print("P2 bulk:", p2[m, n])
@@ -688,74 +642,25 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
 
 # ------------------------------------- surface boundary conditions --------------------------------------------- #
 
-        ux1[:, Nr] = 0
-        ux2[:, Nr] = 0
-
+        ux1 = surface_BC(ux1)
+        ux2 = surface_BC(ux1)
 
 # ------------------------------------- Inlet boundary conditions --------------------------------------------- #
+# latest NOTE
+        # ux2, u2, p2, rho2, T2, e2 = inlet_BC(ux2, u2, p2, rho2, T2, e2, p_in, ux_in, rho_in, T_in, e_in)
 
-        p2[0, :] = p_in
-        ux2[0, :] = ux_in
-        u2[0, :] = ux_in
-        rho2[0, :] = rho_in
-        T2[0, :] = p2[0, :]/rho2[0, :]/R*M_n
-        e2[0, :] = e_in_x
-
+        ux2, ur2, u2, p2, rho2, T2, e2 = inlet_BC(
+            ux2, ur2, u2, p2, rho2, T2, e2, p_in, ux_in, rho_in, T_in, e_in)
 # ------------------------------------ Outlet boundary conditions ------------------------------------------- #
-        # print("This is the ", Nx)
-        p2[Nx, n] = 2/5*(e2[Nx, n]-1/2*rho2[Nx, n]
-                         * u2[Nx, n]**2)  # Pressure
-        # NOTE: check input de to the m_de equation.
-        # de1[Nx] = m_de(T2[Nx, n], p1[Nx, n], Ts2[Nx], de1[Nx], 0.)
-        # del_SN = de0[Nx]/np.pi/D/rho_sn
-    #     if del_SN > 1e-5:
-    #         q1 = k_sn*(Tw1[Nx]-Ts1[Nx])/del_SN
-    # #           print("line 848", "q1", q1,"Tw1", Tw1[Nx],"Ts1", Ts1[Nx],"ksn", k_sn)
-    #         assert not math.isnan(Ts1[Nx])
-    #         Ts2[Nx] = Ts1[Nx]+dt/(w_coe*c_c(Tw1[Nx])) * \
-    #             (q1-q_h(Tw1[Nx], BW_coe)*Do/D)
-    #         Tc2[Nx] = Tc1[Nx]+dt/(de0[m]*c_n(Tc1[Nx])/D/np.pi)*(de1[Nx]
-    #                                                             * (1/2*(u1[Nx, n])**2+delta_h(T1[Nx, n], Ts1[Nx])-q1))
-    #     else:
-    #         q1 = de1[Nx]*(1/2*(u1[Nx, n])**2+delta_h(T1[Nx, n], Ts1[Nx]))
-    #         Ts2[Nx] = Ts1[Nx]+dt/(w_coe*c_c(Tw1[Nx])) * \
-    #             (q1-q_h(Tw1[Nx], BW_coe)*Do/D)
-    #         Tc2[Nx] = Ts2[Nx]
-        # Tw2[Nx] = 2*Tc2[Nx]-Ts2[Nx]
-        # qhe[Nx] = q_h(Tw1[Nx], BW_coe)*np.pi*Do
-        # de0[Nx] += dt*np.pi*D*de1[Nx]
-        rho2[Nx, n] = max(2*rho2[Nx-1, n]-rho2[Nx-2, n], rho_0)  # Free outflow
-        u2[Nx, n] = max(2*rho2[Nx-1, n]*u2[Nx-1, n] -
-                        rho2[Nx-2, n]*u2[Nx-2, n], 0) / rho2[Nx, n]
-        e2[Nx, n] = 2*e2[Nx-1, n]-e2[Nx-2, n]
+        p2, rho2, u2, e2 = outlet_BC(m, n, p2, e2, rho2, ux2, ur2, u2, rho_0)
 
-#                Set inlet boundary conditions
-
-        # NOTE: COMMENTED ALL BOUNDARY CONDITIONS
-        # val_in(i)
-        # Tw2[0] = T_in
-        # Ts2[0] = T_in
-        # Tc2[0] = T_in
-        # rho2[0, :] = rho_in
-        # p2[0, :] = p_in
-        # ux2[0, :] = ux_in
-        # ur2[0, :] = ur_in
-        # T2[0, :] = T_in
-        # e2[0, :] = e_in
-        # print("pressure val_in fitting BC", p_in) # from fitting function
-
-        # Set energy Boundary condition at the inlet.
-        # rho2[0, :] = rho_in
-        # e2[0, :] = 5/2*p_in+1/2*rho2[0, :] * \
-        #     np.square(u2[0, :]) + 5./2.*rho1[m, n]/M_n*R*T1[0, :]
-
-        # -------------------------------- CHECK ARRAYS FOR NEGATIVE VALUES ------------------------------------- #
+# -------------------------------- CHECK ARRAYS FOR NEGATIVE VALUES ------------------------------------- #
         # arrays = [ux2, ur2, T2, e2, p2, rho2, Tw2, Ts2, Tc2]
         # arrays = [ux2, ur2, T2, e2, p2, rho2]
         # for s in np.arange(len(arrays)):
         #     check_array(arrays[s])
 
-        # --------------------------------- Returning results of current time step to next iteration ------------------------- #
+# --------------------------------- Returning results of current time step to next iteration ------------------------- #
 
         rho1[:, :] = rho2
         u1[:, :] = u2
@@ -768,18 +673,21 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
         # Ts1[:] = Ts2
         # Tc1[:] = Tc2
 
-        # -------------------------------------- DELETING R=0 Point/Column  ---------------------------------------------------
-        # The 3 index indicates matrices with no r=0, deleted column..
-        rho3, ux3, ur3, u3, e3, T3, p3 = delete_r0_point(
-            rho2, ux2, ur2, u2, e2, T2, p2)
 
+# -------------------------------------- DELETING R=0 Point/Column  ---------------------------------------------------
+        # The 3 index indicates matrices with no r=0, deleted column..
+        rho3, ux3, ur3, u3, e3, T3, p3, Pe3 = delete_r0_point(
+            rho2, ux2, ur2, u2, e2, T2, p2, Pe1)
+
+
+# --------------------------------------- PLOTTING FIELDS ---------------------------------------  #
         # print("shape rho3", np.shape(rho3))
 
         fig, axs = plt.subplots(5)
         fig.suptitle('Fields along tube - x direction')
 
         # PRESSURE DISTRIBUTION
-        im = axs[0].imshow(p2.transpose())
+        im = axs[0].imshow(p3.transpose())
         plt.colorbar(im, ax=axs[0])
         # plt.colorbar(im, ax=ax[0])
         axs[0].set(ylabel='Pressure [Pa]')
@@ -787,45 +695,59 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
 
         # VELOCITY DISTRIBUTION
         # axs[1].imshow()
-        im = axs[1].imshow(ux2.transpose())
+        im = axs[1].imshow(ux3.transpose())
         plt.colorbar(im, ax=axs[1])
         # axs[1].colorbars(location="bottom")
         axs[1].set(ylabel='Ux [m/s]')
         # plt.title("velocity parabolic smoothing")
 
         # Temperature DISTRIBUTION
-        im = axs[2].imshow(T2.transpose())
+        im = axs[2].imshow(T3.transpose())
         plt.colorbar(im, ax=axs[2])
         axs[2].set(ylabel='Tg [K]')
 
         # axs[1].colorbars(location="bottom")
         # axs[2].set(ylabel='temperature [K]')
 
-        im = axs[3].imshow(rho2.transpose())
+        im = axs[3].imshow(rho3.transpose())
         plt.colorbar(im, ax=axs[3])
         axs[3].set(ylabel='Density [kg/m3]')
 
-        im = axs[4].imshow(e2.transpose())
+        im = axs[4].imshow(e3.transpose())
         plt.colorbar(im, ax=axs[4])
         axs[4].set(ylabel='energy [kg/m3]')
 
         plt.xlabel("L(x)")
         plt.show()
 
-        save_data(i, dt, rho3, ux3, ur3, u3, e3, T3, Tw2, Ts2, de0, p3, de1)
+        save_data(i, dt, rho3, ux3, ur3, u3, e3,
+                  T3, Tw2, Ts2, de0, p3, de1, Pe3)
+
+    return
+
+
+if __name__ == "__main__":
+    # main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2,
+    #          ur2, T2, e2, Tw2, Ts2, Tc2, de1, T3)
+    main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2,
+             u2, e2, de0, de1, p3, rho3, T3, ux3, ur3, u3, e3, Pe1)
+
+
+## -------------------------------- EXTRAS ----------------------------------------#
+
 
 ## -------------------------------- value checks ----------------------------------------#
 
 # checking Ts = Tg
-        # print(Ts1[:])
-        # print(T1[:, Nr])
+    # print(Ts1[:])
+    # print(T1[:, Nr])
 
-        # if np.array_equiv(Ts1[:], T1[:, Nr]) == True:
-        #     # if (Ts1[:] == T1[:, Nr]):
-        #     print("first check complete, Tg = Ts")
-        # else:
-        #     print("check false")
-        #     exit()
+    # if np.array_equiv(Ts1[:], T1[:, Nr]) == True:
+    #     # if (Ts1[:] == T1[:, Nr]):
+    #     print("first check complete, Tg = Ts")
+    # else:
+    #     print("check false")
+    #     exit()
 ## -------------------------------------------- Plotting values after BCs-------------------------------------------- ##
 
 #         # fig, axs = plt.subplots(2, 2)
@@ -846,15 +768,15 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
 #         f = p3[20, :]
 #         g = ur3[20, :]
 
-        # AXIAL DIRECTION
-        # a = rho3[:,Nr]
-        # b = u3[:, Nr]
-        # c = T1[:, Nr]
-        # d = Ts1[:]
-        # e = Tw1[:]
-        # f = p3[:, Nr]
-        # g= de1[:]
-        # h= de0[:]
+    # AXIAL DIRECTION
+    # a = rho3[:,Nr]
+    # b = u3[:, Nr]
+    # c = T1[:, Nr]
+    # d = Ts1[:]
+    # e = Tw1[:]
+    # f = p3[:, Nr]
+    # g= de1[:]
+    # h= de0[:]
 
 
 # ----------------------- start plot radius ---------------------------------------- #
@@ -942,11 +864,3 @@ def main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1):
 # define global tx to save in worksheets.
 
 #        tx = t
-
-    return
-
-
-if __name__ == "__main__":
-    # main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2,
-    #          ur2, T2, e2, Tw2, Ts2, Tc2, de1, T3)
-    main_cal(rho1, ux1, ur1, T1, e1, rho2, ux2, ur2, T2, e2, T3, de1)
