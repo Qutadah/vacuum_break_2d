@@ -81,6 +81,10 @@ ux1, ur1, u1, p1, rho1, T1, e1 = inlet_BC(
 ## ------------------------------------------------------------- SAVING INITIAL MATRICES ---------------------------------------------------------------- #####
 
 
+# recalculate energies
+e1 = 5./2. * p1 + 1./2 * rho1 * u1**2
+
+
 pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/'
 if os.path.exists(pathname):
     location = "C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/"
@@ -148,6 +152,8 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
         T1[0, :] = T_in
         u1 = np.sqrt(ux1**2 + ur1**2)
 
+        # recalculate energies
+        e1 = 5./2. * p1 + 1./2 * rho1 * u1**2
 
 # ------------------------------------- Inlet boundary conditions --------------------------------------------- #
 # latest NOTE

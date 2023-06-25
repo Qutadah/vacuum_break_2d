@@ -710,6 +710,10 @@ def inlet_BC(ux, ur, u, p, rho, T, e, p_inl, ux_inl, rho_inl, T_inl, e_inl):
     # Tw2[:] = T_s
     # Tc1[:] = T_s
     # Tc2[:] = T_s
+    
+    # recalculate energies
+    e = 5./2. * p + 1./2 * rho * u**2
+
     return [ux, ur, u, p, rho, T, e]
 
 
