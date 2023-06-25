@@ -95,10 +95,102 @@ def initialize_grid(p_0, rho_0, e_0, T_0, T_s):
                   np.float64))  # Peclet number
     Pe1 = np.zeros((Nx+1, Nr+1), dtype=(np.float64,
                    np.float64))  # Peclet number
-    out = [p1, rho1, ux1, ur1, u1,e1, T1, rho2, ux2, ur2, u2,e2,T2,p2, Tw1, Tw2,Ts1,Ts2,Tc1,Tc2,de0,de1,qhe,rho3,ux3,ur3,u3,e3,T3,p3,Pe, Pe1]
+    out = [p1, rho1, ux1, ur1, u1, e1, T1, rho2, ux2, ur2, u2, e2, T2, p2, Tw1, Tw2,
+           Ts1, Ts2, Tc1, Tc2, de0, de1, qhe, rho3, ux3, ur3, u3, e3, T3, p3, Pe, Pe1]
     return out
 
 # @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8)')
+
+# def tvdrk3(nx,ny,nz,dx,dy,dz,q,dt,ivis,iflx,Re)
+#     qq = copy(q)
+#     qn = copy(q)
+
+#     #First step
+#     !(q,nx,ny,nz)
+#     r  = rhs(nx,ny,nz,dx,dy,dz,q,ivis,iflx,Re)
+#     qq = q + dt*r
+
+#     #Second step
+#     expbc!(qq,nx,ny,nz)
+#     r  = rhs(nx,ny,nz,dx,dy,dz,qq,ivis,iflx,Re)
+#     qq = 0.75*q + 0.25*qq + 0.25*dt*r
+
+#     #Third Step
+#     expbc!(qq,nx,ny,nz)
+#     r  = rhs(nx,ny,nz,dx,dy,dz,qq,ivis,iflx,Re)
+#     qn = 1/3*q + 2/3*qq + 2/3*dt*r
+
+#     return qn
+# end
+
+
+
+# #Calculate time step
+# def calc_dt(cfl,γ,q,nx,ny,nz,dx,dy,dz)
+#     a = 0.0
+#     a = maximum([a,0.0])
+#     for k in 0:nz
+#         for j in 0:ny
+#             for i in 0:nx
+#                 ρ,ρu,ρv,ρw,ρe = q[:,i,j,k]
+#                 u,v,w,e       = ρu/ρ, ρv/ρ, ρw/ρ, ρe/ρ
+#                 p = ρ*(γ-1)*(e-0.5*(u^2+v^2+w^2))
+#                 c = sqrt(γ*p/ρ)
+#                 a = maximum([a,abs(u),abs(u+c),abs(u-c)
+#                              ,abs(v),abs(v+c),abs(v-c)
+#                              ,abs(w),abs(w+c),abs(w-c)])
+
+#             end
+#         end
+#     end
+
+#     dt = cfl* minimum([dx,dy,dz])/a
+
+#     return dt
+# end
+
+def plot_imshow(p, ux, T, rho, e):
+        
+    fig, axs = plt.subplots(5)
+    fig.suptitle('Initial fields along tube for all R')
+
+    # PRESSURE DISTRIBUTION
+    im = axs[0].imshow(p.transpose())
+    plt.colorbar(im, ax=axs[0])
+    # plt.colorbar(im, ax=ax[0])
+    axs[0].set(ylabel='Pressure [Pa]')
+    # plt.title("Pressure smoothing")
+
+
+    # VELOCITY DISTRIBUTION
+    # axs[1].imshow()
+    im = axs[1].imshow(ux.transpose())
+    plt.colorbar(im, ax=axs[1])
+    # axs[1].colorbars(location="bottom")
+    axs[1].set(ylabel='Ux [m/s]')
+    # plt.title("velocity parabolic smoothing")
+
+    # Temperature DISTRIBUTION
+    im = axs[2].imshow(T.transpose())
+    plt.colorbar(im, ax=axs[2])
+    axs[2].set(ylabel='Tg [K]')
+
+    # axs[1].colorbars(location="bottom")
+    # axs[2].set(ylabel='temperature [K]')
+
+    im = axs[3].imshow(rho.transpose())
+    plt.colorbar(im, ax=axs[3])
+    axs[3].set(ylabel='Density [kg/m3]')
+
+    im = axs[4].imshow(e.transpose())
+    plt.colorbar(im, ax=axs[4])
+    axs[4].set(ylabel='energy [kg/m3]')
+
+
+    plt.xlabel("L(x)")
+    plt.show()
+    return
+
 
 
 @jit(nopython=True)

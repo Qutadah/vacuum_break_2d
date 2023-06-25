@@ -101,46 +101,7 @@ save_initial_conditions(rho1, ux1, ur1, u1, e1, T1,
                         Tw1, Ts1, de0, p1, de1, Pe)
 
 ##### ----------------------------------------- PLOTTING INITIAL CONDITIONS ---------------------------------------------------------------------------####
-
-fig, axs = plt.subplots(5)
-fig.suptitle('Initial Conditions along tube for all R')
-
-# PRESSURE DISTRIBUTION
-im = axs[0].imshow(p1.transpose())
-plt.colorbar(im, ax=axs[0])
-# plt.colorbar(im, ax=ax[0])
-axs[0].set(ylabel='Pressure [Pa]')
-# plt.title("Pressure smoothing")
-
-
-# VELOCITY DISTRIBUTION
-# axs[1].imshow()
-im = axs[1].imshow(ux1.transpose())
-plt.colorbar(im, ax=axs[1])
-# axs[1].colorbars(location="bottom")
-axs[1].set(ylabel='Ux [m/s]')
-# plt.title("velocity parabolic smoothing")
-
-# Temperature DISTRIBUTION
-im = axs[2].imshow(T1.transpose())
-plt.colorbar(im, ax=axs[2])
-axs[2].set(ylabel='Tg [K]')
-
-# axs[1].colorbars(location="bottom")
-# axs[2].set(ylabel='temperature [K]')
-
-im = axs[3].imshow(rho1.transpose())
-plt.colorbar(im, ax=axs[3])
-axs[3].set(ylabel='Density [kg/m3]')
-
-im = axs[4].imshow(e1.transpose())
-plt.colorbar(im, ax=axs[4])
-axs[4].set(ylabel='energy [kg/m3]')
-
-
-plt.xlabel("L(x)")
-plt.show()
-
+plot_imshow(p1, ux1, T1, rho1, e1)
 # plt.imsave('result.png', )
 
 ## ------------------------------------------------ BC INLET starting matrices  ------------------------------------------------- #
@@ -563,54 +524,22 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
         # Ts1[:] = Ts2
         # Tc1[:] = Tc2
 
+# -------------------------------------- Recalculate Peclet number  ---------------------------------------------------
+        Pe2 = Peclet_grid(Pe1, u1, D_hyd, p1, T1)
 
 # -------------------------------------- DELETING R=0 Point/Column  ---------------------------------------------------
         # The 3 index indicates matrices with no r=0, deleted column..
         rho3, ux3, ur3, u3, e3, T3, p3, Pe3 = delete_r0_point(
-            rho2, ux2, ur2, u2, e2, T2, p2, Pe1)
+            rho1, ux1, ur1, u1, e1, T1, p1, Pe2)
 
         # rho3, ux3, ur3, u3, e3, T3, p3, Pe3 = delete_surface_inviscid(
         #     rho3, ux3, ur3, u3, e3, T3, p3, Pe3)
 
 # --------------------------------------- PLOTTING FIELDS ---------------------------------------  #
-        # print("shape rho3", np.shape(rho3))
 
-        # fig, axs = plt.subplots(5)
-        # fig.suptitle('Fields along tube - x direction')
+        plot_imshow(p3, ux3, T3, rho3, e3)
 
-        # # PRESSURE DISTRIBUTION
-        # im = axs[0].imshow(p3.transpose())
-        # plt.colorbar(im, ax=axs[0])
-        # # plt.colorbar(im, ax=ax[0])
-        # axs[0].set(ylabel='Pressure [Pa]')
-        # # plt.title("Pressure smoothing")
-
-        # # VELOCITY DISTRIBUTION
-        # # axs[1].imshow()
-        # im = axs[1].imshow(ux3.transpose())
-        # plt.colorbar(im, ax=axs[1])
-        # # axs[1].colorbars(location="bottom")
-        # axs[1].set(ylabel='Ux [m/s]')
-        # # plt.title("velocity parabolic smoothing")
-
-        # # Temperature DISTRIBUTION
-        # im = axs[2].imshow(T3.transpose())
-        # plt.colorbar(im, ax=axs[2])
-        # axs[2].set(ylabel='Tg [K]')
-
-        # # axs[1].colorbars(location="bottom")
-        # # axs[2].set(ylabel='temperature [K]')
-
-        # im = axs[3].imshow(rho3.transpose())
-        # plt.colorbar(im, ax=axs[3])
-        # axs[3].set(ylabel='Density [kg/m3]')
-
-        # im = axs[4].imshow(e3.transpose())
-        # plt.colorbar(im, ax=axs[4])
-        # axs[4].set(ylabel='energy [kg/m3]')
-
-        # plt.xlabel("L(x)")
-        # plt.show()
+# --------------------------------------- Saving data ---------------------------------------  #
 
         save_data(i, dt, rho3, ux3, ur3, u3, e3,
                   T3, Tw2, Ts2, de0, p3, de1, Pe3)
