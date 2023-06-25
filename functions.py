@@ -10,6 +10,8 @@ import shutil
 import numba
 from numba import jit
 import numpy as np
+import vtk
+from vtk.util import numpy_support
 # from scipy.ndimage.filters import laplace
 import sys
 import matplotlib.pyplot as plt
@@ -148,6 +150,21 @@ def initialize_grid(p_0, rho_0, e_0, T_0, T_s):
 
 #     return dt
 # end
+
+def vtk_convert(rho3, ux3, ur3, u3, e3, T3, Tw3, Ts2, de0, p3, de1, Pe3):
+    numpy_to_vtk(rho3, deep=0, array_type=None)
+    numpy_to_vtk(ux3, deep=0, array_type=None)
+    numpy_to_vtk(ur3, deep=0, array_type=None)
+    numpy_to_vtk(u3, deep=0, array_type=None)
+    numpy_to_vtk(e3, deep=0, array_type=None)
+    numpy_to_vtk(T3, deep=0, array_type=None)
+    numpy_to_vtk(Tw3, deep=0, array_type=None)
+    numpy_to_vtk(Ts2, deep=0, array_type=None)
+    numpy_to_vtk(de0, deep=0, array_type=None)
+    numpy_to_vtk(p3, deep=0, array_type=None)
+    numpy_to_vtk(de1, deep=0, array_type=None)
+    numpy_to_vtk(Pe3, deep=0, array_type=None)
+    return
 
 def plot_imshow(p, ux, T, rho, e):
         
