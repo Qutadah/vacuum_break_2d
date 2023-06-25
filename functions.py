@@ -26,6 +26,57 @@ u_in_x = 1.
 
 
 @jit(nopython=True)
+def weno5(f):           # using weno-js scheme
+
+    # calculating positive flux f_+ j+1/2
+    for m in np.arange(Nx+1):
+        for n in np.arange(Nr+1):
+
+            fj = f[m,n]
+            fj_m1 = f[m-1,n]
+            fj_m2 = f[m-2,n]
+            fj_p1 = f[m+1,n]
+            fj_p2 = f[m+2,n]
+
+            c0 = 1./6.
+            c1 = 13./12.
+            c2 = 1./4.
+
+
+            d0 = 1./10.
+            d1 = 6./10.
+            d2= 3./10.
+
+            beta0= c1* (fj_m2-2*fj_m1 + fj)**2 + 1./4.*(fj_m2-4*fj_m1 + 3*fj)**2 
+            beta1= c1* (fj_m1-2*fj + fj_p1)**2 + 1./4.*(fj_p1-fj_m1)**2 
+            beta2= c1* (fj-2*fj_p1 + fj_p2)**2 + 1./4.*(3*fj-4*fj_p1+ fj_p2)**2 
+
+            eps = 1e-6
+            pweno = 2
+
+
+            alpha_0 = d0/(eps+beta0)**pweno
+            alpha_1 = d1/(eps+beta1)**pweno
+            alpha_2 = d2/(eps+beta2)**pweno
+            sum_alpha = alpha_0 + alpha_1 + alpha_2
+
+            omega0 = alpha_0 / sum_alpha
+            omega1 = alpha_1 / sum_alpha
+            omega2 = alpha_2 / sum_alpha
+
+            fj_p_half0 = c0 * (2*fj_m2 - 7.*fj_m1 + 11*fj)
+            fj_p_half1 =  c0* (-fj_m1 +5*fj + 2*fj_p1)
+            fj_p_half2 = c0* (2*fj + 5*fj_p1 - fj_p2)
+
+
+
+            fj_p_half = np.sum()
+
+            f_rec[m,n] = 
+    return f_rec
+
+
+@jit(nopython=True)
 def dt2nd_wall(m, Tw1, T_in):
 
     if m == 0:

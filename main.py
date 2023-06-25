@@ -99,7 +99,7 @@ Pe1 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))  # Peclet number
 # ---------------------  Smoothing inlet --------------------------------
 
 # constant inlet
-p_in, ux_in, ur_in, rho_in, e_in, T_in = git _constant()
+p_in, ux_in, ur_in, rho_in, e_in, T_in = val_in_constant()
 
 # p_in, q_in, ux_in, ur_in, rho_in, e_in, T_in = val_in(0)
 print("p_in: ", p_in, "ux_in: ", ux_in, "ur_in: ", ur_in, "rho_in: ",
