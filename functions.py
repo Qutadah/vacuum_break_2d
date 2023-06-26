@@ -1389,41 +1389,44 @@ def integral_mass_delSN(de):
 
     return de0, del_SN  # the de0 is incremented and never restarted
 
+# recalculates Tg to be equal to Ts.
 # NOTE: does this affect the velocities? does mde change? and if yes, does it mean ur changes?
-def surface_temp_check(T, Ts, ur, e):
+def gas_surface_temp_check(T, Ts, ur, e, u, rho):
     for m in np.arange(Nx+1):
-        if T2[m, Nr] < Ts2[m]:
-            e2[m, Nr] = 5./2.*rho2[m, Nr]*R*Ts2[m] / M_n + 1./2.*rho2[m, Nr]*ur2[m, Nr]**2
+        if T[m, Nr] < Ts[m]:
+            e[m, Nr] = 5./2.*rho[m, Nr]*R*Ts[m] / M_n + 1./2.*rho[m, Nr]*ur[m, Nr]**2
 
             # # print("THIS IS T2 < Ts")
             # # print("e2 surface", e2[m, n])
             # check_negative(e2[m, n], n)
 
-    T2 = 2./5.*(e2 - 1./2.*rho2* ur2**2.)*M_n/rho2/R
+    T = 2./5.*(e - 1./2.*rho* ur**2.)*M_n/rho/R
         #     print(
         #         "T2 surface recalculated to make it equal to wall temperature (BC)", T2[m, n])
         #     check_negative(T2[m, n], n)
-    return T2, Ts2, e2
+
+    #NOTE: Energy is changed assuming density and radial velocity constant. Is this correct?
+    rho, T, u = balance_energy(rho, T, u)
+    return T, e, P, rho, u
 
 
 @jit(nopython=True)
-def Cu_Wall_function(ur, T, Tw, Tc, Ts, T_in, delSN):
+def Cu_Wall_function(ur, Tx, Twx, Tcx, Tsx, T_in, delSN, de):
 # define wall second derivative
     dt2nd_wall = dt2nd_w_matrix(Tw, T_in)
+    qi = np.zeros((Nx+1), dtype=(np.float64))
+
+# Initial calculations:
 
 # Only consider thermal resistance in SN2 layer when del_SN > 1e-5:
 # # NOTE: CHECK THIS LOGIC TREE
 
-# q deposited into frost layer. Nusselt convection neglected
-# NOTE: Check this addition operation, is this correct? 2d and 1d rows
-    q_dep = de*(1/2*(ur[:, Nr])**2 + delta_h(T[:, Nr], Ts))
-
     for m in np.arange(Nx+1):
-        if del_SN[m] > 1e-5:
+        if delSN[m] > 1e-5:
             print("This is del_SN > 1e-5 condition, conduction across SN2 layer considered")
     
 # heatflux into copper wall from frost layer
-            qi[m] = k_sn*(Ts[m]-Tw[m])/del_SN[m]
+            qi[m] = k_sn*(Ts[m]-Tw[m])/delSN[m]
             # print("qi: ", qi)
             # check_negative(qi, n)
         else:
@@ -1432,22 +1435,34 @@ def Cu_Wall_function(ur, T, Tw, Tc, Ts, T_in, delSN):
             # print("qi: ", qi)
             # check_negative(qi, n)
 
+
 # pipe wall equation
-    Tw2 = Tw + dt/(w_coe*c_c(Tw))*(qi-q_h(Tw, BW_coe)*Do/D)+dt/(rho_cu*c_c(Tw))*k_cu(Tw)*dt2nd
+    Tw = Twx + dt/(w_coe*c_c(Twx))*(qi-q_h(Twx, BW_coe)*Do/D)+dt/(rho_cu*c_c(Twx))*k_cu(Twx)*dt2nd_wall
         #     print("Tw2: ", Tw2[m])
         #     check_negative(Tw2[m], n)
 
+# q deposited into frost layer. Nusselt convection neglected
+# NOTE: Check this addition operation, is this correct? 2d and 1d rows
+
+    q_dep = de*(1/2*(ur[:, Nr])**2 + delta_h(T[:, Nr], Tsx))
+
+#Q_dep will change if T =Ts and will be zero.
+# NOTE: Check this logic, very important
+    for j in np.arange(Nx+1):
+        if T[j]< Tsx[j]:
+            q_dep[j] = de*(1/2*(ur[j, Nr])**2
+
 # SN2 Center layer Tc equation
-    Tc2 = Tc + dt *(q_dep-qi) / (rho_sn * c_n(Ts)*del_SN))
+    Tc2 = Tcx + dt *(q_dep-qi) / (rho_sn * c_n(Tsx)*delSN)
             # print("Tc2: ", Tc2[m, n])
             # check_negative(Tc2[m], n)
 
 # Calculate SN2 surface temp
-    Ts2 = 2*Tc - Tw
+    Ts2 = 2*Tcx - Twx
         # print("Ts2: ", Ts2[m])
         # check_negative(Ts2[m], n)
 
-    return Tw, Ts, Tc, qhe, dt2nd_wall
+    return Tw2, Ts2, Tc2, qhe, dt2nd_wall
 
 
 @jit(nopython=True)

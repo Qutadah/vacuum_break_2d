@@ -190,7 +190,7 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
             exit()
 
 # calculate frost layer thickness
-        de0, del_SN =  integral_mass_delSN(de1)
+        de0, del_SN = integral_mass_delSN(de1)
 
         if np.any(del_SN < 0):
             print("negative frost layer thickness found")
@@ -198,13 +198,17 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
 
 
 # insert wall function
-    Tw2, Ts2, Tc2, qhe, dt2nd_wall =  Cu_Wall_function(ur, T, Tw, Tc, Ts, T_in, delSN)
+        Tw2, Ts2, Tc2, qhe, dt2nd_wall = Cu_Wall_function(
+            ur1, T1, Tw1, Tc1, Ts1, T_in, del_SN)
 
-# check Ts1 and T2 temperatures align
-    
+# NOTE: Perform energy checks throughout the program
+
+# check Ts1 and T2 temperatures align, rebalances energies within
+        T2, e2, p2, rho2, u2 = gas_surface_temp_check(
+            T2, Ts2, ur2, e2, u2, rho2)
+
 
 #  recalculate T, P, Ts, Tc, Tw, use 1st order schemes, enough for the wall equation.
-
 
 
 # Returning results of current time step for i++
@@ -216,15 +220,15 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
         e1[:, :] = e2
         p1[:, :] = p2
         T1[:, :] = T2
-        # Tw1[:] = Tw2
-        # Ts1[:] = Ts2
-        # Tc1[:] = Tc2
+        Tw1[:] = Tw2
+        Ts1[:] = Ts2
+        Tc1[:] = Tc2
+        de1[:] = de_timestep[:]
 
 # Recalculate PECLET
         Pe2 = Peclet_grid(Pe1, u1, D_hyd, p1, T1)
 
 # DELETE R=0 Point/Column
-
 # The 3 index indicates matrices with no r=0, deleted column..
         rho3, ux3, ur3, u3, e3, T3, p3, Pe3 = delete_r0_point(
             rho1, ux1, ur1, u1, e1, T1, p1, Pe2)
