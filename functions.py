@@ -49,12 +49,12 @@ def dt2nd_w_matrix(Tw, T_in):
     for m in np.arange(Nx+1):
         if m == 0:
             dt2nd[m] = (T_in - 2 * Tw[m] +
-                    Tw[m+1])/(dx**2)  # 3-point CD
+                        Tw[m+1])/(dx**2)  # 3-point CD
     #       dt2nd = Tw1[m+1]-Tw1[m]-Tw1[m-1]+T_in
         elif m == Nx:
             # print("m=Nx", m)
             dt2nd[m] = (-Tw[m-3] + 4*Tw[m-2] - 5*Tw[m-1] +
-                    2*Tw[m]) / (dx**2)  # Four point BWD
+                        2*Tw[m]) / (dx**2)  # Four point BWD
         else:
             dt2nd[m] = Tw[m-1]-2*Tw[m]+Tw[m+1]/(dx**2)
     return dt2nd_wall
@@ -330,8 +330,7 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
 
 # create N matrix:
     N = n_matrix()
-    a = [qq, qn, uxx, uxn, ]
-    for o in a:
+
     qq = copy.deepcopy(q)  # density
     qn = copy.deepcopy(q)
 
@@ -342,7 +341,7 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
     urn = copy.deepcopy(q)
 
     uu = copy.deepcopy(q)  # total velocity
-    uun = copy.deepcopy(q)
+    un = copy.deepcopy(q)
 
     ee = copy.deepcopy(q)  # energy
     en = copy.deepcopy(q)
@@ -356,7 +355,7 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
 # l = [ux, ur, u, p, rho, T, e, Tw, Ts, Tc]
     for n in np.arange(3):
         if n == 0:
-            ux = no_slip(ux)
+            ux, u, e, T = no_slip(ux, u, p, rho)
             l = inlet_BC(ux, ur, u, p, rho, T, e, p_in,
                          ux_in, rho_in, T_in, e_in)
             # k = outlet_BC(uxn, urn, uun, pn, qn, Tn, en)
@@ -366,7 +365,7 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
             e = l[6]
 
         else:  # n == 1, n==2:
-            uxx = no_slip(uxx)
+            uxx, uu, ee, tt = no_slip(uxx, uu, pp, qq)
             l = inlet_BC(uxx, urr, uu, pp, qq, tt, ee, p_in,
                          ux_in, rho_in, T_in, e_in)
             # k = outlet_BC(uxn, urn, uun, pn, qn, Tn, en)
@@ -413,7 +412,7 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
             ee = e + dt*r_e
 
 # apply surface conditions
-            uxx = no_slip(uxx)
+            uxx, uu, ee, tt = no_slip(uxx, uu, pp, qq)
 
 # temperature, pressure, total velocity recalculation
             uu = np.sqrt(uxx**2 + urr**2)
@@ -438,7 +437,7 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
             de_variable = -1 * S * D/4.
 
 # apply surface conditions
-            uxx = no_slip(uxx)
+            uxx, uu, ee, tt = no_slip(uxx, uu, pp, qq)
 
 # radial velocity on surface is function of mass deposition
             urr[:, Nr] = de_variable[:]/qq[:, Nr]
@@ -456,7 +455,7 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
             ee = 0.75*e + 0.25*ee + 0.25*dt*r_e
 
 # apply surface conditions, no slip condition
-            uxx = no_slip(uxx)
+            uxx, uu, ee, tt = no_slip(uxx, uu, pp, qq)
 
 # de_variable calculation using new looped source term
             de_variable = -1 * S * D/4.
@@ -486,14 +485,14 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
             en = 1/3*e + 2/3*ee + 2/3*dt*r_e
 
 # apply surface conditions, no slip condition
-            uxn = no_slip(uxn)
+            uxn, un, en, tn = no_slip(uxn, un, pn, qn)
 
 # radial velocity on surface is function of mass deposition
             urn[:, Nr] = de_variable[:]/qn[:, Nr]
 
 # temperature, pressure, total velocity recalculation
-            uu = np.sqrt(uxx**2 + urr**2)
-            tn = 2./5.*(en - 1./2. * qn*uun**2)
+            un = np.sqrt(uxx**2 + urr**2)
+            tn = 2./5.*(en - 1./2. * qn*un**2)
             pn = qn * R/M_n * tn
 
 # ensure no division by zero
@@ -502,7 +501,7 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
 
 # # No convective heat flux. q2 ?
 
-    rk_out = [de_timestep, qn, uxn, urn, uun, en, tn, pn]
+    rk_out = [de_timestep, qn, uxn, urn, un, en, tn, pn]
     return rk_out
 
     # Calculate the SN2 layer thickness
@@ -1391,30 +1390,34 @@ def integral_mass_delSN(de):
 
 # recalculates Tg to be equal to Ts.
 # NOTE: does this affect the velocities? does mde change? and if yes, does it mean ur changes?
+
+
 def gas_surface_temp_check(T, Ts, ur, e, u, rho):
     for m in np.arange(Nx+1):
         if T[m, Nr] < Ts[m]:
-            e[m, Nr] = 5./2.*rho[m, Nr]*R*Ts[m] / M_n + 1./2.*rho[m, Nr]*ur[m, Nr]**2
+            e[m, Nr] = 5./2.*rho[m, Nr]*R*Ts[m] / \
+                M_n + 1./2.*rho[m, Nr]*ur[m, Nr]**2
 
             # # print("THIS IS T2 < Ts")
             # # print("e2 surface", e2[m, n])
             # check_negative(e2[m, n], n)
 
-    T = 2./5.*(e - 1./2.*rho* ur**2.)*M_n/rho/R
-        #     print(
-        #         "T2 surface recalculated to make it equal to wall temperature (BC)", T2[m, n])
-        #     check_negative(T2[m, n], n)
+    T = 2./5.*(e - 1./2.*rho * ur**2.)*M_n/rho/R
+    #     print(
+    #         "T2 surface recalculated to make it equal to wall temperature (BC)", T2[m, n])
+    #     check_negative(T2[m, n], n)
 
-    #NOTE: Energy is changed assuming density and radial velocity constant. Is this correct?
-    rho, T, u = balance_energy(rho, T, u)
-    return T, e, P, rho, u
+    # NOTE: Energy is changed assuming density and radial velocity constant. Is this correct?
+    e, p = balance_energy2(rho, T, u)
+    return T, e, p, rho, u
 
 
 @jit(nopython=True)
 def Cu_Wall_function(ur, Tx, Twx, Tcx, Tsx, T_in, delSN, de):
-# define wall second derivative
+    # define wall second derivative
     dt2nd_wall = dt2nd_w_matrix(Tw, T_in)
     qi = np.zeros((Nx+1), dtype=(np.float64))
+    q_dep = np.zeros((Nx+1), dtype=(np.float64))
 
 # Initial calculations:
 
@@ -1423,44 +1426,46 @@ def Cu_Wall_function(ur, Tx, Twx, Tcx, Tsx, T_in, delSN, de):
 
     for m in np.arange(Nx+1):
         if delSN[m] > 1e-5:
-            print("This is del_SN > 1e-5 condition, conduction across SN2 layer considered")
-    
+            print(
+                "This is del_SN > 1e-5 condition, conduction across SN2 layer considered")
+
 # heatflux into copper wall from frost layer
             qi[m] = k_sn*(Ts[m]-Tw[m])/delSN[m]
             # print("qi: ", qi)
             # check_negative(qi, n)
         else:
-# no heatflux into copper wall
+            # no heatflux into copper wall
             qi[m] = 0
             # print("qi: ", qi)
             # check_negative(qi, n)
 
 
 # pipe wall equation
-    Tw = Twx + dt/(w_coe*c_c(Twx))*(qi-q_h(Twx, BW_coe)*Do/D)+dt/(rho_cu*c_c(Twx))*k_cu(Twx)*dt2nd_wall
-        #     print("Tw2: ", Tw2[m])
-        #     check_negative(Tw2[m], n)
+    Tw = Twx + dt/(w_coe*c_c(Twx))*(qi-q_h(Twx, BW_coe)*Do/D) + \
+        dt/(rho_cu*c_c(Twx))*k_cu(Twx)*dt2nd_wall
+    #     print("Tw2: ", Tw2[m])
+    #     check_negative(Tw2[m], n)
 
 # q deposited into frost layer. Nusselt convection neglected
 # NOTE: Check this addition operation, is this correct? 2d and 1d rows
 
-    q_dep = de*(1/2*(ur[:, Nr])**2 + delta_h(T[:, Nr], Tsx))
+    q_dep = de[:]*(1/2*(ur[:, Nr])**2 + delta_h(T[:, Nr], Tsx[:]))
 
-#Q_dep will change if T =Ts and will be zero.
-# NOTE: Check this logic, very important
+    # Q_dep will change if T =Ts and will be zero.
+    # NOTE: Check this logic, very important
     for j in np.arange(Nx+1):
-        if T[j]< Tsx[j]:
-            q_dep[j] = de*(1/2*(ur[j, Nr])**2
+        if Tx[j] < Tsx[j]:
+            q_dep[j] = de[j]*(1./2.*ur[j, Nr])**2
 
 # SN2 Center layer Tc equation
-    Tc2 = Tcx + dt *(q_dep-qi) / (rho_sn * c_n(Tsx)*delSN)
-            # print("Tc2: ", Tc2[m, n])
-            # check_negative(Tc2[m], n)
+    Tc2 = Tcx + dt * (q_dep-qi) / (rho_sn * c_n(Tsx)*delSN)
+    # print("Tc2: ", Tc2[m, n])
+    # check_negative(Tc2[m], n)
 
 # Calculate SN2 surface temp
     Ts2 = 2*Tcx - Twx
-        # print("Ts2: ", Ts2[m])
-        # check_negative(Ts2[m], n)
+    # print("Ts2: ", Ts2[m])
+    # check_negative(Ts2[m], n)
 
     return Tw2, Ts2, Tc2, qhe, dt2nd_wall
 
@@ -1512,7 +1517,7 @@ def smoothing_inlet(p, rho, T, ux, ur, ux_in, u, p_in, p_0, rho_in, rho_0, n_tra
         # print("p1 matrix after smoothing", p1)
         # else:
         #     e1[i, :] = 5/2*rho1[i, :]/M_n*R*T_in+1/2**rho1[i, :]*u1[i, :]**2
-    e = balance_energy(p, rho, u)
+    e, T = balance_energy(p, rho, u)
     # for i in range(0, Nx+1):
     out = p, rho, T, ux, u, e
     return out
@@ -1531,11 +1536,14 @@ def remove_timestepping():
         shutil.rmtree(path)
 
 
-def no_slip(ux, u):
+@jit(nopython=True)
+def no_slip(ux, u, p, rho):
     ux[:, Nr] = 0
-    u[:, Nr] = 0
-    e = balance_energy(p, rho, u)
-    return ux, u, e
+# NOTE: Check radial velocity.... does this change mdot?
+    # u[:, Nr] = 0
+# NOTE: How do i recalculate u?
+    e, T = balance_energy(p, rho, u)
+    return ux, u, e, T
 
 
 @jit(nopython=True)
@@ -1568,7 +1576,7 @@ def outlet_BC(p, e, rho, ux, ur, u, rho_0):
                         rho[Nx-2, n]*ux[Nx-2, n], 0) / rho[Nx, n]
         u = np.sqrt(ux**2. + ur**2.)
         # e[Nx, n] = 2*e[Nx-1, n]-e[Nx-2, n]
-    e = balance_energy(p, rho, u)
+    e, T = balance_energy(p, rho, u)
 
     bc = [p, rho, ux, u, e]
 
@@ -1596,15 +1604,19 @@ def outlet_BC(p, e, rho, ux, ur, u, rho_0):
 # recalculating energy from pressure and velocity
 
 
+@jit(nopython=True)
 def balance_energy(p, rho, u):
     e = 5./2. * p + 1./2 * rho*u**2
-    return e
+    T = p/rho/R
+    return e, T
 
 
 # recalculating energy from rho, T, and velocity
+@jit(nopython=True)
 def balance_energy2(rho, T, u):
     e = 5./2. * rho*R*T/M_n + 1./2 * rho*u**2
-    return e
+    p = rho*R*T/M_n
+    return e, p
 
 
 @jit(nopython=True)

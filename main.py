@@ -71,14 +71,13 @@ Tc1[:] = T_s
 Tc2[:] = T_s
 
 
-####### ---------------------------- PARABOLIC VELOCITY PROFILE - inlet prepping area-------------------------------------------------------- ######
+# PARABOLIC VELOCITY PROFILE - inlet prepping area
 
 
 # ux, u = parabolic_velocity(ux1, ux_in, T1)
 
-# ---------------------------------------------------------- NO SLIP BC
-
-ux1, u1, e1 = no_slip(ux, u)
+# ---------- NO SLIP BC
+ux1, u1, e1, T1 = no_slip(ux1, u1, p1, rho1)
 
 # ------  inlet BCs
 
