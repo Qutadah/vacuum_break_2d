@@ -145,79 +145,42 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
         # constant inlet
         p_in, ux_in, ur_in, rho_in, e_in, T_in = val_in_constant()
 
+        # de1 matrix
+        de1 = np.zeros((Nx+1), dtype=(np.float64))  # mass deposition rate.
+        # Initialized 0 and then put in RK3 function to recalculate at all timesteps
+
+        if i == 0:
+            de_timestep = np.zeros((Nx+1), dtype=(np.float64))  # place holder
+
+        else:
+            # This will take last de from RK3
+            de_timestep = rk_out[0]
+
         # RK3 time integration
-        ux2, ur2, u2, p2, rho2, T2, e2 = tvdrk3(
-            ux1, ur1, u1, p1, rho1, T1, e1, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in)
+        # rk_out = [de_timestep, qn, uxn, urn, uun, en, tn, pn]
+        rk_out = tvdrk3(
+            ux1, ur1, u1, p1, rho1, T1, e1, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, de1, de_timestep)
 
 
 # calculating Peclet for field, helps later for differencing scheme used
         Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
 
-# # Calculating gradients
 
-#         # calculate first derivative matrix:
-#         d_dr, m_dx = grad_rho_matrix(ux_in, rho_in, ur1, ux1, rho1)
-#         dp_dx, ux_dr, ux_dr = grad_ux2_matrix(p_in, p1, ux_in, ux1)
-#         dp_dr, ur_dx, ur_dr = grad_ur2_matrix(p, ur1, ur_in)
-#         grad_x, grad_r = grad_e2_matrix(ur1, ux1, ux_in, e_in, e1)
+# perform NAN value matrix checks:
+        for x in np.arange(len(rk_out)):
+            assert np.isfinite(rk_out[x]).all()
 
-# # calculating second derivative
-#         dt2x_ux, dt2x_ur = dt2x_matrix(ux_in, ur_in, ux1, ur1)
-#         dt2r_ux, dt2r_ur = dt2r_matrix(ux1, ur1)
-#         assert np.isfinite(a).all()
-#         assert np.isfinite(d_dr).all()
-#         assert np.isfinite(m_dx).all()
-#         assert np.isfinite(dp_dx).all()
-#         assert np.isfinite(ux_dr).all()
-#         assert np.isfinite(ur_dx).all()
-#         assert np.isfinite(ur_dr).all()
-#         assert np.isfinite(dp_dr).all()
-#         assert np.isfinite(grad_x).all()
-#         assert np.isfinite(grad_r).all()
-
-#         # viscosity calculations
-#         visc_matrix = viscous_matrix(T1, p1)
-#         assert np.isfinite(visc_matrix).all()
-
-        # mass deposition rate matrix and source term
-        # S = 0  # no mass deposition
-        # de i mass deposion rate per unit area, de1 or de0
-
-        # use RK3
-
-        if np.any(rho2 < 0):
+        if np.any(rk_out[1] < 0):
             print("The Density Array has at least one negative value")
             exit()
-        assert np.isfinite(rho2).all()
-
-        # ensure no division by zero
-        rho2 = no_division_zero(rho2)
 
 
-# print("T1 bulk: ", T1[m, n], "T2 bulk:", T2[m, n])
-#                     check_negative(T1[m, n], n)
-#                     check_negative(T2[m, n], n)
+# insert wall function
+#  recalculate T, P, Ts, Tc, Tw, use 1st order schemes, enough for the wall equation.
+    # more Tw. etc.
 
-        # print("P2 surface: ", p2[m, n])
-        # check_negative(p2[m, n], n)
 
-        # calculate RHS
-        # rhs_rho1 = rhs_rho(dr, dx, ur1[m, n], ux1[m, n],
-        #                    rho1[m, n], a, ux_in, rho_in, d_dr[m, n], m_dx[m, n])
-        # rhs_ux1, rhs_ur_1 = rhs_ma(dr, dx, ux_in, p,
-        #                            p_in, ux1, ur_in, ur[m, n], rho1)
-        # rhs_e1 = rhs_energy(m, n, dr, dx, ur1,
-        #                     ux1, ux_in, e_in, e1)
-
-# --------------------------- Equations ------------------------------------------- #
-
-    # Only consider mass deposition at a large enough density, otherwise the program will arise negative density
-
-        # # print("mass calculated de1[m]", de1[m], "m", m, "n", n)
-        # # No convective heat flux. q2
-        # else:
-        #     de1[m] = 0
-        #     print("NO MASS DEPOSITION: ")
+# Equations ------------------------------------------- #
 
         # Integrate deposition mass
         # de0[m] += dt*np.pi*D*de1[m]
@@ -229,23 +192,6 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
         # print("del_SN: ", del_SN)
         # check_negative(del_SN, n)
 
-#                     de1[m] = 0
-
-#                     # density calculation
-#                     rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
-#                         n-1)*dr*ur1[m, n-1]) - 4*dt/D * de1[m]
-#                     # rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
-#                     #     n-1)*dr*ur1[m, n-1]) - dt/dx*(dm) - 4*dt/D * de1[m]   ## New assumption
-#                     print("rho2 surface", rho2[m, n])
-#                     check_negative(rho2[m, n], n)
-#                     #     print("dr term:", -dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
-#                     #         n-1)*dr*ur1[m, n-1]), "rho1[m,n]:", rho1[m, n], "rho1[m,n-1]:", rho1[m, n-1])
-#                     #     print("rho1", rho1[m, n])
-
-#                     # ensure no division by zero
-#                     if rho2[m, n] == 0:
-#                         rho2[m, n] = 0.0001
-#                         print("Density went to zero")
 
 #                     ur2[m, n] = de1[m]/rho2[m, n]
 #                     ux2[m, n] = 0.  # no slip boundary condition.
