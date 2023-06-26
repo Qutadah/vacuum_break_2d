@@ -171,6 +171,7 @@ def n_matrix():
 #     return mm
 
 
+# returns viscosity matrix
 def viscous_matrix(T, P):
     visc_matrix = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     for m in np.arange(Nx+1):
@@ -179,38 +180,41 @@ def viscous_matrix(T, P):
     return visc_matrix
 
 
-def source_mass_depo_matrix(rho_0, T, P, T_s, rho,ur, de):  # -4/D* mdot
+# return S term matrix
+def source_mass_depo_matrix(rho_0, T, P, T_s, rho, ur, de):  # -4/D* mdot
     dm = np.zeros((Nx+1), dtype=(np.float64, np.float64))
     de1 = np.zeros((Nx+1), dtype=(np.float64, np.float64))
     S = np.zeros((Nx+1), dtype=(np.float64, np.float64))
+
     for m in np.arange(Nx+1):
+        dm = rho[m, Nr] * Nr*dr*ur[m, Nr]-rho[m, Nr-1]*(Nr-1)*dr*ur[m, Nr-1]
         if rho[m, Nr] > 2.*rho_0:
             # print("temp gas",T1[m,n], "pressure", p1_before_dep, "temp wall: ", Tw1[m],"mass depo", de1[m], "dm", rho1[m, n]*n*dr*ur1[m, n]-rho1[m, n-1]*n*dr*ur1[m, n-1], "n grid point", n)
             # print("inputs m_de calc: [T1, p1, Ts1, de1, rho1, ur1]",
             #       T1[m, n], p1[m, n], Ts1[m], de1[m], rho1[m, n], ur1[m, n])
-            de1[m] = m_de(T[m, Nr], P[m, Nr], T_s[m], de1[m], dm)  # used BWD
+            de1[m] = m_de(T[m, Nr], P[m, Nr], T_s[m],
+                          de1[m], dm[m])  # used BWD
             # print("m_de / de1 calculated:", de1[m])
             # check_negative(de1[m], n)
         else:
             de1[m] = 0.
-                
-    for m in np.arange(Nx+1):
-        dm = rho[m,Nr]* Nr*dr*ur[m, Nr]-rho[m, Nr-1]*(Nr-1)*dr*ur[m, Nr-1]
-        S[m] = -4./D * de1 
-        return S
+    S = -4./D * de1
+    return S
 
 
+# returns continuity RHS matrix, including source term S
 def rhs_rho(d_dr, m_dx, N, S):
     # calculate source term
     rhs_rho = - 1/N/dr*d_dr - m_dx
 
     # surface equation
-    rhs_rho[:,Nr] = - 1/N[:,Nr]/dr*d_dr[:,Nr] +S[:]
+    rhs_rho[:, Nr] = - 1/N[:, Nr]/dr*d_dr[:, Nr] + S[:]
     # rhs_rho[:,Nr] = -1/N/dr*d_dr  + S[:,Nr]
 
     return rhs_rho
 
 
+# returns MOMENTUM RHS matrix
 def rhs_ma(dp_dx, rho, dt2r_ux, N, ux_dr, dt2x_ux, ux, ux_dx, ur, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix):
 
     rhs_ux = -dp_dx/rho + visc_matrix/rho * (
@@ -225,6 +229,8 @@ def rhs_ma(dp_dx, rho, dt2r_ux, N, ux_dr, dt2x_ux, ux, ux_dx, ur, dp_dr, dt2r_ur
 
     return rhs_ux, rhs_ur
 
+# assures no division by zero
+
 
 def no_division_zero(array):
     # ensure no division by zero
@@ -233,15 +239,12 @@ def no_division_zero(array):
             if array[m, n] == 0:
                 array[m, n] = 0.0001
     return array
-# # RHS for surface equations
-#     if n == Nr:
-
-    return rhs_ux, rhs_ur
 
 
+# returns ENERGY RHS matrix including source terms
 def rhs_energy(grad_r, grad_x, N, S):
     rhs_e = - 1/N/dr*grad_r - grad_x
-    rhs_e[:,Nr] = - 1/N[:,Nr]/dr*grad_r[:,Nr] +S[:]
+    rhs_e[:, Nr] = - 1/N[:, Nr]/dr*grad_r[:, Nr] + S[:]
 
     return rhs_e
     # ri = rhsInv(nx,ny,nz,dx,dy,dz,q,iflx)
@@ -266,35 +269,284 @@ def rhs_energy(grad_r, grad_x, N, S):
     # Momentum R
     # Energy
 
+# simple time integration
+def euler_backward_time(q):
+    # RHS empty matrix initialization
+    rhs_rho1, rhs_ux1, rhs_ur1, rhs_e1 = rhs_matrix_initialization()
+    # nonconservative form - source term S included
+    rhs_rho1 = rhs_rho(d_dr, m_dx, N, S)
 
-def tvdrk3(q, ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, X):
-# X is the array number to return the array after applying BCs that we are iterating
-# NOTE: apply outlet Bcs also.
+    rhs_ux1, rhs_ur1 = rhs_ma(dp_dx, rho1, dt2r_ux, N, ux_dr, dt2x_ux,
+                              ux1, ux_dx, ur1, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix)
 
-    #density
-    qq = copy.deepcopy(q)
+    rhs_e1 = rhs_energy(grad_r, grad_x, N, S)
+    rho2 = rho1 + dt * rhs_rho1
+
+    # calculate ux2
+    ux2 = ux1 + dt*rhs_ux1
+    # apply surface BC
+    ux2[:, Nr] = 0
+
+# calculate ur2
+    ur2 = ur1 + dt * rhs_ur1
+
+    de1 = -1*S*D/4.
+# apply surface ur2 calculation:
+    ur2[:, Nr] = de1[:] / rho2[:, Nr]
+
+    e2 = e1 + dt*rhs_e1
+
+    if np.any(e2 < 0):
+        print("The energy Array has at least one negative value")
+        exit()
+
+    # Update pressure
+    p2 = 2./5.*(e2 - 1./2.*rho2*ur2**2)
+
+    return q2
+
+
+# This iterates RK3 for all equations
+def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in):
+    q = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))  # place holder
+
+# create N matrix:
+    N = n_matrix()
+
+    qq = copy.deepcopy(q)  # density
     qn = copy.deepcopy(q)
 
-    #First step
+    uxx = copy.deepcopy(q)  # velocity axial
+    uxn = copy.deepcopy(q)
 
-    #apply BCs
-    q = inlet_BC(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in)[X]
-    rhs = rhs_rho()
-    qq = q + dt*
+    urr = copy.deepcopy(q)  # velocity radial
+    urn = copy.deepcopy(q)
 
-    #Second step
-    #apply BCs
-    qq = inlet_BC(qq, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in)[X]
-    rhs = rhs_rho(qq)
-    qq = 0.75*q + 0.25*qq + 0.25*dt*r
+    uu = copy.deepcopy(q)  # total velocity
+    uun = copy.deepcopy(q)
 
-    #Third Step
-    #apply BCs
-    r = rhs_rho(qq)
-    qn = 1/3*q + 2/3*qq + 2/3*dt*r
+    ee = copy.deepcopy(q)  # energy
+    en = copy.deepcopy(q)
 
-    return qn
+    tt = copy.deepcopy(q)  # temperature
+    tn = copy.deepcopy(q)
 
+# First step
+# apply BCs
+# NOTE: apply outlet Bcs also.
+# l = [ux, ur, u, p, rho, T, e, Tw, Ts, Tc]
+    for n in np.arange(3):
+        if n == 0:
+            l = inlet_BC(ux, ur, u, p, rho, T, e, p_in,
+                         ux_in, rho_in, T_in, e_in)
+            # k = outlet_BC(uxn, urn, uun, pn, qn, Tn, en)
+        if n == 1:
+            l = inlet_BC(uxx, urr, uu, pp, qq, tt, ee, p_in,
+                         ux_in, rho_in, T_in, e_in)
+            # k = outlet_BC(uxn, urn, uun, pn, qn, Tn, en)
+        if n == 2:
+            l = inlet_BC(uxn, urn, uun, pn, qn, tn, en, p_in,
+                         ux_in, rho_in, T_in, e_in)
+            # k = outlet_BC(uxn, urn, uun, pn, qn, Tn, en)
+    # Calculating gradients (first and second) ---------------------------------------- #
+
+        d_dr, m_dx = grad_rho_matrix(ux_in, rho_in, l[1], l[0], l[4])
+        dp_dx, ux_dx, ux_dr = grad_ux2_matrix(p_in, l[3], ux_in, l[0])
+        dp_dr, ur_dx, ur_dr = grad_ur2_matrix(l[3], l[1], ur_in)
+        grad_x, grad_r = grad_e2_matrix(l[1], l[0], ux_in, e_in, l[6])
+        dt2x_ux, dt2x_ur = dt2x_matrix(ux_in, ur_in, l[0], l[1])
+        dt2r_ux, dt2r_ur = dt2r_matrix(l[0], l[1])
+        dt2x_ux, dt2x_ur = dt2x_matrix(ux_in, ur_in, l[0], l[1])
+        dt2r_ux, dt2r_ur = dt2r_matrix(l[0], l[1])
+
+    # viscosity calculations
+        visc_matrix = viscous_matrix(l[5], l[3])
+        assert np.isfinite(visc_matrix).all()
+
+        # NOTE: IS THIS DE1 or de0
+        S = source_mass_depo_matrix(rho_0, l[5], l[3], l[8], l[4], l[1], de)
+
+        # first step rhs
+        r = rhs_rho(d_dr, m_dx, N, S)
+        r_ux, r_ur = rhs_ma(dp_dx, l[4], dt2r_ux, N, ux_dr, dt2x_ux,
+                            l[0], ux_dx, l[1], dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix)
+        r_e = rhs_energy(grad_r, grad_x, N, S)
+
+    # calculation
+        if n == 0:
+            qq = l[0] + dt*r
+            uxx = l[0] + dt*r_ux
+            urr = l[0] + dt*r_ur
+            ee = l[0] + dt*r_e
+            tt = 2./5.*(l[6]-1./2.*l[4] * l[2]**2)*M_n/l[4]/R
+            pp = 2./5 / R*M_n/T
+
+            qq = q + dt*r
+            uxx = uxx + dt*r_ux
+            urr = q + dt*r_ur
+            ee = q + dt*r_e
+
+        elif n == 1:
+            qq = l[0] + dt*r
+            uxx = l[0] + dt*r_ux
+            urr = l[0] + dt*r_ur
+            ee = l[0] + dt*r_e
+            tt = 2./5.*(l[6]-1./2.*l[4] * l[2]**2)*M_n/l[4]/R
+            pp = 2./5 / R*M_n/T
+
+            qq = 0.75*q + 0.25*qq + 0.25*dt*r
+            uxx = 0.75*q + 0.25*uxx + 0.25*dt*r_ux
+            urr = 0.75*q + 0.25*urr + 0.25*dt*r_ur
+            ee = 0.75*q + 0.25*ee + 0.25*dt*r_e
+
+        else:
+            q_f = l[0] + dt*r
+            uxn = l[0] + dt*r_ux
+            urn = l[0] + dt*r_ur
+            en = l[0] + dt*r_e
+
+            qn = 1/3*q_f + 2/3*qq + 2/3*dt*r
+
+
+# recalculate temperatures and pressures
+        T1 = 2./5.*(l[6]-1./2.*l[4] * l[2]**2)*M_n/l[4]/R
+        p2 = 2./5. * rho*R*T/M_n
+
+
+#  recalculate T, P, Ts, Tc, Tw, use 1st order schemes, enough for the wall equation.
+
+    # Only consider mass deposition at a large enough density, otherwise the program will arise negative density
+
+        # # print("mass calculated de1[m]", de1[m], "m", m, "n", n)
+        # # No convective heat flux. q2
+        # else:
+        #     de1[m] = 0
+        #     print("NO MASS DEPOSITION: ")
+
+        # Integrate deposition mass
+        # de0[m] += dt*np.pi*D*de1[m]
+        # print("deposition mass surface", de0[m])
+        # check_negative(de0[m], n)
+
+        # Calculate the SN2 layer thickness
+        # del_SN = de0[m]/np.pi/D/rho_sn
+        # print("del_SN: ", del_SN)
+        # check_negative(del_SN, n)
+
+#                     de1[m] = 0
+
+#                     # density calculation
+#                     rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
+#                         n-1)*dr*ur1[m, n-1]) - 4*dt/D * de1[m]
+#                     # rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
+#                     #     n-1)*dr*ur1[m, n-1]) - dt/dx*(dm) - 4*dt/D * de1[m]   ## New assumption
+#                     print("rho2 surface", rho2[m, n])
+#                     check_negative(rho2[m, n], n)
+#                     #     print("dr term:", -dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
+#                     #         n-1)*dr*ur1[m, n-1]), "rho1[m,n]:", rho1[m, n], "rho1[m,n-1]:", rho1[m, n-1])
+#                     #     print("rho1", rho1[m, n])
+
+#                     # ensure no division by zero
+#                     if rho2[m, n] == 0:
+#                         rho2[m, n] = 0.0001
+#                         print("Density went to zero")
+
+#                     ur2[m, n] = de1[m]/rho2[m, n]
+#                     ux2[m, n] = 0.  # no slip boundary condition.
+#                     u2[m, n] = np.sqrt(ux1[m, n]**2 + ur1[m, n]**2)
+
+#                     print("ur1 surface", ur1[m, n], "u1 surface", u1[m, n],
+#                           "ur2 surface", ur2[m, n], "u2 surface", u2[m, n])
+#                     # check_negative(ur2[m, n], n)
+#                     check_negative(u2[m, n], n)
+
+#                     # internal energy current timestep
+#                     eps = 5./2.*p1[m, n]
+#                     e1[m, n] = eps + 1./2. * rho1[m, n] * ur1[m, n]**2
+#                     print("rho1 ", rho1[m, n])
+#                     check_negative(rho1[m, n], n)
+
+#                     # define wall second derivative
+#                     # dt2nd = dt2nd_wall((m, Tw1))
+
+#                 # Radial heat transfer within Copper section
+
+# # Only consider the thermal resistance through SN2 layer when thickness is larger than a small preset value (taking average value)
+
+# # NOTE: CHECK THIS LOGIC TREE
+
+#                     #     # q deposited into frost layer. Nusselt convection neglected
+#                     # q_dep = de1[m]*(1/2*(ur1[m, n])**2 +
+#                     #                 delta_h(T1[m, n], Ts1[m]))
+
+#                     # if del_SN > 1e-5:
+#                     #     print(
+#                     #         "This is del_SN > 1e-5 condition, conduction across SN2 layer considered")
+
+#                     #     # heatflux into copper wall from frost layer
+#                     #     qi = k_sn*(Ts1[m]-Tw1[m])/del_SN
+#                     #     print("qi: ", qi)
+#                     #     check_negative(qi, n)
+
+        #    # pipe wall equation
+        #     Tw2[m] = Tw1[m] + dt/(w_coe*c_c(Tw1[m]))*(
+        #         qi-q_h(Tw1[m], BW_coe)*Do/D)+dt/(rho_cu*c_c(Tw1[m]))*k_cu(Tw1[m])*dt2nd
+        #     print("Tw2: ", Tw2[m])
+        #     check_negative(Tw2[m], n)
+
+        #     # SN2 Center layer Tc equation
+        #     Tc2[m] = Tc1[m] + dt * \
+        #         (q_dep-qi) / (rho_sn * c_n(Ts1[m, n]*del_SN))
+        #     print("Tc2: ", Tc2[m, n])
+        #     check_negative(Tc2[m], n)
+
+        # else:
+        #     # heatflux into copper wall from frost layer
+        #     qi = 0
+        #     print("qi: ", qi)
+        #     check_negative(qi, n)
+
+        # pipe wall equation
+        # Tw2[m] = Tw1[m] + dt/(w_coe*c_c(Tw1[m]))*(
+        #     qi-q_h(Tw1[m], BW_coe)*Do/D)+dt/(rho_cu*c_c(Tw1[m]))*k_cu(Tw1[m])*dt2nd
+        # print("Tw2: ", Tw2[m])
+        # check_negative(Tw2[m], n)
+
+        # SN2 Center layer Tc equation
+        # NOTE: Is this te wall temperature?
+        # Tc2[m] = Tw2[m]
+        # print("Tc2: ", Tc2[m])
+
+        # Calculate SN2 surface temp
+        # Ts2[m] = 2*Tc2[m] - Tw2[m]
+        # print("Ts2: ", Ts2[m])
+        # check_negative(Ts2[m], n)
+
+        # NOTE: CHECK THIS SURFACE TEMPERATURE BC with Yolanda
+        # if T2[m, n] < Ts2[m]: # or T2[m, n] > Ts2[m]
+        #     e2[m, n] = 5./2.*rho2[m, n]*R*Ts2[m] / \
+        #         M_n + 1./2.*rho2[m, n]*ur2[m, n]**2
+
+        #     print("THIS IS T2 < Ts")
+        #     print("e2 surface", e2[m, n])
+        #     check_negative(e2[m, n], n)
+
+        #     T2[m, n] = 2./5.*(e2[m, n] - 1./2.*rho2[m, n]
+        #                       * ur2[m, n]**2.)*M_n/rho2[m, n]/R
+        #     print(
+        #         "T2 surface recalculated to make it equal to wall temperature (BC)", T2[m, n])
+        #     check_negative(T2[m, n], n)
+
+        # Heat transfer rate helium
+        # qhe[m] = q_h(Tw1[m], BW_coe)*np.pi*Do
+
+        # print("line 759", "Ts1", Ts1[m], "Ts2", Ts2[m], "Tc2", Tc2[m], "c_c(Ts1[m])", c_c(Ts1[m]), "qh", q_h(Ts1[m], BW_coe), "k_cu(Ts1[m])", k_cu(Ts1[m]), "dt2nd", dt2nd)
+        # print("qhe: ", qhe[m])
+        # check_negative(qhe[m], n)
+
+#                    p2[m, n] = rho2[m, n] * R * T2[m, n]/M_n
+
+    return
 
 # adaptive timestep
 # def calc_dt(cfl, gamma_n, q, nx, nr, dx, dr):
@@ -1120,37 +1372,48 @@ def smoothing_inlet(p, rho, T, ux, ur, ux_in, u, p_in, p_0, rho_in, rho_0, n_tra
         # print("p1 matrix after smoothing", p1)
         # else:
         #     e1[i, :] = 5/2*rho1[i, :]/M_n*R*T_in+1/2**rho1[i, :]*u1[i, :]**2
-
+    e = balance_energy(p, rho, u)
     # for i in range(0, Nx+1):
-    out = p, rho, T, ux, u
+    out = p, rho, T, ux, u, e
     return out
+
+# no slip BC at surface of pipe
+
+# remove timestepping folder
+
+
+def remove_timestepping():
+    pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/'
+    if os.path.exists(pathname):
+        location = "C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/"
+        dir = "timestepping"
+        path = os.path.join(location, dir)
+        shutil.rmtree(path)
+
+
+def no_slip(ux, u):
+    ux[:, Nr] = 0
+    u[:, Nr] = 0
+    e = balance_energy(p, rho, u)
+    return ux, u, e
 
 
 @jit(nopython=True)
-def inlet_BC(ux, ur, u, p, rho, T, e, p_inl, ux_inl, rho_inl, T_inl, e_inl):
+def inlet_BC(ux, ur, u, p, rho, T, e, p_inl, ux_inl, rho_inl, T_inl, e_inl, Tw, Ts, Tc):
     ux[0, :] = ux_inl
     u[0, :] = ux_inl
     p[0, :] = p_inl
     rho[0, :] = rho_inl
     T[0, :] = T_inl
     e[0, :] = e_inl
+    Tw[0] = T_inl
+    Ts[0] = T_inl
+    Tc[0] = T_inl
     u = np.sqrt(ux**2. + ur**2.)
-# val_in(i)
-# Tw2[0] = T_inl
-# Ts2[0] = T_inl
-# Tc2[0] = T_inl
-# NOTE: BC INIT
-    # Ts1[:] = T1[:, Nr]
-    # Ts2[:] = Ts1
-    # Tw1[:] = T_s
-    # Tw2[:] = T_s
-    # Tc1[:] = T_s
-    # Tc2[:] = T_s
 
-    # recalculate energies
-    e = 5./2. * p + 1./2 * rho * u**2
+    e = balance_energy(p, rho, u)
 
-    return [ux, ur, u, p, rho, T, e]
+    return [ux, ur, u, p, rho, T, e, Tw, Ts, Tc]
 
 
 @jit(nopython=True)
@@ -1165,7 +1428,7 @@ def outlet_BC(p, e, rho, ux, ur, u, rho_0):
                         rho[Nx-2, n]*ux[Nx-2, n], 0) / rho[Nx, n]
         u = np.sqrt(ux**2. + ur**2.)
         # e[Nx, n] = 2*e[Nx-1, n]-e[Nx-2, n]
-        e = 5./2.*rho/M_n*R*T + 1./2.*rho*u**2
+    e = balance_energy(p, rho, u)
 
     bc = [p, rho, ux, u, e]
 
@@ -1190,8 +1453,18 @@ def outlet_BC(p, e, rho, ux, ur, u, rho_0):
     # de0[Nx] += dt*np.pi*D*de1[Nx]
     return bc
 
-# def recalculating_fields(p,rho,T):
-    # recalculating fields:
+# recalculating energy from pressure and velocity
+
+
+def balance_energy(p, rho, u):
+    e = 5./2. * p + 1./2 * rho*u**2
+    return e
+
+
+# recalculating energy from rho, T, and velocity
+def balance_energy2(rho, T, u):
+    e = 5./2. * rho*R*T/M_n + 1./2 * rho*u**2
+    return e
 
 
 @jit(nopython=True)

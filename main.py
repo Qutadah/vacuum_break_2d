@@ -58,53 +58,50 @@ print("p_in: ", p_in, "ux_in: ", ux_in, "ur_in: ", ur_in, "rho_in: ",
       rho_in, "e_in: ", e_in, "T_in: ", T_in)
 ### ------------------------------------- PREPPING AREA - smoothing ------------------------------------------------- ########
 
-p, rho, T, ux, u = smoothing_inlet(
+p1, rho1, T1, ux1, u1, e1 = smoothing_inlet(
     p1, rho1, T1, ux1, ur1, ux_in, u1, p_in, p_0, rho_in, rho_0, n_trans)
+
+# NOTE: should i remove it?
+# BC SURFACES
+Ts1[:] = T1[:, Nr]
+Ts2[:] = Ts1
+Tw1[:] = T_s
+Tw2[:] = T_s
+Tc1[:] = T_s
+Tc2[:] = T_s
 
 
 ####### ---------------------------- PARABOLIC VELOCITY PROFILE - inlet prepping area-------------------------------------------------------- ######
 
+
 # ux, u = parabolic_velocity(ux1, ux_in, T1)
 
-### ---------------------------------------------------------- NO SLIP BOUNDARY CONDITION - viscous flow ----------------------------------------------------------###
-ux1[:, Nr] = 0
-u1[:, Nr] = 0
+# ---------------------------------------------------------- NO SLIP BC
 
-# recalculate energies
-e1 = 5./2. * p1 + 1./2 * rho1 * u1**2
+ux1, u1, e1 = no_slip(ux, u)
 
-### ----------------------------------------------------------  inlet BC  ----------------------------------------------------------###
+# ------  inlet BCs
 
 ux1, ur1, u1, p1, rho1, T1, e1 = inlet_BC(
     ux1, ur1, u1, p1, rho1, T1, e1, p_in, ux_in, rho_in, T_in, e_in)
-
-## ------------------------------------------------------------- SAVING INITIAL MATRICES ---------------------------------------------------------------- #####
-
-
-# recalculate energies
-e1 = 5./2. * p1 + 1./2 * rho1 * u1**2
-
-
-pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/'
-if os.path.exists(pathname):
-    location = "C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/"
-    dir = "timestepping"
-    path = os.path.join(location, dir)
-    shutil.rmtree(path)
 
 
 # Calculating Peclet number in the grid points to determine differencing scheme
 Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
 
+## ------------------------------------------------------------- SAVING INITIAL MATRICES ---------------------------------------------------------------- #####
+
 
 # rho3, ux3, ur3, u3, e3, T3, p3, Pe3 = delete_r0_point(
 #     rho1, ux1, ur1, u1, e1, T1, p1, Pe1)
 
+# remove timestepping folder
+remove_timestepping()
 
+# save initial fields
 save_initial_conditions(rho1, ux1, ur1, u1, e1, T1,
-                        Tw1, Ts1, de0, p1, de1, Pe)
+                        Tw1, Ts1, de0, p1, de1, Pe1)
 
-##### ----------------------------------------- PLOTTING INITIAL CONDITIONS ---------------------------------------------------------------------------####
 plot_imshow(p1, ux1, T1, rho1, e1)
 # plt.imsave('result.png', )
 
@@ -133,90 +130,59 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
 
     # ------------------------------------- Time iteration  --------------------------------------------- #
 
+    # create N matrix: needed once only
+    N = n_matrix()
+    assert np.isfinite(N).all()
+
     for i in np.arange(np.int64(0), np.int64(Nt+1)):
 
         # variable inl et
         # p_in, q_in, ux_in, ur_in, rho_in, e_in = val_in(
         #     i, ux_in)  # define inlet values
 
+        # p_in, q_in, ux_in, ur_in, rho_in, e_in, T_in = val_in(i)
+
         # constant inlet
         p_in, ux_in, ur_in, rho_in, e_in, T_in = val_in_constant()
 
-        # p_in, q_in, ux_in, ur_in, rho_in, e_in, T_in = val_in(i)
+        # RK3 time integration
+        ux2, ur2, u2, p2, rho2, T2, e2 = tvdrk3(
+            ux1, ur1, u1, p1, rho1, T1, e1, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in)
 
-        # recalculating fields:
-        p1[0, :] = p_in
-        ux1[0, :] = ux_in
-        ur1[0, :] = ur_in
-        rho1[0, :] = rho_in
-        e1[0, :] = e_in
-        T1[0, :] = T_in
-        u1 = np.sqrt(ux1**2 + ur1**2)
 
-        # recalculate energies
-        e1 = 5./2. * p1 + 1./2 * rho1 * u1**2
-
-# ------------------------------------- Inlet boundary conditions --------------------------------------------- #
-# latest NOTE
-        # ux1, u1, p1, rho1, T1, e1 = inlet_BC(ux1, u1, p1, rho1, T1, e1, p_in, ux_in, rho_in, T_in, e_in)
-
-# ------------------------------ Calculating gradients ---------------------------------------- #
-
-        # Calculating Peclet number in the grid points to determine differencing scheme
+# calculating Peclet for field, helps later for differencing scheme used
         Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
 
-        # calculate first derivative matrix:
-        a, d_dr, m_dx = grad_rho_matrix(ux_in, rho_in, ur1, ux1, rho1)
-        dp_dx, ux_dr, ux_dr = grad_ux2_matrix(p_in, p1, ux_in, ux1)
-        dp_dr, ur_dx, ur_dr = grad_ur2_matrix(p, ur1, ur_in)
-        grad_x, grad_r = grad_e2_matrix(ur1, ux1, ux_in, e_in, e1)
+# # Calculating gradients
 
-# ------------------------------------- calculating second derivative --------------------------------------------- #
-        dt2x_ux, dt2x_ur = dt2x_matrix(ux_in, ur_in, ux1, ur1)
-        dt2r_ux, dt2r_ur = dt2r_matrix(ux1, ur1)
-        assert np.isfinite(a).all()
-        assert np.isfinite(d_dr).all()
-        assert np.isfinite(m_dx).all()
-        assert np.isfinite(dp_dx).all()
-        assert np.isfinite(ux_dr).all()
-        assert np.isfinite(ur_dx).all()
-        assert np.isfinite(ur_dr).all()
-        assert np.isfinite(dp_dr).all()
-        assert np.isfinite(grad_x).all()
-        assert np.isfinite(grad_r).all()
+#         # calculate first derivative matrix:
+#         d_dr, m_dx = grad_rho_matrix(ux_in, rho_in, ur1, ux1, rho1)
+#         dp_dx, ux_dr, ux_dr = grad_ux2_matrix(p_in, p1, ux_in, ux1)
+#         dp_dr, ur_dx, ur_dr = grad_ur2_matrix(p, ur1, ur_in)
+#         grad_x, grad_r = grad_e2_matrix(ur1, ux1, ux_in, e_in, e1)
 
-        # viscosity calculations
-        visc_matrix = viscous_matrix(T1, p1)
-        assert np.isfinite(visc_matrix).all()
+# # calculating second derivative
+#         dt2x_ux, dt2x_ur = dt2x_matrix(ux_in, ur_in, ux1, ur1)
+#         dt2r_ux, dt2r_ur = dt2r_matrix(ux1, ur1)
+#         assert np.isfinite(a).all()
+#         assert np.isfinite(d_dr).all()
+#         assert np.isfinite(m_dx).all()
+#         assert np.isfinite(dp_dx).all()
+#         assert np.isfinite(ux_dr).all()
+#         assert np.isfinite(ur_dx).all()
+#         assert np.isfinite(ur_dr).all()
+#         assert np.isfinite(dp_dr).all()
+#         assert np.isfinite(grad_x).all()
+#         assert np.isfinite(grad_r).all()
 
-    # Mass deposition: specify source term:
-        # def mde_helper(rho, ux)
-        # for m in np.arange(Nx+1):
-        #     de =
-        #     S = source_mass_depo_matrix(T, P, T_s, de ,dm)
-#
-        # return
-
-        # create N matrix:
-        N = n_matrix()
-        assert np.isfinite(N).all()
+#         # viscosity calculations
+#         visc_matrix = viscous_matrix(T1, p1)
+#         assert np.isfinite(visc_matrix).all()
 
         # mass deposition rate matrix and source term
         # S = 0  # no mass deposition
-        S = source_mass_depo_matrix(rho_0, T1, p1, Ts1, rho1, ur1, de)
-        # RHS empty matrix initialization
-        rhs_rho1, rhs_ux1, rhs_ur1, rhs_e1 = rhs_matrix_initialization()
+        # de i mass deposion rate per unit area, de1 or de0
 
-        # nonconservative form
-        rhs_rho1 = rhs_rho(d_dr, m_dx, N, S)
-
-        rhs_ux1, rhs_ur1 = rhs_ma(dp_dx, rho1, dt2r_ux, N, ux_dr, dt2x_ux,
-                                  ux1, ux_dx, ur1, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix)
-
-        rhs_e1 = rhs_energy(grad_r, grad_x, N, S)
-
-# calculate density
-        rho2 = rho1 + dt * rhs_rho1
         # use RK3
 
         if np.any(rho2 < 0):
@@ -227,45 +193,11 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
         # ensure no division by zero
         rho2 = no_division_zero(rho2)
 
-# calculate ux2
-        ux2 = ux1 + dt*rhs_ux1
-        # apply surface BC
-        ux2[:, Nr] = 0
 
-# calculate ur2
-        ur2 = ur1 + dt * rhs_ur1
-
-        # if rho1[m, n] > 2.*rho_0:
-        #     # print("printed",T1[m, n], p1p, Tw1[m], de1[m], rho1[m, n]* ur1[m, n]-rho1[m, n-1]*ur1[m, n-1])
-        #     # mass deposition rate (m_out)
-        #     # print("temp gas",T1[m,n], "pressure", p1_before_dep, "temp wall: ", Tw1[m],"mass depo", de1[m], "dm", rho1[m, n]*n*dr*ur1[m, n]-rho1[m, n-1]*n*dr*ur1[m, n-1], "n grid point", n)
-        #     print("inputs m_de calc: [T1, p1, Ts1, de1, rho1, ur1]",
-        #           T1[m, n], p1[m, n], Ts1[m], de1[m], rho1[m, n], ur1[m, n])
-        #     de1[m] = m_de(T1[m, n], p1[m, n], Ts1[m], de1[m], )  # used BWD
-        #     print("m_de / de1 calculated:", de1[m])
-        #     check_negative(de1[m], n)
-
-        # bring mdot matrix
-
-        de1 = S*D/4.
-        # apply surface ur2 calculation:
-        ur2[:, Nr] = de1[:] / rho2[:, Nr]
-
-        e2 = e1 + dt*rhs_e1
-
-        if np.any(e2 < 0):
-            print("The energy Array has at least one negative value")
-            exit()
-
-        # temperature calculation..
-
-        T2 = 2./5.*(e2-1/2*rho2 * u2**2)*M_n/rho2/R
 # print("T1 bulk: ", T1[m, n], "T2 bulk:", T2[m, n])
 #                     check_negative(T1[m, n], n)
 #                     check_negative(T2[m, n], n)
 
-    # Update pressure
-        p2 = 2./5.*(e2 - 1./2.*rho2*ur2**2)
         # print("P2 surface: ", p2[m, n])
         # check_negative(p2[m, n], n)
 
