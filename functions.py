@@ -108,8 +108,6 @@ def initialize_ghost():
 
     return ro_rec, ux_rec,
 
-
-
     # x-direction
     # if (iflx==1)
     #     qLx,qRx = weno5(nx,ny,nz,q,1)
@@ -134,61 +132,117 @@ def initialize_ghost():
 
 
 def rhs_matrix_initialization():
-# nonconservative form 
+    # nonconservative form
 
     rhs_rho = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     rhs_ux = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     rhs_ur = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     rhs_e = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
 
-    return rhs_rho, rhs_ux, rhs_ur,rhs_e
+    return rhs_rho, rhs_ux, rhs_ur, rhs_e
+
 
 def rhs_conservative_matrix_initialization():
-# conservative form 
+    # conservative form
 
     rhs_rho = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     rhs_max = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     rhs_mar = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     rhs_e = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
 
-    return rhs_rho, rhs_max, rhs_mar,rhs_e
+    return rhs_rho, rhs_max, rhs_mar, rhs_e
 
 
-def rhs_rho(d_dr, m_dx):
-        
-    rhs_rho = -1/n/dr*d_dr - m_dx
+def n_matrix():
+    # Initialized once when starting main
+    n = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    for i in np.arange(np.int64(1), np.int64(Nx+1)):
+        for j in np.arange(np.int64(1), np.int64(Nr+1)):
+            n[i, j] = i
+    return n
 
-    if n ==Nr:
+
+# def m_matrix():
+#     # Initialized once when starting main
+#     mm = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+#     for i in np.arange(np.int64(1), np.int64(Nx+1)):
+#         for j in np.arange(np.int64(1), np.int64(Nr+1)):
+#             mm[i, j] = j
+#     return mm
+
+
+def viscous_matrix(T, P):
+    visc_matrix = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    for m in np.arange(Nx+1):
+        for n in np.arange(Nr+1):
+            visc_matrix[m, n] = mu_n(T[m, n], P[m, n])
+    return visc_matrix
+
+
+def source_mass_depo_matrix(rho_0, T, P, T_s, rho,ur, de):  # -4/D* mdot
+    dm = np.zeros((Nx+1), dtype=(np.float64, np.float64))
+    de1 = np.zeros((Nx+1), dtype=(np.float64, np.float64))
+    S = np.zeros((Nx+1), dtype=(np.float64, np.float64))
+    for m in np.arange(Nx+1):
+        if rho[m, Nr] > 2.*rho_0:
+            # print("temp gas",T1[m,n], "pressure", p1_before_dep, "temp wall: ", Tw1[m],"mass depo", de1[m], "dm", rho1[m, n]*n*dr*ur1[m, n]-rho1[m, n-1]*n*dr*ur1[m, n-1], "n grid point", n)
+            # print("inputs m_de calc: [T1, p1, Ts1, de1, rho1, ur1]",
+            #       T1[m, n], p1[m, n], Ts1[m], de1[m], rho1[m, n], ur1[m, n])
+            de1[m] = m_de(T[m, Nr], P[m, Nr], T_s[m], de1[m], dm)  # used BWD
+            # print("m_de / de1 calculated:", de1[m])
+            # check_negative(de1[m], n)
+        else:
+            de1[m] = 0.
+                
+    for m in np.arange(Nx+1):
+        dm = rho[m,Nr]* Nr*dr*ur[m, Nr]-rho[m, Nr-1]*(Nr-1)*dr*ur[m, Nr-1]
+        S[m] = -4./D * de1 
+        return S
+
+
+def rhs_rho(d_dr, m_dx, N, S):
+    # calculate source term
+    rhs_rho = - 1/N/dr*d_dr - m_dx
+
+    # surface equation
+    rhs_rho[:,Nr] = - 1/N[:,Nr]/dr*d_dr[:,Nr] +S[:]
+    # rhs_rho[:,Nr] = -1/N/dr*d_dr  + S[:,Nr]
 
     return rhs_rho
 
 
+def rhs_ma(dp_dx, rho, dt2r_ux, N, ux_dr, dt2x_ux, ux, ux_dx, ur, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix):
 
-def viscous_matrix(T, P):
-    for m in np.arange(Nx+1):
-        for n in np.arange(Nr+1):
-           visc_matrix[m,n] =  mu_n(T[m, n], p[m, n])
-    return visc_matrix
-
-def rhs_ma(m, n, dr, dx, ux_in, p, p_in, ux, ur_in, ur, rho, viscous_matrix):
-    visc_matrix = viscous_matrix(T,P)
-    dp_dr()        
-    ux_dr
-    
     rhs_ux = -dp_dx/rho + visc_matrix/rho * (
-        dt2r_ux1 + 1/n/dr*ux_dr + dt2x_ux1) - ux * ux_dx - ur*ux_dr
+        dt2r_ux + 1/N/dr*ux_dr + dt2x_ux) - ux * ux_dx - ur*ux_dr
 
-    rhs_ur = - dp_dr[m, n]/(rho) + mu_n(T[m, n], p[m, n])/rho[m, n] * (- ur[m, n]/(dr**2*n**2) + 1/n/dr*ur_dr[m, n] + dt2r_ur1[m, n] + dt2x_ur1[m, n]) - ux[m, n] * ur_dx[m, n] - ur[m, n]*ur_dr[m, n]
+    rhs_ur = - dp_dr/rho + visc_matrix/rho * \
+        (- ur/(dr**2*N**2) + 1/N/dr*ur_dr +
+         dt2r_ur + dt2x_ur) - ux * ur_dx - ur*ur_dr
 
-# RHS for surface equations
-            if n == Nr:
-
+    # surface equations
+    # no momentum equations
 
     return rhs_ux, rhs_ur
 
 
-def rhs_energy(m, n, dr, dx, q, ivis, iflx, ur1, ux1, ux_in, e_in, e1):
-    rhs_e = - 1/n/dr*grad_r[m, n] - grad_x[m, n]
+def no_division_zero(array):
+    # ensure no division by zero
+    for m in np.arange(Nx+1):
+        for n in np.arange(Nr+1):
+            if array[m, n] == 0:
+                array[m, n] = 0.0001
+    return array
+# # RHS for surface equations
+#     if n == Nr:
+
+    return rhs_ux, rhs_ur
+
+
+def rhs_energy(grad_r, grad_x, N, S):
+    rhs_e = - 1/N/dr*grad_r - grad_x
+    rhs_e[:,Nr] = - 1/N[:,Nr]/dr*grad_r[:,Nr] +S[:]
+
     return rhs_e
     # ri = rhsInv(nx,ny,nz,dx,dy,dz,q,iflx)
     # if (ivis==1)
@@ -213,26 +267,33 @@ def rhs_energy(m, n, dr, dx, q, ivis, iflx, ur1, ux1, ux_in, e_in, e1):
     # Energy
 
 
-# def tvdrk3(array, q,rhs)
-#     qq = copy.deepcopy(q)
-#     qn = copy.deepcopy(q)
+def tvdrk3(q, ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, X):
+# X is the array number to return the array after applying BCs that we are iterating
+# NOTE: apply outlet Bcs also.
 
-#     #First step
-#     !(q,nx,ny,nz)
-#     r  = rhs(nx,ny,nz,dx,dy,dz,q,ivis,iflx,Re)
-#     qq = q + dt*r
+    #density
+    qq = copy.deepcopy(q)
+    qn = copy.deepcopy(q)
 
-#     #Second step
-#     expbc!(qq,nx,ny,nz)
-#     r  = rhs(nx,ny,nz,dx,dy,dz,qq,ivis,iflx,Re)
-#     qq = 0.75*q + 0.25*qq + 0.25*dt*r
+    #First step
 
-#     #Third Step
-#     expbc!(qq,nx,ny,nz)
-#     r  = rhs(nx,ny,nz,dx,dy,dz,qq,ivis,iflx,Re)
-#     qn = 1/3*q + 2/3*qq + 2/3*dt*r
+    #apply BCs
+    q = inlet_BC(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in)[X]
+    rhs = rhs_rho()
+    qq = q + dt*
 
-#     return qn
+    #Second step
+    #apply BCs
+    qq = inlet_BC(qq, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in)[X]
+    rhs = rhs_rho(qq)
+    qq = 0.75*q + 0.25*qq + 0.25*dt*r
+
+    #Third Step
+    #apply BCs
+    r = rhs_rho(qq)
+    qn = 1/3*q + 2/3*qq + 2/3*dt*r
+
+    return qn
 
 
 # adaptive timestep
@@ -315,11 +376,9 @@ def grad_rho2(m, n, ux_in, rho_in, ur, ux, rho):
     #     m_dx = (rho[m, n]*ux[m, n]-rho_in*ux_in)/dx
 
     if m == 1:
-        a = rho[m, n]
         m_dx = (rho[m, n]*ux[m, n]-rho_in*ux_in)/dx
 
     elif m == Nx:
-        a = rho[m, n]
         m_dx = (rho[m, n]*ux[m, n]-rho[m-1, n]*ux[m-1, n])/dx
 
     # elif (m <= n_trans+2 and m >= n_trans+2):
@@ -329,7 +388,6 @@ def grad_rho2(m, n, ux_in, rho_in, ur, ux, rho):
     #             rho1[m+1, n] - rho1[m+2, n])/(12*dx)
 
     else:
-        a = rho[m, n]
         m_dx = (rho[m, n]*ux[m, n]-rho[m-1, n]*ux[m-1, n])/(dx)
 
     if n == 1:
@@ -345,27 +403,23 @@ def grad_rho2(m, n, ux_in, rho_in, ur, ux, rho):
         d_dr = (rho[m, n+1]*(n+1)*dr*ur[m, n+1] -
                 rho[m, n-1] * (n-1)*dr*ur[m, n-1])/(2*dr)
 
-    return a, d_dr, m_dx
+    return d_dr, m_dx
 
 
 # @jit(nopython=True)
 def grad_rho_matrix(ux_in, rho_in, ur, ux, rho):
     # create gradients arrays.
-    a = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     m_dx = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     d_dr = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     for i in np.arange(Nx+1):
         for j in np.arange(Nr+1):
             if i == 1:
-                a[i, j] = rho[i, j]
                 m_dx[i, j] = (rho[i, j]*ux[i, j]-rho_in*ux_in)/dx
 
             elif i == Nx:
-                a[i, j] = rho[i, j]
                 m_dx[i, j] = (rho[i, j]*ux[i, j]-rho[i-1, j]*ux[i-1, j])/dx
 
             else:
-                a[i, j] = rho[i, j]
                 m_dx[i, j] = (rho[i, j]*ux[i, j]-rho[i-1, j]*ux[i-1, j])/(dx)
 
             if j == 1:
@@ -380,7 +434,7 @@ def grad_rho_matrix(ux_in, rho_in, ur, ux, rho):
             else:
                 d_dr[i, j] = (rho[i, j+1]*(i+1)*dr*ur[i, j+1] -
                               rho[i, j-1] * (j-1)*dr*ur[i, j-1])/(2*dr)
-    return a, d_dr, m_dx
+    return d_dr, m_dx
 
 
 # @numba.jit('f8(f8,f8,f8,f8,f8,f8)')
@@ -572,6 +626,10 @@ def grad_ur2_matrix(p, ur, ur_in):  # first derivatives BULK
 @jit(nopython=True)
 def grad_e2(m, n, ur1, ux1, ux_in, e_in, e1):     # use upwind for Pe > 2
 
+    if n == Nr:
+        grad_r = (n*dr*ur1[m, n]*e1[m, n] -
+                  (n-1)*dr*ur1[m, n-1]*e1[m, n-1])/dr  # BWD
+
     # We dont need the surface case, this is the bulk...
 
     if n == 1:
@@ -621,6 +679,11 @@ def grad_e2_matrix(ur1, ux1, ux_in, e_in, e1):     # use upwind for Pe > 2
                 # NOTE: Symmetry BC done
                 grad_r[m, n] = ((n+2)*dr*ur1[m, n+2]*e1[m, n+2] - n *
                                 dr*ur1[m, n]*e1[m, n])/(4*dr)  # ur=0 @ r=0 #CD
+
+            # surface case
+            if n == Nr:
+                grad_r[m, n] = (n*dr*ur1[m, n]*e1[m, n] -
+                                (n-1)*dr*ur1[m, n-1]*e1[m, n-1])/dr  # BWD
 
         # n == Nr-1:
             else:
@@ -1230,7 +1293,6 @@ def m_de(T, P, T_s, de, dm):
     beta = u_mean1/v_m1  # this is Beta from Hertz Knudson
     gam1 = gamma(beta)  # deviation from Maxwellian velocity.
     P_s = f_ps(T_s)
-    # print("Saturation pressure at this Ts", P_s)
 
     if P > P_s and P > p_0:
         # Correlated Hertz-Knudsen Relation #####
@@ -1248,27 +1310,12 @@ def m_de(T, P, T_s, de, dm):
         # sqrt(7./5.*R*T/M_n)*rho
         # Used Conti in X-direction, since its absolute flux.
         m_max = D/4./dt*(rho-rho_min)-D/4./dx*dm
-  # sqrt(7./5.*R*T/M_n)*rho
-        # print("m_max_sound:", m_max, "rho", rho, "rho_min", rho_min)
-#        m_max = ((rho-rho_min)/dt - 1/(Nr*dr**2)*dm) * \
- #           D/4.         # From continuity equation
-#        m_max = 2.564744575054553e-26  #NOTE: added to limit condensation rate...
-#        print("m_max_sound:",m_max)
-        # print("saturation temp: ", f_ts(P*np.sqrt(T_s/T)))
-        # print("mout calculated: ", m_out)
         if m_out > m_max:
             m_out = m_max
-            print("mout = mmax")
+            # print("mout = mmax")
     else:
-        # print("P<P0")
         m_out = 0
-#    m_out = 0
     rho_min = p_0*M_n/R/T
-#    m_max = ((rho-rho_min)/dt - 1/(Nr*dr**2)*dm) * \
-#       D/4.         # From continuity equation
-    # print("m_max_sound:", m_max, "rho", rho, "rho_min", rho_min)
-
-    print("mout final: ", m_out)
     m_out = 0  # NO HEAT TRANSFER/ MASS DEPOSITION CASE
     return m_out  # Output: mass deposition flux, no convective heat flux
 

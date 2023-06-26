@@ -131,11 +131,6 @@ save_gradients(a, d_dr, m_dx, dp_dx, ux_dx, ux_dr,
 
 def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de1, p3, rho3, T3, ux3, ur3, u3, e3, pe):
 
-    # values = (v1,v2,v3)
-    # ws.append(values)
-    # name= "simulation_values\," + str(i) +'\'
-    # wb.save(name)
-
     # ------------------------------------- Time iteration  --------------------------------------------- #
 
     for i in np.arange(np.int64(0), np.int64(Nt+1)):
@@ -165,302 +160,296 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
 # latest NOTE
         # ux1, u1, p1, rho1, T1, e1 = inlet_BC(ux1, u1, p1, rho1, T1, e1, p_in, ux_in, rho_in, T_in, e_in)
 
-# ------------------------------------- Calculating gradients --------------------------------------------- #
+# ------------------------------ Calculating gradients ---------------------------------------- #
 
         # Calculating Peclet number in the grid points to determine differencing scheme
         Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
 
-        # RHS empty matrix initialization
-        rhs_rho, rhs_ux, rhs_ur,rhs_e =rhs_matrix_initialization()
-
-        #Source term initialization
-
-        # calculate gradients matrix:
+        # calculate first derivative matrix:
         a, d_dr, m_dx = grad_rho_matrix(ux_in, rho_in, ur1, ux1, rho1)
         dp_dx, ux_dr, ux_dr = grad_ux2_matrix(p_in, p1, ux_in, ux1)
         dp_dr, ur_dx, ur_dr = grad_ur2_matrix(p, ur1, ur_in)
         grad_x, grad_r = grad_e2_matrix(ur1, ux1, ux_in, e_in, e1)
 
+# ------------------------------------- calculating second derivative --------------------------------------------- #
+        dt2x_ux, dt2x_ur = dt2x_matrix(ux_in, ur_in, ux1, ur1)
+        dt2r_ux, dt2r_ur = dt2r_matrix(ux1, ur1)
+        assert np.isfinite(a).all()
+        assert np.isfinite(d_dr).all()
+        assert np.isfinite(m_dx).all()
+        assert np.isfinite(dp_dx).all()
+        assert np.isfinite(ux_dr).all()
+        assert np.isfinite(ur_dx).all()
+        assert np.isfinite(ur_dr).all()
+        assert np.isfinite(dp_dr).all()
+        assert np.isfinite(grad_x).all()
+        assert np.isfinite(grad_r).all()
 
-# ------------------------------------- calculating second gradients --------------------------------------------- #
-        dt2x_ux1, dt2x_ur1 = dt2x_matrix(ux_in, ur_in, ux1, ur1)
-        dt2r_ux1, dt2r_ur1 = dt2r_matrix(ux1, ur1)
+        # viscosity calculations
+        visc_matrix = viscous_matrix(T1, p1)
+        assert np.isfinite(visc_matrix).all()
 
-        rhs_rho1 = rhs_rho(d_dr, m_dx)
-        rhs_rho1 = rhs_rho(d_dr, m_dx)
-        rhs_rho1 = rhs_rho(d_dr, m_dx)
+    # Mass deposition: specify source term:
+        # def mde_helper(rho, ux)
+        # for m in np.arange(Nx+1):
+        #     de =
+        #     S = source_mass_depo_matrix(T, P, T_s, de ,dm)
+#
+        # return
 
+        # create N matrix:
+        N = n_matrix()
+        assert np.isfinite(N).all()
 
-                print("[i,m,n]:", [i, m, n])
+        # mass deposition rate matrix and source term
+        # S = 0  # no mass deposition
+        S = source_mass_depo_matrix(rho_0, T1, p1, Ts1, rho1, ur1, de)
+        # RHS empty matrix initialization
+        rhs_rho1, rhs_ux1, rhs_ur1, rhs_e1 = rhs_matrix_initialization()
 
-        # save_data()
-# ---------------------------------- Spatial iterations------------------------------------------- #
+        # nonconservative form
+        rhs_rho1 = rhs_rho(d_dr, m_dx, N, S)
 
-        # starts from np start [0,Nx]
-        # m=0 neglected, because we apply BCs anyway.
-        # for m in np.arange(np.int64(1), np.int64(Nx+1)):
-        #     for n in np.arange(np.int64(1), np.int64(Nr+1)):
+        rhs_ux1, rhs_ur1 = rhs_ma(dp_dx, rho1, dt2r_ux, N, ux_dr, dt2x_ux,
+                                  ux1, ux_dx, ur1, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix)
 
-####### ------------------------------------ Case 1: At boundaries (with mass deposition). -------------------------------------------------------------######
-                if n == Nr:
-                    continue
-                    print("THIS IS A SURFACE, MASS DEPOSITION:")
+        rhs_e1 = rhs_energy(grad_r, grad_x, N, S)
+
+# calculate density
+        rho2 = rho1 + dt * rhs_rho1
+        # use RK3
+
+        if np.any(rho2 < 0):
+            print("The Density Array has at least one negative value")
+            exit()
+        assert np.isfinite(rho2).all()
+
+        # ensure no division by zero
+        rho2 = no_division_zero(rho2)
+
+# calculate ux2
+        ux2 = ux1 + dt*rhs_ux1
+        # apply surface BC
+        ux2[:, Nr] = 0
+
+# calculate ur2
+        ur2 = ur1 + dt * rhs_ur1
+
+        # if rho1[m, n] > 2.*rho_0:
+        #     # print("printed",T1[m, n], p1p, Tw1[m], de1[m], rho1[m, n]* ur1[m, n]-rho1[m, n-1]*ur1[m, n-1])
+        #     # mass deposition rate (m_out)
+        #     # print("temp gas",T1[m,n], "pressure", p1_before_dep, "temp wall: ", Tw1[m],"mass depo", de1[m], "dm", rho1[m, n]*n*dr*ur1[m, n]-rho1[m, n-1]*n*dr*ur1[m, n-1], "n grid point", n)
+        #     print("inputs m_de calc: [T1, p1, Ts1, de1, rho1, ur1]",
+        #           T1[m, n], p1[m, n], Ts1[m], de1[m], rho1[m, n], ur1[m, n])
+        #     de1[m] = m_de(T1[m, n], p1[m, n], Ts1[m], de1[m], )  # used BWD
+        #     print("m_de / de1 calculated:", de1[m])
+        #     check_negative(de1[m], n)
+
+        # bring mdot matrix
+
+        de1 = S*D/4.
+        # apply surface ur2 calculation:
+        ur2[:, Nr] = de1[:] / rho2[:, Nr]
+
+        e2 = e1 + dt*rhs_e1
+
+        if np.any(e2 < 0):
+            print("The energy Array has at least one negative value")
+            exit()
+
+        # temperature calculation..
+
+        T2 = 2./5.*(e2-1/2*rho2 * u2**2)*M_n/rho2/R
+# print("T1 bulk: ", T1[m, n], "T2 bulk:", T2[m, n])
+#                     check_negative(T1[m, n], n)
+#                     check_negative(T2[m, n], n)
+
+    # Update pressure
+        p2 = 2./5.*(e2 - 1./2.*rho2*ur2**2)
+        # print("P2 surface: ", p2[m, n])
+        # check_negative(p2[m, n], n)
+
+        # calculate RHS
+        # rhs_rho1 = rhs_rho(dr, dx, ur1[m, n], ux1[m, n],
+        #                    rho1[m, n], a, ux_in, rho_in, d_dr[m, n], m_dx[m, n])
+        # rhs_ux1, rhs_ur_1 = rhs_ma(dr, dx, ux_in, p,
+        #                            p_in, ux1, ur_in, ur[m, n], rho1)
+        # rhs_e1 = rhs_energy(m, n, dr, dx, ur1,
+        #                     ux1, ux_in, e_in, e1)
+
+# --------------------------- Equations ------------------------------------------- #
 
     # Only consider mass deposition at a large enough density, otherwise the program will arise negative density
-                    # if rho1[m, n] > 2.*rho_0:
-                    #     # print("printed",T1[m, n], p1p, Tw1[m], de1[m], rho1[m, n]* ur1[m, n]-rho1[m, n-1]*ur1[m, n-1])
-                    #     # mass deposition rate (m_out)
-                    #     # print("temp gas",T1[m,n], "pressure", p1_before_dep, "temp wall: ", Tw1[m],"mass depo", de1[m], "dm", rho1[m, n]*n*dr*ur1[m, n]-rho1[m, n-1]*n*dr*ur1[m, n-1], "n grid point", n)
-                    #     print("inputs m_de calc: [T1, p1, Ts1, de1, rho1, ur1]",
-                    #           T1[m, n], p1[m, n], Ts1[m], de1[m], rho1[m, n], ur1[m, n])
-                    #     de1[m] = m_de(T1[m, n], p1[m, n], Ts1[m], de1[m], rho1[m, n]
-                    #                   * n*dr*ur1[m, n]-rho1[m, n-1]*(n-1)*dr*ur1[m, n-1])  # used BWD
-                    #     print("m_de / de1 calculated:", de1[m])
-                    #     check_negative(de1[m], n)
 
-                    # # print("mass calculated de1[m]", de1[m], "m", m, "n", n)
-                    # # No convective heat flux. q2
-                    # else:
-                    #     de1[m] = 0
-                    #     print("NO MASS DEPOSITION: ")
+        # # print("mass calculated de1[m]", de1[m], "m", m, "n", n)
+        # # No convective heat flux. q2
+        # else:
+        #     de1[m] = 0
+        #     print("NO MASS DEPOSITION: ")
 
-                    # Integrate deposition mass
-                    # de0[m] += dt*np.pi*D*de1[m]
-                    # print("deposition mass surface", de0[m])
-                    # check_negative(de0[m], n)
+        # Integrate deposition mass
+        # de0[m] += dt*np.pi*D*de1[m]
+        # print("deposition mass surface", de0[m])
+        # check_negative(de0[m], n)
 
-                # Calculate the SN2 layer thickness
-                    # del_SN = de0[m]/np.pi/D/rho_sn
-                    # print("del_SN: ", del_SN)
-                    # check_negative(del_SN, n)
+        # Calculate the SN2 layer thickness
+        # del_SN = de0[m]/np.pi/D/rho_sn
+        # print("del_SN: ", del_SN)
+        # check_negative(del_SN, n)
 
-                    de1[m] = 0
+#                     de1[m] = 0
 
-                    # density calculation
-                    rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
-                        n-1)*dr*ur1[m, n-1]) - 4*dt/D * de1[m]
-                    # rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
-                    #     n-1)*dr*ur1[m, n-1]) - dt/dx*(dm) - 4*dt/D * de1[m]   ## New assumption
-                    print("rho2 surface", rho2[m, n])
-                    check_negative(rho2[m, n], n)
-                    #     print("dr term:", -dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
-                    #         n-1)*dr*ur1[m, n-1]), "rho1[m,n]:", rho1[m, n], "rho1[m,n-1]:", rho1[m, n-1])
-                    #     print("rho1", rho1[m, n])
+#                     # density calculation
+#                     rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
+#                         n-1)*dr*ur1[m, n-1]) - 4*dt/D * de1[m]
+#                     # rho2[m, n] = rho1[m, n] - dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
+#                     #     n-1)*dr*ur1[m, n-1]) - dt/dx*(dm) - 4*dt/D * de1[m]   ## New assumption
+#                     print("rho2 surface", rho2[m, n])
+#                     check_negative(rho2[m, n], n)
+#                     #     print("dr term:", -dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
+#                     #         n-1)*dr*ur1[m, n-1]), "rho1[m,n]:", rho1[m, n], "rho1[m,n-1]:", rho1[m, n-1])
+#                     #     print("rho1", rho1[m, n])
 
-                    # ensure no division by zero
-                    if rho2[m, n] == 0:
-                        rho2[m, n] = 0.0001
-                        print("Density went to zero")
+#                     # ensure no division by zero
+#                     if rho2[m, n] == 0:
+#                         rho2[m, n] = 0.0001
+#                         print("Density went to zero")
 
-                    ur2[m, n] = de1[m]/rho2[m, n]
-                    ux2[m, n] = 0.  # no slip boundary condition.
-                    u2[m, n] = np.sqrt(ux1[m, n]**2 + ur1[m, n]**2)
+#                     ur2[m, n] = de1[m]/rho2[m, n]
+#                     ux2[m, n] = 0.  # no slip boundary condition.
+#                     u2[m, n] = np.sqrt(ux1[m, n]**2 + ur1[m, n]**2)
 
-                    print("ur1 surface", ur1[m, n], "u1 surface", u1[m, n],
-                          "ur2 surface", ur2[m, n], "u2 surface", u2[m, n])
-                    # check_negative(ur2[m, n], n)
-                    check_negative(u2[m, n], n)
+#                     print("ur1 surface", ur1[m, n], "u1 surface", u1[m, n],
+#                           "ur2 surface", ur2[m, n], "u2 surface", u2[m, n])
+#                     # check_negative(ur2[m, n], n)
+#                     check_negative(u2[m, n], n)
 
-                    # internal energy current timestep
-                    eps = 5./2.*p1[m, n]
-                    e1[m, n] = eps + 1./2. * rho1[m, n] * ur1[m, n]**2
-                    print("rho1 ", rho1[m, n])
-                    check_negative(rho1[m, n], n)
+#                     # internal energy current timestep
+#                     eps = 5./2.*p1[m, n]
+#                     e1[m, n] = eps + 1./2. * rho1[m, n] * ur1[m, n]**2
+#                     print("rho1 ", rho1[m, n])
+#                     check_negative(rho1[m, n], n)
 
-                    # energy calculation
-                    e2_dr = (n*dr*ur1[m, n]*e1[m, n] -
-                             (n-1)*dr*ur1[m, n-1]*e1[m, n-1])/dr  # BWD
-                    print("e2_dr", e2_dr)
-                    e2[m, n] = e1[m, n]-dt / \
-                        (n*dr)*(e2_dr) - dt*4 / \
-                        D*de1[m]*(e1[m, n]/rho1[m, n])
-                    print("e1 surface", e1[m, n], "e2 surface", e2[m, n])
-                    check_negative(e1[m, n], n)
-                    check_negative(e2[m, n], n)
+#                     # define wall second derivative
+#                     # dt2nd = dt2nd_wall((m, Tw1))
 
-                    # Calculate Tg
-                    T2[m, n] = 2./5.*(e2[m, n]-1./2.*rho2[m, n] *
-                                      ur2[m, n]**2.)*M_n/rho2[m, n]/R
-                    print("T2 surface", T2[m, n])
-                    check_negative(T2[m, n], n)
+#                 # Radial heat transfer within Copper section
 
-                    # define wall second derivative
-                    # dt2nd = dt2nd_wall((m, Tw1))
-                    # if math.isnan(dt2nd):
-                    #     print("NAN dt2nd surface")
-                    #     assert not math.isnan(dt2nd)
+# # Only consider the thermal resistance through SN2 layer when thickness is larger than a small preset value (taking average value)
 
-                # Radial heat transfer within Copper section
+# # NOTE: CHECK THIS LOGIC TREE
 
-# Only consider the thermal resistance through SN2 layer when thickness is larger than a small preset value (taking average value)
+#                     #     # q deposited into frost layer. Nusselt convection neglected
+#                     # q_dep = de1[m]*(1/2*(ur1[m, n])**2 +
+#                     #                 delta_h(T1[m, n], Ts1[m]))
 
-# NOTE: CHECK THIS LOGIC TREE
+#                     # if del_SN > 1e-5:
+#                     #     print(
+#                     #         "This is del_SN > 1e-5 condition, conduction across SN2 layer considered")
 
-                    #     # q deposited into frost layer. Nusselt convection neglected
-                    # q_dep = de1[m]*(1/2*(ur1[m, n])**2 +
-                    #                 delta_h(T1[m, n], Ts1[m]))
+#                     #     # heatflux into copper wall from frost layer
+#                     #     qi = k_sn*(Ts1[m]-Tw1[m])/del_SN
+#                     #     print("qi: ", qi)
+#                     #     check_negative(qi, n)
 
-                    # if del_SN > 1e-5:
-                    #     print(
-                    #         "This is del_SN > 1e-5 condition, conduction across SN2 layer considered")
+        #    # pipe wall equation
+        #     Tw2[m] = Tw1[m] + dt/(w_coe*c_c(Tw1[m]))*(
+        #         qi-q_h(Tw1[m], BW_coe)*Do/D)+dt/(rho_cu*c_c(Tw1[m]))*k_cu(Tw1[m])*dt2nd
+        #     print("Tw2: ", Tw2[m])
+        #     check_negative(Tw2[m], n)
 
-                    #     # heatflux into copper wall from frost layer
-                    #     qi = k_sn*(Ts1[m]-Tw1[m])/del_SN
-                    #     print("qi: ", qi)
-                    #     check_negative(qi, n)
+        #     # SN2 Center layer Tc equation
+        #     Tc2[m] = Tc1[m] + dt * \
+        #         (q_dep-qi) / (rho_sn * c_n(Ts1[m, n]*del_SN))
+        #     print("Tc2: ", Tc2[m, n])
+        #     check_negative(Tc2[m], n)
 
-                    #    # pipe wall equation
-                    #     Tw2[m] = Tw1[m] + dt/(w_coe*c_c(Tw1[m]))*(
-                    #         qi-q_h(Tw1[m], BW_coe)*Do/D)+dt/(rho_cu*c_c(Tw1[m]))*k_cu(Tw1[m])*dt2nd
-                    #     print("Tw2: ", Tw2[m])
-                    #     check_negative(Tw2[m], n)
+        # else:
+        #     # heatflux into copper wall from frost layer
+        #     qi = 0
+        #     print("qi: ", qi)
+        #     check_negative(qi, n)
 
-                    #     # SN2 Center layer Tc equation
-                    #     Tc2[m] = Tc1[m] + dt * \
-                    #         (q_dep-qi) / (rho_sn * c_n(Ts1[m, n]*del_SN))
-                    #     print("Tc2: ", Tc2[m, n])
-                    #     check_negative(Tc2[m], n)
+        # pipe wall equation
+        # Tw2[m] = Tw1[m] + dt/(w_coe*c_c(Tw1[m]))*(
+        #     qi-q_h(Tw1[m], BW_coe)*Do/D)+dt/(rho_cu*c_c(Tw1[m]))*k_cu(Tw1[m])*dt2nd
+        # print("Tw2: ", Tw2[m])
+        # check_negative(Tw2[m], n)
 
-                    # else:
-                    #     # heatflux into copper wall from frost layer
-                    #     qi = 0
-                    #     print("qi: ", qi)
-                    #     check_negative(qi, n)
+        # SN2 Center layer Tc equation
+        # NOTE: Is this te wall temperature?
+        # Tc2[m] = Tw2[m]
+        # print("Tc2: ", Tc2[m])
 
-                    # pipe wall equation
-                    # Tw2[m] = Tw1[m] + dt/(w_coe*c_c(Tw1[m]))*(
-                    #     qi-q_h(Tw1[m], BW_coe)*Do/D)+dt/(rho_cu*c_c(Tw1[m]))*k_cu(Tw1[m])*dt2nd
-                    # print("Tw2: ", Tw2[m])
-                    # check_negative(Tw2[m], n)
+        # Calculate SN2 surface temp
+        # Ts2[m] = 2*Tc2[m] - Tw2[m]
+        # print("Ts2: ", Ts2[m])
+        # check_negative(Ts2[m], n)
 
-                    # SN2 Center layer Tc equation
-                    # NOTE: Is this te wall temperature?
-                    # Tc2[m] = Tw2[m]
-                    # print("Tc2: ", Tc2[m])
+        # NOTE: CHECK THIS SURFACE TEMPERATURE BC with Yolanda
+        # if T2[m, n] < Ts2[m]: # or T2[m, n] > Ts2[m]
+        #     e2[m, n] = 5./2.*rho2[m, n]*R*Ts2[m] / \
+        #         M_n + 1./2.*rho2[m, n]*ur2[m, n]**2
 
-                    # Calculate SN2 surface temp
-                    # Ts2[m] = 2*Tc2[m] - Tw2[m]
-                    # print("Ts2: ", Ts2[m])
-                    # check_negative(Ts2[m], n)
+        #     print("THIS IS T2 < Ts")
+        #     print("e2 surface", e2[m, n])
+        #     check_negative(e2[m, n], n)
 
-                    # NOTE: CHECK THIS SURFACE TEMPERATURE BC with Yolanda
-                    # if T2[m, n] < Ts2[m]: # or T2[m, n] > Ts2[m]
-                    #     e2[m, n] = 5./2.*rho2[m, n]*R*Ts2[m] / \
-                    #         M_n + 1./2.*rho2[m, n]*ur2[m, n]**2
+        #     T2[m, n] = 2./5.*(e2[m, n] - 1./2.*rho2[m, n]
+        #                       * ur2[m, n]**2.)*M_n/rho2[m, n]/R
+        #     print(
+        #         "T2 surface recalculated to make it equal to wall temperature (BC)", T2[m, n])
+        #     check_negative(T2[m, n], n)
 
-                    #     print("THIS IS T2 < Ts")
-                    #     print("e2 surface", e2[m, n])
-                    #     check_negative(e2[m, n], n)
+        # Heat transfer rate helium
+        # qhe[m] = q_h(Tw1[m], BW_coe)*np.pi*Do
 
-                    #     T2[m, n] = 2./5.*(e2[m, n] - 1./2.*rho2[m, n]
-                    #                       * ur2[m, n]**2.)*M_n/rho2[m, n]/R
-                    #     print(
-                    #         "T2 surface recalculated to make it equal to wall temperature (BC)", T2[m, n])
-                    #     check_negative(T2[m, n], n)
+        # print("line 759", "Ts1", Ts1[m], "Ts2", Ts2[m], "Tc2", Tc2[m], "c_c(Ts1[m])", c_c(Ts1[m]), "qh", q_h(Ts1[m], BW_coe), "k_cu(Ts1[m])", k_cu(Ts1[m]), "dt2nd", dt2nd)
+        # print("qhe: ", qhe[m])
+        # check_negative(qhe[m], n)
 
-                    # Heat transfer rate helium
-                    # qhe[m] = q_h(Tw1[m], BW_coe)*np.pi*Do
-
-                    # print("line 759", "Ts1", Ts1[m], "Ts2", Ts2[m], "Tc2", Tc2[m], "c_c(Ts1[m])", c_c(Ts1[m]), "qh", q_h(Ts1[m], BW_coe), "k_cu(Ts1[m])", k_cu(Ts1[m]), "dt2nd", dt2nd)
-                    # print("qhe: ", qhe[m])
-                    # check_negative(qhe[m], n)
-
-                    # Update pressure
-                    p2[m, n] = 2./5.*(e2[m, n] - 1./2.*rho2[m, n]*ur2[m, n]**2)
-                    print("P2 surface: ", p2[m, n])
-                    check_negative(p2[m, n], n)
 #                    p2[m, n] = rho2[m, n] * R * T2[m, n]/M_n
 
-                # append [m,n]
-                # my_values = [de1[m], rho1[m, n], - dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
-                #         n-1)*dr*ur1[m, n-1]), - 4*dt/D * de1[m], rho2[m,n], ur2[m,n], u2[m,n], eps, p1[m,n], e1[m,n],-dt / \
-                #         (n*dr)*(e2_dr),  e2_dr, e2, T2, - dt*4 / \
-                #         D*de1[m]*(e1[m, n]/rho1[m, n]),p2[m,n]]    # Create list of values
-                # pd.DataFrame({"[m,n]":[[m,n]])
-                # df1.append(my_values)
-                # my_data.loc[l] = my_values      # Append values as new row
+        # append [m,n]
+        # my_values = [de1[m], rho1[m, n], - dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
+        #         n-1)*dr*ur1[m, n-1]), - 4*dt/D * de1[m], rho2[m,n], ur2[m,n], u2[m,n], eps, p1[m,n], e1[m,n],-dt / \
+        #         (n*dr)*(e2_dr),  e2_dr, e2, T2, - dt*4 / \
+        #         D*de1[m]*(e1[m, n]/rho1[m, n]),p2[m,n]]    # Create list of values
+        # pd.DataFrame({"[m,n]":[[m,n]])
+        # df1.append(my_values)
+        # my_data.loc[l] = my_values      # Append values as new row
 
-                # # logging results
+        # # logging results
 
-                # ws["A"+str(m*n)] = [m,n]
-                # ws["B1"] =
-                # ws["C1"] =
-                # ws["D1"] =
-                # ws["E1"] =
-                # ws["F1"] =
-                # ws["G1"] =
+        # ws["A"+str(m*n)] = [m,n]
+        # ws["B1"] =
+        # ws["C1"] =
+        # ws["D1"] =
+        # ws["E1"] =
+        # ws["F1"] =
+        # ws["G1"] =
 
 
 #### ------------------------------------- Case 2: no mass deposition (within flow field,away from wall in radial direction)--------------------------------- ####
 
-                else:
-                    print("THIS IS THE BULK:")
-                    print("rho1 bulk: ",
-                          rho1[m, n], "T1 bulk:", T1[m, n])
+        # eps = 5./2.*p1[m, n]
+        # print("eps bulk:", eps)
+        # if eps < 0:
+        #     print("negative eps Bulk ", eps)
+        #     exit()
+        # if math.isnan(eps):
+        #     print("NAN EPS Bulk ", eps)
+        #     assert not math.isnan(eps)
 
-                    # Calculate mass\momentum\energy at time n+1 with no mass deposition - no heat transfer
-
-                    # function to take derivative values at grid points and give back to rhs functions
-
-                    # calculate RHS
-                    rhs_rho1 = rhs_rho(dr, dx, ur1[m, n], ux1[m, n],
-                                       rho1[m, n], a, ux_in, rho_in, d_dr[m, n], m_dx[m, n])
-                    rhs_ux1, rhs_ur_1 = rhs_ma(dr, dx, ux_in, p,
-                                               p_in, ux1, ur_in, ur[m, n], rho1)
-                    rhs_e1 = rhs_energy(m, n, dr, dx, ur1,
-                                        ux1, ux_in, e_in, e1)
-
-                    rho2[m, n] = a + dt * rhs_rho1
-                    ux2[m, n] = ux1[m, n] + dt*rhs_ux1
-                    ur2[m, n] = ur1[m, n] + dt * rhs_ur1
-                    e2[m, n] = e1[m, n] + dt*rhs_e1
-
-                    print("ux1 bulk", ux1[m, n], "ux2 bulk:", ux2[m, n])
-                    print("ur1 bulk: ", ur1[m, n], "ur2 bulk: ", ur2[m, n])
-                    # check_negative(ux2[m, n], n)
-                    check_negative(ur2[m, n], n)
-
-                    if rho1[m, n] == 0:
-                        rho1[m, n] = 0.0001
-                    u2[m, n] = np.sqrt(ux2[m, n]**2. + ur2[m, n]**2.)
-                    print("u2 bulk: ", u2[m, n])
-
-                    # eps = 5./2.*p1[m, n]
-                    # print("eps bulk:", eps)
-                    # if eps < 0:
-                    #     print("negative eps Bulk ", eps)
-                    #     exit()
-                    # if math.isnan(eps):
-                    #     print("NAN EPS Bulk ", eps)
-                    #     assert not math.isnan(eps)
-
-                    print("e1 bulk: ", e1[m, n], "e2 bulk: ", e2[m, n])
-                    check_negative(e1[m, n], n)
-                    check_negative(e2[m, n], n)
-
-                    # temperature calculation..
-
-                    T2[m, n] = 2./5.*(e2[m, n]-1/2*rho2[m, n] *
-                                      u2[m, n]**2)*M_n/rho2[m, n]/R
-                    print("T1 bulk: ", T1[m, n], "T2 bulk:", T2[m, n])
-                    check_negative(T1[m, n], n)
-                    check_negative(T2[m, n], n)
-
-            # # NOTE: added check artificial limit speed of sound
-            #         if ux2[m, n] > np.sqrt(7./5.*R*T2[m, n]/M_n)*1.0:
-            #             # Inlet velocity, m/s (gamma*RT)
-            #             ux2[m, n] = np.sqrt(7./5.*R*T2[m, n]/M_n)*1.0
-            #             print("sound velocity limited reached")
-
-                    p2[m, n] = 2./5.*(e2[m, n] - 1./2.*rho2[m, n]*u2[m, n]**2)
-                    print("P2 bulk:", p2[m, n])
-                    check_negative(p2[m, n], n)
+        # # NOTE: added check artificial limit speed of sound
+        #         if ux2[m, n] > np.sqrt(7./5.*R*T2[m, n]/M_n)*1.0:
+        #             # Inlet velocity, m/s (gamma*RT)
+        #             ux2[m, n] = np.sqrt(7./5.*R*T2[m, n]/M_n)*1.0
+        #             print("sound velocity limited reached")
 
 
 ############################################## Updating timesteps finished ############################################################
 
-
-############################################## Boundary Conditions ############################################################
 
 # ------------------------------------- surface boundary conditions --------------------------------------------- # Not appliccable inviscid flow.
 
@@ -468,8 +457,6 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
         # ux2 = surface_BC(ux1)
 
 # ------------------------------------- Inlet boundary conditions --------------------------------------------- #
-# latest NOTE
-        # ux2, u2, p2, rho2, T2, e2 = inlet_BC(ux2, u2, p2, rho2, T2, e2, p_in, ux_in, rho_in, T_in, e_in)
 
         ux2, ur2, u2, p2, rho2, T2, e2 = inlet_BC(
             ux2, ur2, u2, p2, rho2, T2, e2, p_in, ux_in, rho_in, T_in, e_in)
@@ -477,13 +464,8 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
 # ------------------------------------ Outlet boundary conditions ------------------------------------------- # NOTE: Check later
         # p2, rho2, ux2, u2, e2 = outlet_BC(p2, e2, rho2, ux2, ur2, u2, rho_0)
 
-# -------------------------------- CHECK ARRAYS FOR NEGATIVE VALUES ------------------------------------- #
-        # arrays = [ux2, ur2, T2, e2, p2, rho2, Tw2, Ts2, Tc2]
-        # arrays = [ux2, ur2, T2, e2, p2, rho2]
-        # for s in np.arange(len(arrays)):
-        #     check_array(arrays[s])
 
-# --------------------------------- Returning results of current time step to next iteration ------------------------- #
+# ------------------------------ Returning results of current time step to next iteration ------------------------- #
 
         rho1[:, :] = rho2
         u1[:, :] = u2
