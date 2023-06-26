@@ -44,6 +44,22 @@ def dt2nd_wall(m, Tw1, T_in):
     return dt2nd
 
 
+@jit(nopython=True)
+def dt2nd_w_matrix(Tw, T_in):
+    for m in np.arange(Nx+1):
+        if m == 0:
+            dt2nd[m] = (T_in - 2 * Tw[m] +
+                    Tw[m+1])/(dx**2)  # 3-point CD
+    #       dt2nd = Tw1[m+1]-Tw1[m]-Tw1[m-1]+T_in
+        elif m == Nx:
+            # print("m=Nx", m)
+            dt2nd[m] = (-Tw[m-3] + 4*Tw[m-2] - 5*Tw[m-1] +
+                    2*Tw[m]) / (dx**2)  # Four point BWD
+        else:
+            dt2nd[m] = Tw[m-1]-2*Tw[m]+Tw[m+1]/(dx**2)
+    return dt2nd_wall
+
+
 # @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8)')
 def initialize_grid(p_0, rho_0, e_0, T_0, T_s):
 
@@ -308,13 +324,14 @@ def euler_backward_time(q):
 
 
 # This iterates RK3 for all equations
-def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, de_variable):
+def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, de_variable, de_constant):
     q = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))  # place holder
 
 
 # create N matrix:
     N = n_matrix()
-
+    a = [qq, qn, uxx, uxn, ]
+    for o in a:
     qq = copy.deepcopy(q)  # density
     qn = copy.deepcopy(q)
 
@@ -339,6 +356,7 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
 # l = [ux, ur, u, p, rho, T, e, Tw, Ts, Tc]
     for n in np.arange(3):
         if n == 0:
+            ux = no_slip(ux)
             l = inlet_BC(ux, ur, u, p, rho, T, e, p_in,
                          ux_in, rho_in, T_in, e_in)
             # k = outlet_BC(uxn, urn, uun, pn, qn, Tn, en)
@@ -347,20 +365,12 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
             ur = l[1]
             e = l[6]
 
-        if n == 1:
+        else:  # n == 1, n==2:
+            uxx = no_slip(uxx)
             l = inlet_BC(uxx, urr, uu, pp, qq, tt, ee, p_in,
                          ux_in, rho_in, T_in, e_in)
             # k = outlet_BC(uxn, urn, uun, pn, qn, Tn, en)
 
-            qq = l[4]
-            uxx = l[0]
-            urr = l[1]
-            ee = l[6]
-
-        if n == 2:
-            l = inlet_BC(uxx, urr, uu, pp, qq, tt, ee, p_in,
-                         ux_in, rho_in, T_in, e_in)
-            # k = outlet_BC(uxn, urn, uun, pn, qn, Tn, en)
             qq = l[4]
             uxx = l[0]
             urr = l[1]
@@ -381,27 +391,32 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
         visc_matrix = viscous_matrix(l[5], l[3])
         assert np.isfinite(visc_matrix).all()
 
-        # de1 matrix input.
+        # de_variable (de1) matrix input.
         # This function takes into account density large enough to have mass deposition case.
-        S = source_mass_depo_matrix(rho_0, l[5], l[3], l[8], l[4], l[1], de)
+        S = source_mass_depo_matrix(
+            rho_0, l[5], l[3], l[8], l[4], l[1], de_variable)
         # This de1 is returned again, first calculation is the right one for this iteration. it takes last values.
 
         # CALCULATING RHS USING LOOP VALUES
         r = rhs_rho(d_dr, m_dx, N, S)
         r_ux, r_ur = rhs_ma(dp_dx, l[4], dt2r_ux, N, ux_dr, dt2x_ux,
-                            l[0], ux_dx, l[1], dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix)
+                            l[0], ux_dx, l[1], dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix, de_variable)
         r_e = rhs_energy(grad_r, grad_x, N, S)
 
-    # calculation
+# MAIN CALCULATIONS
         if n == 0:
-            # LHS calculations
-            qq = q + dt*r
-            uxx = uxx + dt*r_ux
-            urr = q + dt*r_ur
-            uu = np.sqrt(uxx**2 + urr**2)
-            ee = q + dt*r_e
 
-            # temperature and pressure recalculation
+            # first loop calculation
+            qq = q + dt*r
+            uxx = ux + dt*r_ux
+            urr = ur + dt*r_ur
+            ee = e + dt*r_e
+
+# apply surface conditions
+            uxx = no_slip(uxx)
+
+# temperature, pressure, total velocity recalculation
+            uu = np.sqrt(uxx**2 + urr**2)
             tt = 2./5.*(ee - 1./2. * qq*uu**2)
             pp = qq * R/M_n * tt
 
@@ -410,61 +425,82 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
 
 # NOTE: # mass deposition calculation from first rhs and source terms. Should the mass deposition calculated be the current mdot?
             de_timestep = -1 * S * D/4.
-
-            # qq = q + dt*r
-            # uxx = ux + dt*r_ux
-            # urr = l[0] + dt*r_ur
-            # ee = l[0] + dt*r_e
-
-            # tt = 2./5.*(l[6]-1./2.*l[4] * l[2]**2)*M_n/l[4]/R
-            # pp = 2./5 / R*M_n/T
+            de_variable = de_timestep
 
         elif n == 1:
             # LHS calculations
             qq = qq + dt*r
             uxx = uxx + dt*r_ux
             urr = urr + dt*r_ur
-            uu = np.sqrt(uxx**2 + urr**2)
             ee = ee + dt*r_e
 
-            # temperature and pressure recalculation
+# de_variable calculation using new looped source term
+            de_variable = -1 * S * D/4.
+
+# apply surface conditions
+            uxx = no_slip(uxx)
+
+# radial velocity on surface is function of mass deposition
+            urr[:, Nr] = de_variable[:]/qq[:, Nr]
+
+# temperature, pressure, total velocity recalculation
+            uu = np.sqrt(uxx**2 + urr**2)
             tt = 2./5.*(ee - 1./2. * qq*uu**2)
-            pp = qq * R/M_n * tt
+            pp = qq2 * R/M_n * tt
+
+# second loop calculation
 
             qq = 0.75*q + 0.25*qq + 0.25*dt*r
             uxx = 0.75*ux + 0.25*uxx + 0.25*dt*r_ux
             urr = 0.75*ur + 0.25*urr + 0.25*dt*r_ur
-            uu = np.sqrt(uxx**2 + urr**2)
             ee = 0.75*e + 0.25*ee + 0.25*dt*r_e
 
-            # temperature and pressure recalculation
+# apply surface conditions, no slip condition
+            uxx = no_slip(uxx)
+
+# de_variable calculation using new looped source term
+            de_variable = -1 * S * D/4.
+
+# radial velocity on surface is function of mass deposition
+            urr[:, Nr] = de_variable[:]/qq[:, Nr]
+
+# temperature, pressure, total velocity recalculation
+            uu = np.sqrt(uxx**2 + urr**2)
             tt = 2./5.*(ee - 1./2. * qq*uu**2)
             pp = qq * R/M_n * tt
 
 # ensure no division by zero
-            qq = no_division_zero(qq)
+            qq2 = no_division_zero(qq2)
 
         else:  # n==2
             # LHS calculations
-            qn = qq + dt*r
-            uxn = uxx + dt*r_ux
-            urn = urr + dt*r_ur
-            en = ee + dt*r_e
+            qq = qq + dt*r
+            uxx = uxx + dt*r_ux
+            urr = urr + dt*r_ur
+            ee = ee + dt*r_e
 
+# third (final) loop calculation
             qn = 1/3*q + 2/3*qq + 2/3*dt*r
-            uxn = 1/3*ux + 2/3*uxx + 2/3*dt*r
-            urn = 1/3*ur + 2/3*urr + 2/3*dt*r
-            uun = np.sqrt(uxx**2 + urr**2)
-            en = 1/3*e + 2/3*ee + 2/3*dt*r
+            uxn = 1/3*ux + 2/3*uxx + 2/3*dt*r_ux
+            urn = 1/3*ur + 2/3*urr + 2/3*dt*r_ur
+            en = 1/3*e + 2/3*ee + 2/3*dt*r_e
 
-            # temperature and pressure recalculation
+# apply surface conditions, no slip condition
+            uxn = no_slip(uxn)
+
+# radial velocity on surface is function of mass deposition
+            urn[:, Nr] = de_variable[:]/qn[:, Nr]
+
+# temperature, pressure, total velocity recalculation
+            uu = np.sqrt(uxx**2 + urr**2)
             tn = 2./5.*(en - 1./2. * qn*uun**2)
             pn = qn * R/M_n * tn
 
 # ensure no division by zero
-            qq = no_division_zero(qq)
+            qn = no_division_zero(qn)
 
-        # # No convective heat flux. q2 ?
+
+# # No convective heat flux. q2 ?
 
     rk_out = [de_timestep, qn, uxn, urn, uun, en, tn, pn]
     return rk_out
@@ -1340,6 +1376,78 @@ def bulk_values():
 #     e_in_x = e_in
 #     out = np.array([p_in, ux_in, ur_in, rho_in, e_in, e_in_x, T_in])
 #     return out
+
+
+@jit(nopython=True)
+def integral_mass_delSN(de):
+    # Integrate deposition mass
+    de0 += dt*np.pi*D*de
+
+# Calculate the SN2 layer thickness
+    del_SN = de0/np.pi/D/rho_sn
+    # print("del_SN: ", del_SN)
+
+    return de0, del_SN  # the de0 is incremented and never restarted
+
+# NOTE: does this affect the velocities? does mde change? and if yes, does it mean ur changes?
+def surface_temp_check(T, Ts, ur, e):
+    for m in np.arange(Nx+1):
+        if T2[m, Nr] < Ts2[m]:
+            e2[m, Nr] = 5./2.*rho2[m, Nr]*R*Ts2[m] / M_n + 1./2.*rho2[m, Nr]*ur2[m, Nr]**2
+
+            # # print("THIS IS T2 < Ts")
+            # # print("e2 surface", e2[m, n])
+            # check_negative(e2[m, n], n)
+
+    T2 = 2./5.*(e2 - 1./2.*rho2* ur2**2.)*M_n/rho2/R
+        #     print(
+        #         "T2 surface recalculated to make it equal to wall temperature (BC)", T2[m, n])
+        #     check_negative(T2[m, n], n)
+    return T2, Ts2, e2
+
+
+@jit(nopython=True)
+def Cu_Wall_function(ur, T, Tw, Tc, Ts, T_in, delSN):
+# define wall second derivative
+    dt2nd_wall = dt2nd_w_matrix(Tw, T_in)
+
+# Only consider thermal resistance in SN2 layer when del_SN > 1e-5:
+# # NOTE: CHECK THIS LOGIC TREE
+
+# q deposited into frost layer. Nusselt convection neglected
+# NOTE: Check this addition operation, is this correct? 2d and 1d rows
+    q_dep = de*(1/2*(ur[:, Nr])**2 + delta_h(T[:, Nr], Ts))
+
+    for m in np.arange(Nx+1):
+        if del_SN[m] > 1e-5:
+            print("This is del_SN > 1e-5 condition, conduction across SN2 layer considered")
+    
+# heatflux into copper wall from frost layer
+            qi[m] = k_sn*(Ts[m]-Tw[m])/del_SN[m]
+            # print("qi: ", qi)
+            # check_negative(qi, n)
+        else:
+# no heatflux into copper wall
+            qi[m] = 0
+            # print("qi: ", qi)
+            # check_negative(qi, n)
+
+# pipe wall equation
+    Tw2 = Tw + dt/(w_coe*c_c(Tw))*(qi-q_h(Tw, BW_coe)*Do/D)+dt/(rho_cu*c_c(Tw))*k_cu(Tw)*dt2nd
+        #     print("Tw2: ", Tw2[m])
+        #     check_negative(Tw2[m], n)
+
+# SN2 Center layer Tc equation
+    Tc2 = Tc + dt *(q_dep-qi) / (rho_sn * c_n(Ts)*del_SN))
+            # print("Tc2: ", Tc2[m, n])
+            # check_negative(Tc2[m], n)
+
+# Calculate SN2 surface temp
+    Ts2 = 2*Tc - Tw
+        # print("Ts2: ", Ts2[m])
+        # check_negative(Ts2[m], n)
+
+    return Tw, Ts, Tc, qhe, dt2nd_wall
 
 
 @jit(nopython=True)
