@@ -1,6 +1,7 @@
 # ----------------- Helper Functions --------------------------------#
 
 import warnings
+import copy
 from numba.core.errors import NumbaDeprecationWarning, NumbaPendingDeprecationWarning
 import re
 import inspect
@@ -9,6 +10,7 @@ import os
 import shutil
 import numba
 from numba import jit
+import vtk
 import numpy as np
 import vtk.util.numpy_support as numpy_support
 # from scipy.ndimage.filters import laplace
@@ -100,11 +102,120 @@ def initialize_grid(p_0, rho_0, e_0, T_0, T_s):
            Ts1, Ts2, Tc1, Tc2, de0, de1, qhe, rho3, ux3, ur3, u3, e3, T3, p3, Pe, Pe1]
     return out
 
-# @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8)')
 
-# def tvdrk3(nx,ny,nz,dx,dy,dz,q,dt,ivis,iflx,Re)
-#     qq = copy(q)
-#     qn = copy(q)
+def initialize_ghost():
+    # This is for the ghost cells for the WENO reconstruction.
+
+    return ro_rec, ux_rec,
+
+
+
+    # x-direction
+    # if (iflx==1)
+    #     qLx,qRx = weno5(nx,ny,nz,q,1)
+    # elseif (iflx==2)
+    #     qLx,qRx = upwind5(nx,ny,nz,q,1)
+    # end
+    # FLx = flux(nx,ny,nz,qLx,1)
+    # FRx = flux(nx,ny,nz,qRx,1)
+    # Fx  = rusanov_3d(q,qLx,FLx,qRx,FRx,nx,ny,nz,1)
+
+    # #y-direction
+    # if (iflx==1)
+    #     qLy,qRy = weno5(nx,ny,nz,q,2)
+    # elseif (iflx==2)
+    #     qLy,qRy = upwind5(nx,ny,nz,q,2)
+    # end
+    # FLy = flux(nx,ny,nz,qLy,2)
+    # FRy = flux(nx,ny,nz,qRy,2)
+    # Fy  = rusanov_3d(q,qLy,FLy,qRy,FRy,nx,ny,nz,2)
+
+# def rhs_rho(m, n, dr, dx, ur, ux, rho, a, ux_in, rho_in):
+
+
+def rhs_matrix_initialization():
+# nonconservative form 
+
+    rhs_rho = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    rhs_ux = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    rhs_ur = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    rhs_e = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+
+    return rhs_rho, rhs_ux, rhs_ur,rhs_e
+
+def rhs_conservative_matrix_initialization():
+# conservative form 
+
+    rhs_rho = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    rhs_max = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    rhs_mar = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    rhs_e = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+
+    return rhs_rho, rhs_max, rhs_mar,rhs_e
+
+
+def rhs_rho(d_dr, m_dx):
+        
+    rhs_rho = -1/n/dr*d_dr - m_dx
+
+    if n ==Nr:
+
+    return rhs_rho
+
+
+
+def viscous_matrix(T, P):
+    for m in np.arange(Nx+1):
+        for n in np.arange(Nr+1):
+           visc_matrix[m,n] =  mu_n(T[m, n], p[m, n])
+    return visc_matrix
+
+def rhs_ma(m, n, dr, dx, ux_in, p, p_in, ux, ur_in, ur, rho, viscous_matrix):
+    visc_matrix = viscous_matrix(T,P)
+    dp_dr()        
+    ux_dr
+    
+    rhs_ux = -dp_dx/rho + visc_matrix/rho * (
+        dt2r_ux1 + 1/n/dr*ux_dr + dt2x_ux1) - ux * ux_dx - ur*ux_dr
+
+    rhs_ur = - dp_dr[m, n]/(rho) + mu_n(T[m, n], p[m, n])/rho[m, n] * (- ur[m, n]/(dr**2*n**2) + 1/n/dr*ur_dr[m, n] + dt2r_ur1[m, n] + dt2x_ur1[m, n]) - ux[m, n] * ur_dx[m, n] - ur[m, n]*ur_dr[m, n]
+
+# RHS for surface equations
+            if n == Nr:
+
+
+    return rhs_ux, rhs_ur
+
+
+def rhs_energy(m, n, dr, dx, q, ivis, iflx, ur1, ux1, ux_in, e_in, e1):
+    rhs_e = - 1/n/dr*grad_r[m, n] - grad_x[m, n]
+    return rhs_e
+    # ri = rhsInv(nx,ny,nz,dx,dy,dz,q,iflx)
+    # if (ivis==1)
+    #     rv = rhsVis(nx,ny,nz,dx,dy,dz,q,Re)
+    #     r  = ri + rv
+    # else
+    #     r  = ri
+    # end
+# nonconservative
+    # Continuity equation
+
+    # Momentum x
+    # Momentum R
+    # Energy
+
+
+# Conservative
+
+    # Continuity equation
+    # Momentum x
+    # Momentum R
+    # Energy
+
+
+# def tvdrk3(array, q,rhs)
+#     qq = copy.deepcopy(q)
+#     qn = copy.deepcopy(q)
 
 #     #First step
 #     !(q,nx,ny,nz)
@@ -122,23 +233,22 @@ def initialize_grid(p_0, rho_0, e_0, T_0, T_s):
 #     qn = 1/3*q + 2/3*qq + 2/3*dt*r
 
 #     return qn
-# end
 
 
 # adaptive timestep
-def calc_dt(cfl, gamma_n, q, nx, nr, dx, dr):
-    a = 30.0
-    a = np.max([a, 0.0])
-    for j in np.arange(nr):
-        for i in np.arange(nx):
-            rho, ma_x, ma_r, ma_energy = q[:, i, j]
-            ux, ur, e = ma_x/rho, ma_r/rho, ma_energy/rho
-            p = rho*(gamma_n-1)*(e-0.5*(ux ^ 2+ur ^ 2))
-            c = np.sqrt(gamma_n*p/rho)
-            a = np.max([a, abs(ux), abs(ux+c), abs(ux-c),
-                       abs(ur), abs(ur+c), abs(ur-c)])
-    dt = cfl*np.min([dx, dr])/a
-    return dt
+# def calc_dt(cfl, gamma_n, q, nx, nr, dx, dr):
+#     a = 30.0
+#     a = np.max([a, 0.0])
+#     for j in np.arange(nr):
+#         for i in np.arange(nx):
+#             rho, ma_x, ma_r, ma_energy = q[:, i, j]
+#             ux, ur, e = ma_x/rho, ma_r/rho, ma_energy/rho
+#             p = rho*(gamma_n-1)*(e-0.5*(ux ^ 2+ur ^ 2))
+#             c = np.sqrt(gamma_n*p/rho)
+#             a = np.max([a, abs(ux), abs(ux+c), abs(ux-c),
+#                        abs(ur), abs(ur+c), abs(ur-c)])
+#     dt = cfl*np.min([dx, dr])/a
+#     return dt
 
 
 # def vtk_convert(rho3, ux3, ur3, u3, e3, T3, Tw3, Ts2, de0, p3, de1, Pe3):
@@ -238,6 +348,41 @@ def grad_rho2(m, n, ux_in, rho_in, ur, ux, rho):
     return a, d_dr, m_dx
 
 
+# @jit(nopython=True)
+def grad_rho_matrix(ux_in, rho_in, ur, ux, rho):
+    # create gradients arrays.
+    a = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    m_dx = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    d_dr = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    for i in np.arange(Nx+1):
+        for j in np.arange(Nr+1):
+            if i == 1:
+                a[i, j] = rho[i, j]
+                m_dx[i, j] = (rho[i, j]*ux[i, j]-rho_in*ux_in)/dx
+
+            elif i == Nx:
+                a[i, j] = rho[i, j]
+                m_dx[i, j] = (rho[i, j]*ux[i, j]-rho[i-1, j]*ux[i-1, j])/dx
+
+            else:
+                a[i, j] = rho[i, j]
+                m_dx[i, j] = (rho[i, j]*ux[i, j]-rho[i-1, j]*ux[i-1, j])/(dx)
+
+            if j == 1:
+                # NOTE: SYMMETRY BC
+                d_dr[i, j] = (rho[i, j+2]*(j+2)*dr*ur[i, j+2] -
+                              rho[i, j] * j*dr*ur[i, j]) / (4*dr)
+
+            elif j == Nr-1 or j == Nr:
+                d_dr[i, j] = (rho[i, j]*j*dr*ur[i, j] -
+                              rho[i, j-1] * (j-1)*dr*ur[i, j-1])/dr
+
+            else:
+                d_dr[i, j] = (rho[i, j+1]*(i+1)*dr*ur[i, j+1] -
+                              rho[i, j-1] * (j-1)*dr*ur[i, j-1])/(2*dr)
+    return a, d_dr, m_dx
+
+
 # @numba.jit('f8(f8,f8,f8,f8,f8,f8)')
 
 @jit(nopython=True)
@@ -296,7 +441,43 @@ def grad_ux2(p_in, p, ux_in, ux, m, n):  # bulk
     return dp_dx, ux_dx, ux_dr
 
 
+# @jit(nopython=True)
+def grad_ux2_matrix(p_in, p, ux_in, ux):  # bulk
+    ux_dr = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    dp_dx = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    ux_dx = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+
+    for m in np.arange(Nx+1):
+        for n in np.arange(Nr+1):
+            if n == 1:
+                # NOTE: SYMMETRY CONDITION HERE done
+                ux_dr[m, n] = (ux[m, n+2] - ux[m, n])/(4*dr)
+
+            elif n == Nr-1 or n == Nr:
+                ux_dr[m, n] = (ux[m, n] - ux[m, n-1])/dr  # BWD
+
+            else:
+                # upwind 1st order  - positive flow - advection
+                ux_dr[m, n] = (ux[m, n] - ux[m, n-1])/(dr)  # CD
+
+            if m == 1:
+                dp_dx[m, n] = (p[m, n] - p_in)/dx  # BWD
+                ux_dx[m, n] = (ux[m, n] - ux_in)/dx  # BWD
+
+            elif m == Nx:
+                dp_dx[m, n] = (p[m, n] - p[m-1, n])/dx  # BWD
+                ux_dx[m, n] = (ux[m, n] - ux[m-1, n])/dx  # BWD
+
+            else:
+                # upwind 1st order  - positive flow - advection
+                dp_dx[m, n] = (p[m, n] - p[m-1, n])/dx
+                ux_dx[m, n] = (ux[m, n] - ux[m-1, n])/dx
+
+    return dp_dx, ux_dx, ux_dr
+
 # @numba.jit('f8(f8,f8,f8,f8,f8)')
+
+
 @jit(nopython=True)
 def grad_ur2(m, n, p, ur, ur_in):  # first derivatives BULK
 
@@ -339,6 +520,54 @@ def grad_ur2(m, n, p, ur, ur_in):  # first derivatives BULK
     return dp_dr, ur_dx, ur_dr
 
 
+# @jit(nopython=True)
+def grad_ur2_matrix(p, ur, ur_in):  # first derivatives BULK
+    dp_dr = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    ur_dr = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    ur_dx = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+
+    for m in np.arange(Nx+1):
+        for n in np.arange(Nr+1):
+
+            if n == 1:
+                # NOTE: Symmetry BC done
+                dp_dr[m, n] = (p[m, n+2] - p[m, n])/(4*dr)
+                ur_dr[m, n] = (ur[m, n+2]-ur[m, n])/(4*dr)  # increased to 2dx
+
+        # n == Nr-1
+
+            else:
+                dp_dr[m, n] = (p[m, n] - p[m, n-1])/dr  # BWD
+                ur_dr[m, n] = (ur[m, n] - ur[m, n-1])/dr
+
+            # elif (n != 1 and n != Nr-1):
+            #     dp_dr = (p[m, n+1] - p[m, n-1])/(2*dr)  # CD
+            #     ur_dr = (ur[m, n+1] - ur[m, n-1])/(2*dr)
+
+            # if m == 0:
+            #     ur_dx = (ur[m+1, n] - ur_in)/(dx)  # upwind 1st order
+
+            if m == 1:
+                ur_dx[m, n] = (ur[m+1, n] - ur_in)/(dx)  # upwind 1st order
+
+            # elif (m <= n_trans+2 and m >= n_trans-2):
+            #     ur_dx = (ur1[m-2, n] - 8*ur1[m-1, n] + 8 *
+            #              ur1[m+1, n] - ur1[m+2, n])/(12*dx)  # 4 point CD
+
+            elif m == Nx:
+                ur_dx[m, n] = (ur[m, n] - ur[m-1, n])/dx
+
+            elif (m > 1 and m <= Nx - 2):
+                # upwind 1st order  - positive flow - advection
+                ur_dx[m, n] = (ur[m, n] - ur[m-1, n])/dx
+
+            else:
+                # upwind 1st order  - positive flow - advection
+                ur_dx[m, n] = (ur[m, n] - ur[m-1, n])/(dx)  # CD
+
+            return dp_dr, ur_dx, ur_dr
+
+
 # @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8)')
 @jit(nopython=True)
 def grad_e2(m, n, ur1, ux1, ux_in, e_in, e1):     # use upwind for Pe > 2
@@ -379,6 +608,50 @@ def grad_e2(m, n, ur1, ux1, ux_in, e_in, e1):     # use upwind for Pe > 2
     return grad_x, grad_r
 
 
+# @jit(nopython=True)
+def grad_e2_matrix(ur1, ux1, ux_in, e_in, e1):     # use upwind for Pe > 2
+    grad_r = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    grad_x = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+
+    for m in np.arange(Nx+1):
+        for n in np.arange(Nr+1):
+            # We dont need the surface case, this is the bulk...
+
+            if n == 1:
+                # NOTE: Symmetry BC done
+                grad_r[m, n] = ((n+2)*dr*ur1[m, n+2]*e1[m, n+2] - n *
+                                dr*ur1[m, n]*e1[m, n])/(4*dr)  # ur=0 @ r=0 #CD
+
+        # n == Nr-1:
+            else:
+                grad_r[m, n] = ((n)*dr*ur1[m, n]*e1[m, n] - (n-1)
+                                * dr*ur1[m, n-1]*e1[m, n-1])/(dr)  # BWD
+
+            # if m == 0:
+            #     grad_x = (e1[m+1, n]*ux1[m+1, n]-e_in*ux_in)/(dx)
+
+            if m == Nx:
+                # print("e1[m, n]*ux1[m, n]: ", e1[m, n]*ux1[m, n],
+                #       "-e1[m-1, n]*ux1[m-1, n]: ", -e1[m-1, n]*ux1[m-1, n])
+                grad_x[m, n] = (e1[m, n]*ux1[m, n]-e1[m-1, n]
+                                * ux1[m-1, n])/dx  # BWD
+
+            # elif (m <= n_trans+2 and m >= n_trans-2):
+            #     grad_x = (e1[m-2, n]*ux1[m-2, n] - 8*e1[m-1, n]*ux1[m-1, n] + 8 *
+            #               e1[m+1, n]*ux1[m+1, n] - e1[m+2, n]*ux1[m+2, n])/(12*dx)
+            elif (m >= 1 and m <= Nx - 2):
+                # upwind 1st order  - positive flow - advection
+                grad_x[m, n] = (e1[m, n]*ux1[m, n]-e1[m-1, n]*ux1[m-1, n])/dx
+                # grad_x = 3*(e1[m, n]*ux1[m, n]) - 4*(e1[m-1, n]
+                #                                      * ux1[m-1, n]) + (e1[m-2, n]
+                #                                                        * ux1[m-2, n]) / dx  # upwind, captures shocks
+            else:  # 0 < m < Nx,  1 < n < Nr
+                grad_x[m, n] = (e1[m, n]*ux1[m, n]-e1[m-1, n]
+                                * ux1[m-1, n])/dx  # upwind
+
+    return grad_x, grad_r
+
+
 # @numba.jit('f8(f8,f8,f8,f8)')
 @jit(nopython=True)
 def dt2nd_radial(ux1, ur1, m, n):
@@ -405,7 +678,66 @@ def dt2nd_radial(ux1, ur1, m, n):
     return dt2nd_radial_ux1, dt2nd_radial_ur1
 
 
+def save_gradients(array1, array2, array3, array4, array5, array6, array7, array8, array9, array10, array11):
+    pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/gradients/'
+    newpath = pathname
+    if not os.path.exists(newpath):
+        os.makedirs(newpath)
+    os.chdir(pathname)
+    np.savetxt("a.csv", array1, delimiter=",")
+    np.savetxt("d_dr.csv", array2, delimiter=",")
+    np.savetxt("m_dx.csv", array3, delimiter=",")
+    np.savetxt("dp_dx.csv", array4, delimiter=",")
+    np.savetxt("ux_dx.csv", array5, delimiter=",")
+    np.savetxt("ux_dr.csv", array6, delimiter=",")
+    np.savetxt("dp_dr.csv", array7, delimiter=",")
+    np.savetxt("ur_dx.csv", array8, delimiter=",")
+    np.savetxt("ur_dr.csv", array9, delimiter=",")
+    np.savetxt("grad_x.csv", array10, delimiter=",")
+    np.savetxt("grad_r.csv", array11, delimiter=",")
+
+
+# @jit(nopython=True)
+def dt2r_matrix(ux1, ur1):
+    dt2r_ux1 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    dt2r_ur1 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    for m in np.arange(Nx+1):
+        for n in np.arange(Nr+1):
+
+            if n == 1:
+                # NOTE: Symmetry Boundary Condition assumed for ur1 radial derivative along x axis..
+                # --------------------------- dt2nd radial ux1 ---------------------------------#
+                dt2r_ux1[m, n] = (ux1[m, n+2] - ux1[m, n]) / (4*dr**2)
+
+                # --------------------------- dt2nd radial ur1 ---------------------------------#
+                dt2r_ur1[m, n] = (ur1[m, n+2] - ur1[m, n]) / (4*dr**2)
+
+                # print("dt2nd_radial_ux1_n1:", dt2nd_radial_ux1)
+                # print("dt2nd_radial_ur1_n1:", dt2nd_radial_ur1)
+
+            elif n == Nr:
+                # --------------------------- dt2nd radial ux1 ---------------------------------#
+                # NOTE: CHECK
+                dt2r_ux1[m, n] = (2*ux1[m, n] - 5*ux1[m, n-1] +
+                                  4*ux1[m, n-2] - ux1[m, n-3]) / (dr**2)
+
+                # --------------------------- dt2nd radial ur1 ---------------------------------#
+                dt2r_ur1[m, n] = (2*ur1[m, n] - 5*ur1[m, n-1] +
+                                  4*ur1[m, n-2] - ur1[m, n-3]) / (dr**2)
+            else:  # (n is between 1 and Nr)
+
+                # --------------------------- dt2nd radial ux1 ---------------------------------#
+                dt2r_ux1[m, n] = (ux1[m, n+1] + ux1[m, n-1] -
+                                  2*ux1[m, n])/(dr**2)  # CD
+            # --------------------------- dt2nd radial ur1 ---------------------------------#
+                dt2r_ur1[m, n] = (ur1[m, n+1] + ur1[m, n-1] -
+                                  2*ur1[m, n])/(dr**2)  # CD
+                # print("dt2nd_radial_ur1:", dt2nd_radial_ur1)
+    return dt2r_ux1, dt2r_ur1
+
 # @numba.jit('f8(f8,f8,f8,f8,f8,f8)')
+
+
 @jit(nopython=True)
 def dt2nd_axial(ux_in, ur_in, ux1, ur1, m, n):
     if m == 0:
@@ -444,8 +776,44 @@ def dt2nd_axial(ux_in, ur_in, ux1, ur1, m, n):
 
     return dt2nd_axial_ux1, dt2nd_axial_ur1
 
+#
+# @jit(nopython=True)
 
-# @numba.jit('f8(f8)')
+
+def dt2x_matrix(ux_in, ur_in, ux1, ur1):
+    dt2x_ux1 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    dt2x_ur1 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    for m in np.arange(Nx+1):
+        for n in np.arange(Nr+1):
+            if m == 0:
+                # --------------------------- dt2nd axial ux1 ---------------------------------#
+                dt2x_ux1[m, n] = (ux_in - 2*ux1[m, n] + ux1[m+1, n]) / (dx**2)
+
+            # --------------------------- dt2nd axial ur1 ---------------------------------#
+                dt2x_ur1[m, n] = (-ur_in + ur_in - 30 *
+                                  ur1[m, n] + 16*ur1[m+1, n] - ur1[m+2, n])/(12*dx**2)
+
+            elif m == Nx:
+                # --------------------------- dt2nd axial ux1 ---------------------------------#
+
+                dt2x_ux1[m, n] = (ux1[m-2, n] - 2*ux1[m-1, n] +
+                                  ux1[m, n])/(dx**2)  # BWD
+                # --------------------------- dt2nd axial ur1 ---------------------------------#
+            # Three-point BWD
+                dt2x_ur1[m, n] = (
+                    ur1[m-2, n] - 2*ur1[m-1, n] + ur1[m, n])/(dx**2)
+
+            else:
+                # --------------------------- dt2nd axial ux1 ---------------------------------#
+                dt2x_ux1[m, n] = (ux1[m+1, n] + ux1[m-1, n] -
+                                  2*ux1[m, n])/(dx**2)  # CD
+
+            # --------------------------- dt2nd axial ur1 ---------------------------------#
+                dt2x_ur1[m, n] = (ur1[m+1, n] + ur1[m-1, n] -
+                                  2*ur1[m, n])/(dx**2)  # CD
+    return dt2x_ux1, dt2x_ur1
+
+
 @jit(nopython=True)
 def f_ps(ts):
     #   Calculate saturated vapor pressure (Pa)

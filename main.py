@@ -109,6 +109,14 @@ plot_imshow(p1, ux1, T1, rho1, e1)
 # plt.imsave('result.png', )
 
 ## ------------------------------------------------ BC INLET starting matrices  ------------------------------------------------- #
+# calculate initial gradients matrix:
+a, d_dr, m_dx = grad_rho_matrix(ux_in, rho_in, ur1, ux1, rho1)
+dp_dx, ux_dx, ux_dr = grad_ux2_matrix(p_in, p1, ux_in, ux1)
+dp_dr, ur_dx, ur_dr = grad_ur2_matrix(p, ur1, ur_in)
+grad_x, grad_r = grad_e2_matrix(ur1, ux1, ux_in, e_in, e1)
+
+save_gradients(a, d_dr, m_dx, dp_dx, ux_dx, ux_dr,
+               dp_dr, ur_dx, ur_dr, grad_x, grad_r)
 
 
 # NOTE: This means at m=0 no mass deposition and no helium...We dont want the surface to freeze.
@@ -128,15 +136,13 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
     # name= "simulation_values\," + str(i) +'\'
     # wb.save(name)
 
-    for i in np.arange(np.int64(0), np.int64(Nt+1)):
+    # ------------------------------------- Time iteration  --------------------------------------------- #
 
-        # REA += 1
-        # print("REA", REA)
+    for i in np.arange(np.int64(0), np.int64(Nt+1)):
 
         # variable inl et
         # p_in, q_in, ux_in, ur_in, rho_in, e_in = val_in(
         #     i, ux_in)  # define inlet values
-        # print("pressure value inlet", p_in)
 
         # constant inlet
         p_in, ux_in, ur_in, rho_in, e_in, T_in = val_in_constant()
@@ -159,23 +165,43 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
 # latest NOTE
         # ux1, u1, p1, rho1, T1, e1 = inlet_BC(ux1, u1, p1, rho1, T1, e1, p_in, ux_in, rho_in, T_in, e_in)
 
-# l=-1 # counter for row number to append using pandas
-
-# Create pandas DataFrame
-        # my_data = pd.DataFrame({"m,n","v1", "v4", "x3"})
+# ------------------------------------- Calculating gradients --------------------------------------------- #
 
         # Calculating Peclet number in the grid points to determine differencing scheme
         Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
 
-        # starts from np start [0,Nx]
-        # m=0 neglected, because we apply BCs anyway.
-        for m in np.arange(np.int64(1), np.int64(Nx+1)):
-            for n in np.arange(np.int64(1), np.int64(Nr+1)):
+        # RHS empty matrix initialization
+        rhs_rho, rhs_ux, rhs_ur,rhs_e =rhs_matrix_initialization()
 
-                # l+=1
+        #Source term initialization
+
+        # calculate gradients matrix:
+        a, d_dr, m_dx = grad_rho_matrix(ux_in, rho_in, ur1, ux1, rho1)
+        dp_dx, ux_dr, ux_dr = grad_ux2_matrix(p_in, p1, ux_in, ux1)
+        dp_dr, ur_dx, ur_dr = grad_ur2_matrix(p, ur1, ur_in)
+        grad_x, grad_r = grad_e2_matrix(ur1, ux1, ux_in, e_in, e1)
+
+
+# ------------------------------------- calculating second gradients --------------------------------------------- #
+        dt2x_ux1, dt2x_ur1 = dt2x_matrix(ux_in, ur_in, ux1, ur1)
+        dt2r_ux1, dt2r_ur1 = dt2r_matrix(ux1, ur1)
+
+        rhs_rho1 = rhs_rho(d_dr, m_dx)
+        rhs_rho1 = rhs_rho(d_dr, m_dx)
+        rhs_rho1 = rhs_rho(d_dr, m_dx)
+
+
                 print("[i,m,n]:", [i, m, n])
 
-                ############## Case 1: At boundaries (with mass deposition).##########################################################
+        # save_data()
+# ---------------------------------- Spatial iterations------------------------------------------- #
+
+        # starts from np start [0,Nx]
+        # m=0 neglected, because we apply BCs anyway.
+        # for m in np.arange(np.int64(1), np.int64(Nx+1)):
+        #     for n in np.arange(np.int64(1), np.int64(Nr+1)):
+
+####### ------------------------------------ Case 1: At boundaries (with mass deposition). -------------------------------------------------------------######
                 if n == Nr:
                     continue
                     print("THIS IS A SURFACE, MASS DEPOSITION:")
@@ -365,7 +391,7 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
                 # ws["G1"] =
 
 
-################################################################### Case 2: no mass deposition (within flow field,away from wall in radial direction) ########
+#### ------------------------------------- Case 2: no mass deposition (within flow field,away from wall in radial direction)--------------------------------- ####
 
                 else:
                     print("THIS IS THE BULK:")
@@ -374,85 +400,30 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
 
                     # Calculate mass\momentum\energy at time n+1 with no mass deposition - no heat transfer
 
-                    # Return gradients from function
-                    a, d_dr, m_dx = grad_rho2(
-                        m, n, ux_in, rho_in, ur1, ux1, rho1)
-                    print("d_dr: ", d_dr, "m_dx: ", m_dx)
+                    # function to take derivative values at grid points and give back to rhs functions
 
-                    rhs_rho = -1/n/dr*d_dr - m_dx
+                    # calculate RHS
+                    rhs_rho1 = rhs_rho(dr, dx, ur1[m, n], ux1[m, n],
+                                       rho1[m, n], a, ux_in, rho_in, d_dr[m, n], m_dx[m, n])
+                    rhs_ux1, rhs_ur_1 = rhs_ma(dr, dx, ux_in, p,
+                                               p_in, ux1, ur_in, ur[m, n], rho1)
+                    rhs_e1 = rhs_energy(m, n, dr, dx, ur1,
+                                        ux1, ux_in, e_in, e1)
 
-                    rho2[m, n] = a + dt * rhs_rho
-
-                    # print("a: ", a, "radial term: ", - dt /
-                    #       (n*dr)*d_dr, "axial term: ", - dt*m_dx)
-                    # print("rho1 bulk", rho1[m, n], "rho2 bulk", rho2[m, n])
-                    # check_negative(rho2[m, n], n)
-
-                    # Define second derivatives in radial direction
-                    dt2x_ux1, dt2x_ur1 = dt2nd_axial(
-                        ux_in, ur_in, ux1, ur1, m, n)
-                    dt2r_ux1, dt2r_ur1 = dt2nd_radial(
-                        ux1, ur1, m, n)
-
-                    # Ux velocity calculation
-                    # print("dt2nd_radial_ux1: ", dt2nd_radial_ux1,
-                    #       "dt2nd_axial_ux1: ", dt2nd_axial_ux1)
-
-                    dp_dx, ux_dx, ux_dr = grad_ux2(
-                        p_in, p1, ux_in, ux1, m, n)
-                    # print("dp_dx: ", dp_dx, "ux_dx: ", ux_dx, "ux_dr: ", ux_dr)
-
-                    rhs_ux = -dp_dx/rho1[m, n] + mu_n(T1[m, n], p1[m, n])/rho1[m, n] * (
-                        dt2r_ux1 + 1/n/dr*ux_dr + dt2x_ux1) - ux1[m, n] * ux_dx - ur1[m, n]*ux_dr
-
-                    ux2[m, n] = ux1[m, n] + dt*rhs_ux
-
-                    # print("pressure term:", -dt*dp_dx/rho1[m, n], "ux1 term:", -
-                    #       dt*ux1[m, n] * ux_dx, "ur1 term:", - dt*ur1[m, n]*ux_dr)
+                    rho2[m, n] = a + dt * rhs_rho1
+                    ux2[m, n] = ux1[m, n] + dt*rhs_ux1
+                    ur2[m, n] = ur1[m, n] + dt * rhs_ur1
+                    e2[m, n] = e1[m, n] + dt*rhs_e1
 
                     print("ux1 bulk", ux1[m, n], "ux2 bulk:", ux2[m, n])
-                    # check_negative(ux2[m, n], n)
-
-                    # if ux2[m, n] > 350:
-                    #     print("ux1[m,n]",ux1[m,n], ux1[m-1,n])
-                    #     print("ur1[m,n]", ux1[m, n+1], ux1[m, n])
-                    #     print("pressure term: ",- dt*(p1[m+1, n] - p1[m, n])/(rho1[m, n]*dx))
-                    #     print("viscous term: ",mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * \
-                    #     ((ux1[m, n+1] + ux1[m, n-1] - 2*ux1[m, n])/(dr**2) +
-                    #      (1/(n*dr)) * ((ux1[m, n+1]-ux1[m, n])/dr) +
-                    #      (ux1[m+1, n] + ux1[m-1, n] - 2*ux1[m, n])/(dx**2)))
-                    #     print("ux1[m+1,n]: ",ux1[m+1, n],"ux1[m-1,n]: ",ux1[m-1, n], "ux1[m,n]: ",ux1[m, n] )
-                    #     print("second derivative", (ux1[m+1, n] + ux1[m-1, n] - 2*ux1[m, n])/(dx**2))
-                    #     exit()
-
-                    # print("ur1", ur1[m, n], , "p_n+1, p_n", [p1[m, n+1], p1[m, n]], "press term", dt*(p1[m, n+1] - p1[m, n])/(rho1[m, n]*dr), "viscous", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ur1 + (1/(n*dr))*(
-                    #     ur1[m, n+1]-ur1[m, n])/dr + dt2nd_axial_ur1 - ur1[m, n]/(dr**2*n**2)), "ux1 term", dt*ux1[m, n] * (ur1[m, n] - ur1[m-1, n])/dx, "ur1 term", dt*ur1[m, n]*(ur1[m, n+1] - ur1[m, n])/dr)
-
-                    dp_dr, ur_dx, ur_dr = grad_ur2(m, n, p1, ur1, ur_in)
-                    # print("dp_dr: ", dp_dr, "ur_dx: ", ur_dx, "ur_dr: ", ur_dr)
-
-                    # print("dt2nd_radial_ur1: ", dt2nd_radial_ur1,
-                    #       "dt2nd_axial_ur1: ", dt2nd_axial_ur1)
-
-                    rhs_ur = - dp_dr/(rho1[m, n]) + mu_n(T1[m, n], p1[m, n])/rho1[m, n] * (- ur1[m, n]/(
-                        dr**2*n**2) + 1/n/dr*ur_dr + dt2r_ur1 + dt2x_ur1) - ux1[m, n] * ur_dx - ur1[m, n]*ur_dr
-
-                    ur2[m, n] = ur1[m, n] + dt * rhs_ur
-
-                    # print("ur1", ur1[m, n], "p_term", - dt*dp_dr/(rho1[m, n]),
-                    #       "viscous", mu_n(T1[m, n], p1[m, n]) * dt/rho1[m, n] * (dt2nd_radial_ur1 + (
-                    #           1/(n*dr))*ur_dr + dt2nd_axial_ur1 - ur1[m, n]/(dr**2*n**2)),
-                    #       "ux1 term", -dt*ux1[m, n] * ur_dx, "ur1 term", -dt * ur1[m, n]*ur_dr)
-
                     print("ur1 bulk: ", ur1[m, n], "ur2 bulk: ", ur2[m, n])
+                    # check_negative(ux2[m, n], n)
                     check_negative(ur2[m, n], n)
 
                     if rho1[m, n] == 0:
                         rho1[m, n] = 0.0001
                     u2[m, n] = np.sqrt(ux2[m, n]**2. + ur2[m, n]**2.)
-                  #  print("matrix", u2)
                     print("u2 bulk: ", u2[m, n])
-                    check_negative(e2[m, n], n)
 
                     # eps = 5./2.*p1[m, n]
                     # print("eps bulk:", eps)
@@ -463,19 +434,12 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
                     #     print("NAN EPS Bulk ", eps)
                     #     assert not math.isnan(eps)
 
-                    grad_x, grad_r = grad_e2(m, n, ur1, ux1, ux_in, e_in, e1)
-                    rhs_e = - 1/n/dr*grad_r - grad_x
-                    e2[m, n] = e1[m, n] + dt*rhs_e
-
-                    print("grad_x: ", grad_x, "grad_r: ", grad_r)
-
                     print("e1 bulk: ", e1[m, n], "e2 bulk: ", e2[m, n])
                     check_negative(e1[m, n], n)
                     check_negative(e2[m, n], n)
 
-                    # NOTE: Check temperature calculation..
-                    # print("temp calculation: [e2, rho2, u2]",
-                    #       [e2[m, n], rho2[m, n], u2[m, n]])
+                    # temperature calculation..
+
                     T2[m, n] = 2./5.*(e2[m, n]-1/2*rho2[m, n] *
                                       u2[m, n]**2)*M_n/rho2[m, n]/R
                     print("T1 bulk: ", T1[m, n], "T2 bulk:", T2[m, n])
