@@ -41,7 +41,7 @@ def check_negative(var_in, n):  # CHECKS CALCULATIONS FOR NEGATIVE OR NAN VALUES
 
 
 #### -----------------------------------------   Calculate initial values ----------------------------------------- #
-T_0, rho_0, p_0, e_0, ux_0 = bulk_values()
+T_0, rho_0, p_0, e_0, ux_0 = bulk_values(T_s)
 
 # ----------------- Array initialization ----------------------------
 
@@ -145,7 +145,7 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
     print("Creating N grid points matrix")
     N = n_matrix()
 
-    print(N)
+    # print(N)
     print("Checking finite values in N matrix")
     assert np.isfinite(N).all()
 

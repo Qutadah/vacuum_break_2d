@@ -177,6 +177,7 @@ def n_matrix():
             n[i, j] = j
     print("Removing N=0 in matrix")
     n[:, 0] = 1
+    n[0, :] = 1
     return n
 
 
@@ -197,6 +198,7 @@ def viscous_matrix(T, P):
             visc_matrix[m, n] = mu_n(T[m, n], P[m, n])
 
 # perform NAN value matrix checks:
+    print("performing finite check on visc_matrix")
 
     for x in np.arange(len(visc_matrix)):
         assert np.isfinite(visc_matrix).all()
@@ -211,23 +213,25 @@ def viscous_matrix(T, P):
 
 # return S term matrix, input previous de1
 def source_mass_depo_matrix(rho_0, T, P, T_s, rho, ur, de):  # -4/D* mdot
-    dm = np.zeros((Nx+1), dtype=(np.float64, np.float64))
-    de1 = np.zeros((Nx+1), dtype=(np.float64, np.float64))
-    S = np.zeros((Nx+1), dtype=(np.float64, np.float64))
+    dm = np.zeros((Nx+1), dtype=(np.float64))
+    de1 = np.zeros((Nx+1), dtype=(np.float64))
+    S = np.zeros((Nx+1), dtype=(np.float64))
 
-    for m in np.arange(Nx+1):
-        dm = rho[m, Nr] * Nr*dr*ur[m, Nr]-rho[m, Nr-1]*(Nr-1)*dr*ur[m, Nr-1]
+# skip m=0, not needed
+    for m in np.arange(np.int64(1), np.int64(Nx+1)):
+        dm[m] = rho[m, Nr] * Nr*dr*ur[m, Nr]-rho[m, Nr-1]*(Nr-1)*dr*ur[m, Nr-1]
         if rho[m, Nr] > 2.*rho_0:
             # print("temp gas",T1[m,n], "pressure", p1_before_dep, "temp wall: ", Tw1[m],"mass depo", de1[m], "dm", rho1[m, n]*n*dr*ur1[m, n]-rho1[m, n-1]*n*dr*ur1[m, n-1], "n grid point", n)
             # print("inputs m_de calc: [T1, p1, Ts1, de1, rho1, ur1]",
             #       T1[m, n], p1[m, n], Ts1[m], de1[m], rho1[m, n], ur1[m, n])
+            # print("stopped here source_mass fcn")
             de1[m] = m_de(T[m, Nr], P[m, Nr], T_s[m],
-                          de1[m], dm[m])  # used BWD
+                          de[m], dm[m])  # used BWD
             # print("m_de / de1 calculated:", de1[m])
             # check_negative(de1[m], n)
         else:
             de1[m] = 0.
-    S = -4./D * de1
+    S = -1*4./D * de1
     return S
 
 
@@ -357,6 +361,8 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
 # create N matrix:
     N = n_matrix()
 
+    print("Deep copying initial matrices")
+
     qq = copy.deepcopy(q)  # density
     qn = copy.deepcopy(q)
 
@@ -375,6 +381,12 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
     tt = copy.deepcopy(q)  # temperature
     tn = copy.deepcopy(q)
 
+
+# substituting for RK3 initial loop
+    qq = rho
+    pp = p
+    uu = u
+    tt = T
 # First step
 # apply BCs
 # NOTE: apply outlet Bcs also.
@@ -390,11 +402,14 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
             ur = l[1]
             e = l[6]
 
+            # print("starting temperature", l[5])
         else:  # n == 1, n==2:
             uxx, uu, ee, tt = no_slip(uxx, uu, pp, qq)
             l = inlet_BC(uxx, urr, uu, pp, qq, tt, ee, p_in,
                          ux_in, rho_in, T_in, e_in, Tw, Ts, Tc)
             # k = outlet_BC(uxn, urn, uun, pn, qn, Tn, en)
+            if n == 1:
+                print("second RK3 loop temperature", l[5])
 
             qq = l[4]
             uxx = l[0]
@@ -414,14 +429,19 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
         dt2r_ux, dt2r_ur = dt2r_matrix(l[0], l[1])
 
     # viscosity calculations
-
+        # print("l: ", l[5], l[3])
         visc_matrix = viscous_matrix(l[5], l[3])
-        print("Checking viscosity matrix")
+        # if n == 2:
+        # print(visc_matrix)
+        # print("Checking viscosity matrix")
         assert np.isfinite(visc_matrix).all()
 
         # de_variable (de1) matrix input.
         # This function takes into account density large enough to have mass deposition case.
         print("Calculating Source term matrix")
+        if n == 0:
+            de_variable = de_constant
+            # print("de_variable: ", de_variable)
         S = source_mass_depo_matrix(
             rho_0, l[5], l[3], l[8], l[4], l[1], de_variable)
         # This de1 is returned again, first calculation is the right one for this iteration. it takes last values.
@@ -527,6 +547,12 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
             uxn = 1/3*ux + 2/3*uxx + 2/3*dt*r_ux
             urn = 1/3*ur + 2/3*urr + 2/3*dt*r_ur
             en = 1/3*e + 2/3*ee + 2/3*dt*r_e
+
+
+# pressure recalculation
+            pn = qn * R/M_n * tn
+# velocity recalculation
+            un = np.sqrt(uxn**2 + urn**2)
 
 # apply surface conditions, no slip condition
             uxn, un, en, tn = no_slip(uxn, un, pn, qn)
@@ -1397,9 +1423,9 @@ def exp_smooth(grid, hv, lv, order, tran):  # Q: from where did we get this?
 
 
 @jit(nopython=True)
-def bulk_values():
-    T_0 = 298.
-    rho_0 = 1e-2  # An arbitrary small initial density in pipe, kg/m3
+def bulk_values(T_s):
+    T_0 = T_s
+    rho_0 = 1e-3  # An arbitrary small initial density in pipe, kg/m3
     p_0 = rho_0/M_n*R*T_0  # Initial pressure, Pa
     e_0 = 5./2.*rho_0/M_n*R*T_0  # Initial internal energy
     ux_0 = 0
@@ -1438,7 +1464,7 @@ def integral_mass_delSN(de):
 
 
 def gas_surface_temp_check(T, Ts, ur, e, u, rho):
-    for m in np.arange(Nx+1):
+    for m in np.arange(np.int64(1), np.int64(Nx+1)):
         if T[m, Nr] < Ts[m]:
             e[m, Nr] = 5./2.*rho[m, Nr]*R*Ts[m] / \
                 M_n + 1./2.*rho[m, Nr]*ur[m, Nr]**2
@@ -1652,7 +1678,7 @@ def outlet_BC(p, e, rho, ux, ur, u, rho_0):
 @jit(nopython=True)
 def balance_energy(p, rho, u):
     e = 5./2. * p + 1./2 * rho*u**2
-    T = p/rho/R
+    T = p/rho/R*M_n
     return e, T
 
 
@@ -1670,7 +1696,7 @@ def val_in_constant():
     p_in = 1000.
     T_in = 298.
     rho_in = p_in / T_in/R*M_n
-    ux_in = 1.
+    ux_in = 30.
     ur_in = 0.
     e_in = 5./2.*rho_in/M_n*R*T_in + 1./2.*rho_in*ux_in**2
     out = np.array([p_in, ux_in, ur_in, rho_in, e_in, T_in])
@@ -1749,7 +1775,7 @@ def Peclet_grid(pe, u, D_hyd, p, T):
 # @numba.jit('f8(f8,f8,f8,f8,f8)')
 @jit(nopython=True)
 def m_de(T, P, T_s, de, dm):
-    p_0 = bulk_values[2]
+    p_0 = bulk_values(T_s)[2]
     # print("mdot calc: ", "Tg: ", T, " P: ",
     #       P, "Ts: ", T_s, "de: ", de, "dm: ", dm)
     #   Calculate deposition rate (kg/(m^2*s))
