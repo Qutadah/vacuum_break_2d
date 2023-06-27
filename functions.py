@@ -1516,7 +1516,9 @@ def integral_mass_delSN(de):
 # NOTE: does this affect the velocities? does mde change? and if yes, does it mean ur changes?
 
 
+@jit(nopython=True)
 def gas_surface_temp_check(T, Ts, ur, e, u, rho):
+    print("starting Tg> Ts check")
     for m in np.arange(np.int64(1), np.int64(Nx+1)):
         if T[m, Nr] < Ts[m]:
             e[m, Nr] = 5./2.*rho[m, Nr]*R*Ts[m] / \
@@ -1532,6 +1534,7 @@ def gas_surface_temp_check(T, Ts, ur, e, u, rho):
     #     check_negative(T2[m, n], n)
 
     # NOTE: Energy is changed assuming density and radial velocity constant. Is this correct?
+    print("balancing energies")
     e, p = balance_energy2(rho, T, u)
     return T, e, p, rho, u
 

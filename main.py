@@ -197,8 +197,8 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
         p2 = rk_out[7]
 
 # NOTE: RECALCULATE ENERGIES IMPORTANT
-        e, T = balance_energy(p, rho, u)
-        e, p = balance_energy2(rho, T, u)
+        e, T = balance_energy(p2, rho2, u2)
+        e, p = balance_energy2(rho2, T2, u2)
 
 # calculating Peclet for field, helps later for differencing scheme used
         Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
