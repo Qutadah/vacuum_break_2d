@@ -1327,7 +1327,41 @@ def v_m(tg):
     return v_mean
 
 
+def save_qhe():
+    pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/' + \
+        "{:.4f}".format(increment) + '/'
+    newpath = pathname
+    if not os.path.exists(newpath):
+        os.makedirs(newpath)
+    os.chdir(pathname)
+    np.savetxt("qhe.csv", qhe1, delimiter=",")
+    return
+
+
+def save_qdep():
+    pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/' + \
+        "{:.4f}".format(increment) + '/'
+    newpath = pathname
+    if not os.path.exists(newpath):
+        os.makedirs(newpath)
+    os.chdir(pathname)
+    np.savetxt("q_dep.csv", q_dep1, delimiter=",")
+    return
+
+
+def save_mdot():
+    pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/' + \
+        "{:.4f}".format(increment) + '/'
+    newpath = pathname
+    if not os.path.exists(newpath):
+        os.makedirs(newpath)
+    os.chdir(pathname)
+    np.savetxt("de1.csv", de1, delimiter=",")
+    return
+
 # @numba.jit('f8(f8)')
+
+
 @jit(nopython=True)
 def c_c(ts):
     #   Calculate the heat capacity of copper (J/(kg*K))
@@ -1549,7 +1583,8 @@ def Cu_Wall_function(ur, Tx, Twx, Tcx, Tsx, T_in, delSN, de):
     # check_negative(Ts2[m], n)
     for m in np.arange(Nx+1):
         qhe[m] = q_h(Twx[m], BW_coe)
-
+    save_qhe()
+    save_qdep()
     return Tw2, Ts2, Tc2, qhe, dt2nd_w_m
 
 
@@ -1911,10 +1946,10 @@ def save_data(tx, dt, rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1, pe):
     np.savetxt("ux.csv", ux1, delimiter=",")
     np.savetxt("ur.csv", ur1, delimiter=",")
     np.savetxt("e.csv", e1, delimiter=",")
-    # np.savetxt("tw.csv", Tw1, delimiter=",")
-    # np.savetxt("ts.csv", Ts1, delimiter=",")
-    # np.savetxt("de_mass.csv", de0, delimiter=",")
-    # np.savetxt("de_rate.csv", de1, delimiter=",")
+    np.savetxt("tw.csv", Tw1, delimiter=",")
+    np.savetxt("ts.csv", Ts1, delimiter=",")
+    np.savetxt("de_mass.csv", de0, delimiter=",")
+    np.savetxt("de_rate.csv", de1, delimiter=",")
     np.savetxt("p.csv", p1, delimiter=",")
     np.savetxt("peclet.csv", pe, delimiter=",")
 
