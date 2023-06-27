@@ -322,12 +322,13 @@ def euler_backward_time(q):
 
     return q2
 
-def energy_difference_dt(e1,e2):
-# sum energy grid at t1
+
+def energy_difference_dt(e1, e2):
+    # sum energy grid at t1
     sum_e1 = np.sum(e1)
 # sum energy grid at t2
-    sum_e1 = np.sum(e1)
-  
+    sum_e2 = np.sum(e2)
+
     d_e = sum_e1 - sum_e2
 
     return d_e
