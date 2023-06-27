@@ -209,6 +209,8 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
 
 #  recalculate T, P, Ts, Tc, Tw, use 1st order schemes, enough for the wall equation.
 
+# find difference in energies across timesteps
+        d_e = energy_difference_dt(e1, e2)
 
 # Returning results of current time step for i++
 

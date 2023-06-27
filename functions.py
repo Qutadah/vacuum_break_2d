@@ -322,6 +322,16 @@ def euler_backward_time(q):
 
     return q2
 
+def energy_difference_dt(e1,e2):
+# sum energy grid at t1
+    sum_e1 = np.sum(e1)
+# sum energy grid at t2
+    sum_e1 = np.sum(e1)
+  
+    d_e = sum_e1 - sum_e2
+
+    return d_e
+
 
 # This iterates RK3 for all equations
 def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, de_variable, de_constant):
