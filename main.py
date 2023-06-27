@@ -76,42 +76,52 @@ Tc2[:] = T_s
 
 # ux, u = parabolic_velocity(ux1, ux_in, T1)
 
+print("Applying No-slip BC")
+
+# NOTE: Do i need more boundary conditions?
 # ---------- NO SLIP BC
 ux1, u1, e1, T1 = no_slip(ux1, u1, p1, rho1)
 
-# ------  inlet BCs
 
-ux1, ur1, u1, p1, rho1, T1, e1 = inlet_BC(
-    ux1, ur1, u1, p1, rho1, T1, e1, p_in, ux_in, rho_in, T_in, e_in)
+# ------  inlet BCs
+print("Applying inlet BCs")
+ux1, ur1, u1, p1, rho1, T1, e1, Tw1, Ts1, Tc1 = inlet_BC(
+    ux1, ur1, u1, p1, rho1, T1, e1, p_in, ux_in, rho_in, T_in, e_in, Tw1, Ts1, Tc1)
 
 
 # Calculating Peclet number in the grid points to determine differencing scheme
 Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
 
-## ------------------------------------------------------------- SAVING INITIAL MATRICES ---------------------------------------------------------------- #####
-
 
 # rho3, ux3, ur3, u3, e3, T3, p3, Pe3 = delete_r0_point(
 #     rho1, ux1, ur1, u1, e1, T1, p1, Pe1)
 
+print("Removing old timestepping folder")
+
 # remove timestepping folder
 remove_timestepping()
 
+# SAVING INITIAL MATRICES
+print("Saving initial fields")
 # save initial fields
 save_initial_conditions(rho1, ux1, ur1, u1, e1, T1,
-                        Tw1, Ts1, de0, p1, de1, Pe1)
+                        Tw1, Ts1, de0, p1, de1, Pe1, Tc1)
 
+
+print("Plotting initial fields")
 plot_imshow(p1, ux1, T1, rho1, e1)
-# plt.imsave('result.png', )
 
-## ------------------------------------------------ BC INLET starting matrices  ------------------------------------------------- #
+# Gradient starting matrices
 # calculate initial gradients matrix:
-a, d_dr, m_dx = grad_rho_matrix(ux_in, rho_in, ur1, ux1, rho1)
+print("Calculating initial gradients")
+d_dr, m_dx = grad_rho_matrix(ux_in, rho_in, ur1, ux1, rho1)
 dp_dx, ux_dx, ux_dr = grad_ux2_matrix(p_in, p1, ux_in, ux1)
-dp_dr, ur_dx, ur_dr = grad_ur2_matrix(p, ur1, ur_in)
+dp_dr, ur_dx, ur_dr = grad_ur2_matrix(p1, ur1, ur_in)
 grad_x, grad_r = grad_e2_matrix(ur1, ux1, ux_in, e_in, e1)
 
-save_gradients(a, d_dr, m_dx, dp_dx, ux_dx, ux_dr,
+
+print("Saving gradients to file")
+save_gradients(d_dr, m_dx, dp_dx, ux_dx, ux_dr,
                dp_dr, ur_dx, ur_dr, grad_x, grad_r)
 
 
@@ -124,15 +134,22 @@ save_gradients(a, d_dr, m_dx, dp_dx, ux_dx, ux_dr,
 
 
 # def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2, Tw2, Ts2, Tc2, de1, T3):
+print("Main loop started")
 
-def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de1, p3, rho3, T3, ux3, ur3, u3, e3, pe):
+
+def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de1, p3, rho3, T3, ux3, ur3, u3, e3, pe, Tw, Ts, Tc):
 
     # ------------------------------------- Time iteration  --------------------------------------------- #
 
     # create N matrix: needed once only
+    print("Creating N grid points matrix")
     N = n_matrix()
+
+    print(N)
+    print("Checking finite values in N matrix")
     assert np.isfinite(N).all()
 
+    print("Time looping started")
     for i in np.arange(np.int64(0), np.int64(Nt+1)):
 
         # variable inl et
@@ -142,23 +159,29 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
         # p_in, q_in, ux_in, ur_in, rho_in, e_in, T_in = val_in(i)
 
         # constant inlet
+        print("Assigning inlet values")
         p_in, ux_in, ur_in, rho_in, e_in, T_in = val_in_constant()
 
+        print("Creating empty de1 matrix to save variable mass deposition")
         # de1 matrix this is the de_variable in RK3 function
         de1 = np.zeros((Nx+1), dtype=(np.float64))  # mass deposition rate.
         # Initialized 0 and then put in RK3 function to recalculate at all timesteps
 
+        print("Creating empty de_timestep matrix to save final mass deposition")
         if i == 0:
             de_timestep = np.zeros((Nx+1), dtype=(np.float64))  # place holder
 
         else:
             # NOTE: This will take last de from RK3, i need the mass deposition rate of previous time step for the next
             de_timestep = rk_out[0]
+        print("Rk3 next")
 
         # RK3 time integration
         # rk_out = [de_timestep, qn, uxn, urn, uun, en, tn, pn]
         rk_out = tvdrk3(
-            ux1, ur1, u1, p1, rho1, T1, e1, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, de1, de_timestep)
+            ux1, ur1, u1, p1, rho1, T1, e1, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, de1, de_timestep, Tw1, Ts1, Tc1)
+
+        print("Rk3 complete")
 
 # defining next values from RK3
         de_timestep = rk_out[0]
@@ -174,34 +197,43 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
 # calculating Peclet for field, helps later for differencing scheme used
         Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
 
+        print("NAN check next")
 
 # perform NAN value matrix checks:
         for x in np.arange(len(rk_out)):
             assert np.isfinite(rk_out[x]).all()
-        # density
+
+        print("Negative densities and energy next")
+
+        # negative density check
         if np.any(rk_out[1] < 0):
             print("The Density Array has at least one negative value")
             exit()
 
-        # energy
+        # negative energy check
         if np.any(rk_out[5] < 0):
             print("The Density Array has at least one negative value")
             exit()
 
+        print("Calculating frost layer thickness")
+
 # calculate frost layer thickness
         de0, del_SN = integral_mass_delSN(de1)
+
+        print("Performing check on negative frost layer thickness")
 
         if np.any(del_SN < 0):
             print("negative frost layer thickness found")
             exit()
 
-
+        print("calculating wall temperature")
 # insert wall function
         Tw2, Ts2, Tc2, qhe, dt2nd_wall = Cu_Wall_function(
             ur1, T1, Tw1, Tc1, Ts1, T_in, del_SN)
 
 # NOTE: Perform energy checks throughout the program
 
+        print("making sure wall Tg> Ts")
 # check Ts1 and T2 temperatures align, rebalances energies within
         T2, e2, p2, rho2, u2 = gas_surface_temp_check(
             T2, Ts2, ur2, e2, u2, rho2)
@@ -210,9 +242,10 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
 #  recalculate T, P, Ts, Tc, Tw, use 1st order schemes, enough for the wall equation.
 
 # find difference in energies across timesteps
-        d_e = energy_difference_dt(e1, e2)
+        # d_e = energy_difference_dt(e1, e2)
 
 # Returning results of current time step for i++
+        print("Returning results for the next time iteration")
 
         rho1[:, :] = rho2
         u1[:, :] = u2
@@ -255,7 +288,7 @@ if __name__ == "__main__":
     # main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2,
     #          ur2, T2, e2, Tw2, Ts2, Tc2, de1, T3)
     main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2,
-             u2, e2, de0, de1, p3, rho3, T3, ux3, ur3, u3, e3, Pe1)
+             u2, e2, de0, de1, p3, rho3, T3, ux3, ur3, u3, e3, Pe1, Tw1, Ts1, Tc1)
 
 
 # END OF PROGRAM

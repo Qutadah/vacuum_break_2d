@@ -10,9 +10,9 @@ import os
 import shutil
 import numba
 from numba import jit
-import vtk
+# import vtk
 import numpy as np
-import vtk.util.numpy_support as numpy_support
+# import vtk.util.numpy_support as numpy_support
 # from scipy.ndimage.filters import laplace
 import sys
 import matplotlib.pyplot as plt
@@ -174,7 +174,9 @@ def n_matrix():
     n = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     for i in np.arange(np.int64(1), np.int64(Nx+1)):
         for j in np.arange(np.int64(1), np.int64(Nr+1)):
-            n[i, j] = i
+            n[i, j] = j
+    print("Removing N=0 in matrix")
+    n[:, 0] = 1
     return n
 
 
@@ -193,6 +195,17 @@ def viscous_matrix(T, P):
     for m in np.arange(Nx+1):
         for n in np.arange(Nr+1):
             visc_matrix[m, n] = mu_n(T[m, n], P[m, n])
+
+# perform NAN value matrix checks:
+
+    for x in np.arange(len(visc_matrix)):
+        assert np.isfinite(visc_matrix).all()
+
+# negative viscosity check
+    if np.any(visc_matrix < 0):
+        print("The viscous matrix has at least one negative value")
+        exit()
+
     return visc_matrix
 
 
@@ -285,42 +298,44 @@ def rhs_energy(grad_r, grad_x, N, S):
     # Momentum R
     # Energy
 
+
 # NOTE: NEXT
 # simple time integration
-def euler_backward_time(q):
-    # RHS empty matrix initialization
-    rhs_rho1, rhs_ux1, rhs_ur1, rhs_e1 = rhs_matrix_initialization()
-    # nonconservative form - source term S included
-    rhs_rho1 = rhs_rho(d_dr, m_dx, N, S)
 
-    rhs_ux1, rhs_ur1 = rhs_ma(dp_dx, rho1, dt2r_ux, N, ux_dr, dt2x_ux,
-                              ux1, ux_dx, ur1, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix)
+# def euler_backward_time(q):
+#     # RHS empty matrix initialization
+#     rhs_rho1, rhs_ux1, rhs_ur1, rhs_e1 = rhs_matrix_initialization()
+#     # nonconservative form - source term S included
+#     rhs_rho1 = rhs_rho(d_dr, m_dx, N, S)
 
-    rhs_e1 = rhs_energy(grad_r, grad_x, N, S)
-    rho2 = rho1 + dt * rhs_rho1
+#     rhs_ux1, rhs_ur1 = rhs_ma(dp_dx, rho1, dt2r_ux, N, ux_dr, dt2x_ux,
+#                               ux1, ux_dx, ur1, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix)
 
-    # calculate ux2
-    ux2 = ux1 + dt*rhs_ux1
-    # apply surface BC
-    ux2[:, Nr] = 0
+#     rhs_e1 = rhs_energy(grad_r, grad_x, N, S)
+#     rho2 = rho1 + dt * rhs_rho1
 
-# calculate ur2
-    ur2 = ur1 + dt * rhs_ur1
+#     # calculate ux2
+#     ux2 = ux1 + dt*rhs_ux1
+#     # apply surface BC
+#     ux2[:, Nr] = 0
 
-    de1 = -1*S*D/4.
-# apply surface ur2 calculation:
-    ur2[:, Nr] = de1[:] / rho2[:, Nr]
+# # calculate ur2
+#     ur2 = ur1 + dt * rhs_ur1
 
-    e2 = e1 + dt*rhs_e1
+#     de1 = -1*S*D/4.
+# # apply surface ur2 calculation:
+#     ur2[:, Nr] = de1[:] / rho2[:, Nr]
 
-    if np.any(e2 < 0):
-        print("The energy Array has at least one negative value")
-        exit()
+#     e2 = e1 + dt*rhs_e1
 
-    # Update pressure
-    p2 = 2./5.*(e2 - 1./2.*rho2*ur2**2)
+#     if np.any(e2 < 0):
+#         print("The energy Array has at least one negative value")
+#         exit()
 
-    return q2
+#     # Update pressure
+#     p2 = 2./5.*(e2 - 1./2.*rho2*ur2**2)
+
+#     return q2
 
 
 def energy_difference_dt(e1, e2):
@@ -335,7 +350,7 @@ def energy_difference_dt(e1, e2):
 
 
 # This iterates RK3 for all equations
-def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, de_variable, de_constant):
+def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, de_variable, de_constant, Tw, Ts, Tc):
     q = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))  # place holder
 
 
@@ -368,7 +383,7 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
         if n == 0:
             ux, u, e, T = no_slip(ux, u, p, rho)
             l = inlet_BC(ux, ur, u, p, rho, T, e, p_in,
-                         ux_in, rho_in, T_in, e_in)
+                         ux_in, rho_in, T_in, e_in, Tw, Ts, Tc)
             # k = outlet_BC(uxn, urn, uun, pn, qn, Tn, en)
             q = l[4]
             ux = l[0]
@@ -378,7 +393,7 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
         else:  # n == 1, n==2:
             uxx, uu, ee, tt = no_slip(uxx, uu, pp, qq)
             l = inlet_BC(uxx, urr, uu, pp, qq, tt, ee, p_in,
-                         ux_in, rho_in, T_in, e_in)
+                         ux_in, rho_in, T_in, e_in, Tw, Ts, Tc)
             # k = outlet_BC(uxn, urn, uun, pn, qn, Tn, en)
 
             qq = l[4]
@@ -387,6 +402,7 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
             ee = l[6]
 
     # Calculating gradients (first and second) ---------------------------------------- #
+        print("Calculating gradients for RK3 loop #", n)
 
         d_dr, m_dx = grad_rho_matrix(ux_in, rho_in, l[1], l[0], l[4])
         dp_dx, ux_dx, ux_dr = grad_ux2_matrix(p_in, l[3], ux_in, l[0])
@@ -398,30 +414,37 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
         dt2r_ux, dt2r_ur = dt2r_matrix(l[0], l[1])
 
     # viscosity calculations
+
         visc_matrix = viscous_matrix(l[5], l[3])
+        print("Checking viscosity matrix")
         assert np.isfinite(visc_matrix).all()
 
         # de_variable (de1) matrix input.
         # This function takes into account density large enough to have mass deposition case.
+        print("Calculating Source term matrix")
         S = source_mass_depo_matrix(
             rho_0, l[5], l[3], l[8], l[4], l[1], de_variable)
         # This de1 is returned again, first calculation is the right one for this iteration. it takes last values.
 
         # CALCULATING RHS USING LOOP VALUES
+        print("Calculating RHS terms matrices")
         r = rhs_rho(d_dr, m_dx, N, S)
         r_ux, r_ur = rhs_ma(dp_dx, l[4], dt2r_ux, N, ux_dr, dt2x_ux,
-                            l[0], ux_dx, l[1], dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix, de_variable)
+                            l[0], ux_dx, l[1], dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix)
         r_e = rhs_energy(grad_r, grad_x, N, S)
 
 # MAIN CALCULATIONS
         if n == 0:
 
-            # first loop calculation
+            # first LHS calculations
             qq = q + dt*r
             uxx = ux + dt*r_ux
             urr = ur + dt*r_ur
             ee = e + dt*r_e
-
+# pressure recalculation
+            pp = qq * R/M_n * tt
+# velocity recalculation
+            uu = np.sqrt(uxx**2 + urr**2)
 # apply surface conditions
             uxx, uu, ee, tt = no_slip(uxx, uu, pp, qq)
 
@@ -438,11 +461,16 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
             de_variable = de_timestep
 
         elif n == 1:
-            # LHS calculations
+            # Second LHS calculations
             qq = qq + dt*r
             uxx = uxx + dt*r_ux
             urr = urr + dt*r_ur
             ee = ee + dt*r_e
+
+# pressure recalculation
+            pp = qq * R/M_n * tt
+# velocity recalculation
+            uu = np.sqrt(uxx**2 + urr**2)
 
 # de_variable calculation using new looped source term
             de_variable = -1 * S * D/4.
@@ -456,7 +484,7 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
 # temperature, pressure, total velocity recalculation
             uu = np.sqrt(uxx**2 + urr**2)
             tt = 2./5.*(ee - 1./2. * qq*uu**2)
-            pp = qq2 * R/M_n * tt
+            pp = qq * R/M_n * tt
 
 # second loop calculation
 
@@ -464,6 +492,11 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
             uxx = 0.75*ux + 0.25*uxx + 0.25*dt*r_ux
             urr = 0.75*ur + 0.25*urr + 0.25*dt*r_ur
             ee = 0.75*e + 0.25*ee + 0.25*dt*r_e
+
+# pressure recalculation
+            pp = qq * R/M_n * tt
+# velocity recalculation
+            uu = np.sqrt(uxx**2 + urr**2)
 
 # apply surface conditions, no slip condition
             uxx, uu, ee, tt = no_slip(uxx, uu, pp, qq)
@@ -480,10 +513,10 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
             pp = qq * R/M_n * tt
 
 # ensure no division by zero
-            qq2 = no_division_zero(qq2)
+            qq = no_division_zero(qq)
 
         else:  # n==2
-            # LHS calculations
+            # Third LHS calculations
             qq = qq + dt*r
             uxx = uxx + dt*r_ux
             urr = urr + dt*r_ur
@@ -512,6 +545,7 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
 
 # # No convective heat flux. q2 ?
 
+    print("RK3 looping complete")
     rk_out = [de_timestep, qn, uxn, urn, un, en, tn, pn]
     return rk_out
 
@@ -629,18 +663,18 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
 
 # def vtk_convert(rho3, ux3, ur3, u3, e3, T3, Tw3, Ts2, de0, p3, de1, Pe3):
 
-def numpyToVTK(data):
-    data_type = vtk.VTK_FLOAT
-    shape = data.shape
+# def numpyToVTK(data):
+#     data_type = vtk.VTK_FLOAT
+#     shape = data.shape
 
-    flat_data_array = data.flatten()
-    vtk_data = numpy_support.numpy_to_vtk(
-        num_array=flat_data_array, deep=True, array_type=data_type)
+#     flat_data_array = data.flatten()
+#     vtk_data = numpy_support.numpy_to_vtk(
+#         num_array=flat_data_array, deep=True, array_type=data_type)
 
-    img = vtk.vtkImageData()
-    img.GetPointData().SetScalars(vtk_data)
-    img.SetDimensions(shape[0], shape[1], shape[2])
-    return img
+#     img = vtk.vtkImageData()
+#     img.GetPointData().SetScalars(vtk_data)
+#     img.SetDimensions(shape[0], shape[1], shape[2])
+#     return img
 
 
 def plot_imshow(p, ux, T, rho, e):
@@ -1056,13 +1090,13 @@ def dt2nd_radial(ux1, ur1, m, n):
     return dt2nd_radial_ux1, dt2nd_radial_ur1
 
 
-def save_gradients(array1, array2, array3, array4, array5, array6, array7, array8, array9, array10, array11):
+def save_gradients(array2, array3, array4, array5, array6, array7, array8, array9, array10, array11):
     pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/gradients/'
     newpath = pathname
     if not os.path.exists(newpath):
         os.makedirs(newpath)
     os.chdir(pathname)
-    np.savetxt("a.csv", array1, delimiter=",")
+    # np.savetxt("a.csv", array1, delimiter=",")
     np.savetxt("d_dr.csv", array2, delimiter=",")
     np.savetxt("m_dx.csv", array3, delimiter=",")
     np.savetxt("dp_dx.csv", array4, delimiter=",")
@@ -1330,8 +1364,8 @@ def mu_n(T, P):
         7.402*tao**0.9*delta**2*np.exp(-1*delta**2) +\
         4.620*tao**0.3*delta**1*np.exp(-1*delta**3)
 #    print("viscosity from function:", (mu_n_1+mu_n_2)/1e6)
-    mu_n_2 = 0
-    mu_n_1 = 0
+    # mu_n_2 = 0
+    # mu_n_1 = 0
     # print("viscosity from function:", (mu_n_1+mu_n_2)/1e6)
 
     return (mu_n_1+mu_n_2)/1e6
@@ -1557,7 +1591,7 @@ def no_slip(ux, u, p, rho):
     return ux, u, e, T
 
 
-@jit(nopython=True)
+# @jit(nopython=True)
 def inlet_BC(ux, ur, u, p, rho, T, e, p_inl, ux_inl, rho_inl, T_inl, e_inl, Tw, Ts, Tc):
     ux[0, :] = ux_inl
     u[0, :] = ux_inl
@@ -1570,7 +1604,7 @@ def inlet_BC(ux, ur, u, p, rho, T, e, p_inl, ux_inl, rho_inl, T_inl, e_inl, Tw, 
     Tc[0] = T_inl
     u = np.sqrt(ux**2. + ur**2.)
 
-    e = balance_energy(p, rho, u)
+    e, T = balance_energy(p, rho, u)
 
     return [ux, ur, u, p, rho, T, e, Tw, Ts, Tc]
 
@@ -1798,8 +1832,7 @@ def q_h(tw, BW_coe):
 # Initialization
 
 
-# @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8)')
-def save_initial_conditions(rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1, pe):
+def save_initial_conditions(rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1, pe, Tc1):
     pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/initial_conditions/'
     if os.path.exists(pathname):
         location = "C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/"
@@ -1816,15 +1849,15 @@ def save_initial_conditions(rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1, 
     np.savetxt("ux.csv", ux1, delimiter=",")
     np.savetxt("ur.csv", ur1, delimiter=",")
     np.savetxt("e.csv", e1, delimiter=",")
-    # np.savetxt("tw.csv", Tw1, delimiter=",")
-    # np.savetxt("ts.csv", Ts1, delimiter=",")
-    # np.savetxt("de.csv", de0, delimiter=",")
-    # np.savetxt("de_rate.csv", de1, delimiter=",")
+    np.savetxt("tw.csv", Tw1, delimiter=",")
+    np.savetxt("ts.csv", Ts1, delimiter=",")
+    np.savetxt("tc.csv", Tc1, delimiter=",")
+    np.savetxt("de.csv", de0, delimiter=",")
+    np.savetxt("de_rate.csv", de1, delimiter=",")
     np.savetxt("p.csv", p1, delimiter=",")
     np.savetxt("pe.csv", pe, delimiter=",")
 
 
-# @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8,f8)')
 def save_data(tx, dt, rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1, pe):
     increment = (tx+1)*dt
 
@@ -1848,12 +1881,10 @@ def save_data(tx, dt, rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1, pe):
     np.savetxt("peclet.csv", pe, delimiter=",")
 
 
-# @numba.jit('f8(f8,f8)')
 def namestr(obj, namespace):  # Returns variable name for check_negative function
     return [name for name in namespace if namespace[name] is obj]
 
 
-# @numba.jit('f8(f8)')
 def check_array(array_in):
     if np.any(array_in < 0):
         array_name = namestr(array_in, globals())[0]
@@ -1873,7 +1904,6 @@ def delete_surface_inviscid(rho, ux, ur, u, e, T, p, pe):
     return [rho3, ux3, ur3, u3, e3, T3, p3, pe3]
 
 
-# @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8)')
 def delete_r0_point(rho2, ux2, ur2, u2, e2, T2, p1, pe):
     rho3 = np.delete(rho2, 0, axis=1)
     ux3 = np.delete(ux2, 0, axis=1)
