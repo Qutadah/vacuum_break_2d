@@ -213,7 +213,7 @@ def viscous_matrix(T, P):
     return visc_matrix
 
 
-# return S term matrix, input previous de1
+# return S term matrix, returns next mdot. input previous de
 def source_mass_depo_matrix(rho_0, T, P, T_s, rho, ur, de):  # -4/D* mdot
     dm = np.zeros((Nx+1), dtype=(np.float64))
     de1 = np.zeros((Nx+1), dtype=(np.float64))
@@ -1473,6 +1473,7 @@ def bulk_values(T_s):
 
 @jit(nopython=True)
 def integral_mass_delSN(de):
+    del_SN = np.zeros((Nx+1), dtype=(np.float64))
     de0 = np.zeros((Nx+1), dtype=(np.float64))
     # Integrate deposited mass
     for m in np.arange(Nx+1):
@@ -1490,7 +1491,7 @@ def integral_mass_delSN(de):
 
 @jit(nopython=True)
 def gas_surface_temp_check(T, Ts, ur, e, u, rho):
-    print("starting Tg> Ts check")
+    # print("starting Tg> Ts check")
     for m in np.arange(np.int64(1), np.int64(Nx+1)):
         if T[m, Nr] < Ts[m]:
             e[m, Nr] = 5./2.*rho[m, Nr]*R*Ts[m] / \
@@ -1506,13 +1507,13 @@ def gas_surface_temp_check(T, Ts, ur, e, u, rho):
     #     check_negative(T2[m, n], n)
 
     # NOTE: Energy is changed assuming density and radial velocity constant. Is this correct?
-    print("balancing energies")
+    # print("balancing energies")
     e, p = balance_energy2(rho, T, u)
     return T, e, p, rho, u
 
 
 @jit(nopython=True)
-def Cu_Wall_function(urx, Tx, Twx, Tcx, Tsx, T_in, delSN, de, ex, ux, rhox, px, T2, p2, e2, rho2, u2, ur2):
+def Cu_Wall_function(urx, Tx, Twx, Tcx, Tsx, T_in, delSN, de1, ex, ux, rhox, px, T2, p2, e2, rho2, u2, ur2):
     # define wall second derivative
     dt2nd_w_m = dt2nd_w_matrix(Twx, T_in)
     qi = np.zeros((Nx+1), dtype=(np.float64))
@@ -1527,7 +1528,9 @@ def Cu_Wall_function(urx, Tx, Twx, Tcx, Tsx, T_in, delSN, de, ex, ux, rhox, px, 
 # Only consider thermal resistance in SN2 layer when del_SN > 1e-5:
 # # NOTE: CHECK THIS LOGIC TREE
 
-    for m in np.arange(Nx+1):
+    print("calculating Tw, Tc, Ts, qdep")
+
+    for m in np.arange(np.int64(1), np.int64(Nx+1)):
         if delSN[m] > 1e-5:
             print(
                 "This is del_SN > 1e-5 condition, conduction across SN2 layer considered")
@@ -1544,65 +1547,46 @@ def Cu_Wall_function(urx, Tx, Twx, Tcx, Tsx, T_in, delSN, de, ex, ux, rhox, px, 
 
 
 # pipe wall equation
-        Tw2[m] = Twx[m] + dt/(w_coe*c_c(Twx[m]))*(qi[m]-q_h(Twx[m], BW_coe)
+        Tw2[m] = Twx[m] + dt/(w_coe*c_c(Twx[m]))*(qi[m]-q_h(Twx[m])
                                                   * Do/D) + dt/(rho_cu*c_c(Twx[m]))*k_cu(Twx[m])*dt2nd_w_m[m]
-    #     print("Tw2: ", Tw2[m])
-    #     check_negative(Tw2[m], n)
 
 # q deposited into frost layer. Nusselt convection neglected
-# NOTE: Check this addition operation, is this correct? 2d and 1d rows
+        q_dep[m] = de1[m]*(1/2*(urx[m, Nr])**2 + delta_h(Tx[m, Nr], Tsx[m]))
 
-    print("calculating q_dep")
-    for k in np.arange(Nx+1):
-        q_dep[k] = de[k]*(1/2*(urx[k, Nr])**2 + delta_h(Tx[k, Nr], Tsx[k]))
-
-# SN2 Center layer Tc equation
-# Calculate SN2 surface temp
-    print("calculating Ts")
-    print("calculating Tc")
-    for j in np.arange(np.int64(1), np.int64(Nt+1)):
-        # NOTE: check this condition
-        if delSN[j] == 0:
-            Tc2[j] = Tw2[j]
-            Ts2[j] = Tw2[j]
+# SN2 Tc equation
+# SN2 surface temperature calculation
+        if delSN < 1e-5:
+            Tc2[m] = Tw2[m]
+            Ts2[m] = 2*Tc2[m] - Tw2[m]
         else:
-            Tc2[j] = Tcx[j] + dt * (q_dep[j]-qi[j]) / \
-                (rho_sn * c_n(Tsx[j])*delSN[j])
-            Ts2[j] = 2*Tc2[j] - Tw2[j]
-    # print("Tc2: ", Tc2[m, n])
-    # check_negative(Tc2[m], n)
-
-    # print("Ts2: ", Ts2[m])
-    # check_negative(Ts2[m], n)
+            Tc2[m] = Tcx[m] + dt * (q_dep[m]-qi[m]) / \
+                (rho_sn * c_n(Tsx[m])*delSN[m])
+            Ts2[m] = 2*Tc2[m] - Tw2[m]
 
     # NOTE: delta_h will change if T =Ts and will be zero.
     # NOTE: Check this logic, very important
     print("Forcing Tg >= Ts")
-    for j in np.arange(np.int64(1), np.int64(Nt+1)):
-        # NOTE: Check this condition, ur1 or ur2
+    for j in np.arange(np.int64(1), np.int64(Nx+1)):
         if T2[j, Nr] < Ts2[j]:
             # NOTE: Should i use the old mass deposition? import mdot of last matrix?
             # NOTE: Is this the current or updated velocity?
-            print("q_dep dh =0")
-            q_dep[j] = de[j]*(1./2.*urx[j, Nr])**2
-            # NOTE: qi stays constant.
-            # Force Tw2 = Ts2
-            print("T2= Ts2")
             T2[j, Nr] = Ts2[j]
-            # recalculate Tc
-            print("recalc Tc")
-            Tc2[j] = Tcx[j] + dt * (q_dep[j]-qi[j]) / \
-                (rho_sn * c_n(Tsx[j])*delSN[j])
-            # NOTE: Shouldi recalculate Tw2? what about Tc2? Tw +Ts/2
+
+# q deposited into frost layer. Nusselt convection neglected
 
         print("recalculating energies")
         T2, e2, p2, rho2, u2 = gas_surface_temp_check(
             T2, Ts2, ur2, e2, u2, rho2)
 
     print("calculating qhe")
-    # NOTE: Put a limiting factor for qhe
-    for i in np.arange(np.int64(1), np.int64(Nt+1)):
-        qhe[m] = q_h(Twx[m], BW_coe)
+    for m in np.arange(np.int64(1), np.int64(Nx+1)):
+        qhe[m] = q_h(Twx[m])
+
+# NOTE: Check qhe values larger than e2 of Tg
+# NOTE: Put a limiting factor for qhe
+    # s = ex[:, Nr]
+    # ID = s < qhe
+    # print("Checking qhe > e1", np.any(ID))
 
     # print("saving qhe")
     # save_qhe(i, dt, qhe)
@@ -1721,26 +1705,6 @@ def outlet_BC(p, e, rho, ux, ur, u, rho_0):
     e, T = balance_energy(p, rho, u)
 
     bc = [p, rho, ux, u, e]
-
-    # NOTE: check input de to the m_de equation.
-    # de1[Nx] = m_de(T2[Nx, n], p1[Nx, n], Ts2[Nx], de1[Nx], 0.)
-    # del_SN = de0[Nx]/np.pi/D/rho_sn
-    #     if del_SN > 1e-5:
-    #         q1 = k_sn*(Tw1[Nx]-Ts1[Nx])/del_SN
-    # #           print("line 848", "q1", q1,"Tw1", Tw1[Nx],"Ts1", Ts1[Nx],"ksn", k_sn)
-    #         assert not math.isnan(Ts1[Nx])
-    #         Ts2[Nx] = Ts1[Nx]+dt/(w_coe*c_c(Tw1[Nx])) * \
-    #             (q1-q_h(Tw1[Nx], BW_coe)*Do/D)
-    #         Tc2[Nx] = Tc1[Nx]+dt/(de0[m]*c_n(Tc1[Nx])/D/np.pi)*(de1[Nx]
-    #                                                             * (1/2*(u1[Nx, n])**2+delta_h(T1[Nx, n], Ts1[Nx])-q1))
-    #     else:
-    #         q1 = de1[Nx]*(1/2*(u1[Nx, n])**2+delta_h(T1[Nx, n], Ts1[Nx]))
-    #         Ts2[Nx] = Ts1[Nx]+dt/(w_coe*c_c(Tw1[Nx])) * \
-    #             (q1-q_h(Tw1[Nx], BW_coe)*Do/D)
-    #         Tc2[Nx] = Ts2[Nx]
-    # Tw2[Nx] = 2*Tc2[Nx]-Ts2[Nx]
-    # qhe[Nx] = q_h(Tw1[Nx], BW_coe)*np.pi*Do
-    # de0[Nx] += dt*np.pi*D*de1[Nx]
     return bc
 
 # recalculating energy from pressure and velocity
@@ -1772,10 +1736,10 @@ def balance_energy2(rho, T, u):
 @jit(nopython=True)
 def val_in_constant():
     #   Calculate instant flow rate (kg/s)
-    p_in = 1100.
+    p_in = 7000.
     T_in = 298.
     rho_in = p_in / T_in/R*M_n
-    ux_in = 150.
+    ux_in = 351.
     ur_in = 0.
     e_in = 5./2.*rho_in/M_n*R*T_in + 1./2.*rho_in*ux_in**2
     out = np.array([p_in, ux_in, ur_in, rho_in, e_in, T_in])
@@ -1898,7 +1862,7 @@ def m_de(T, P, T_s, de, dm):
 
 # @numba.jit('f8(f8,f8)')
 @jit(nopython=True)
-def q_h(tw, BW_coe):
+def q_h(tw, BW_coe=0.017):  # W/K
     # Boiling heat transfer rate of helium (W/(m^2*K))
     # delT = ts-4.2
     delT = tw-4.2
@@ -2087,6 +2051,13 @@ if __name__ == '__main__':
     # t_test = f_ts(p_sat)
     # print("t_test", t_test)
 
+    l = np.linspace(1, 300, 1000)
+    k = k_cu(l)
+
+    # plt.figure()
+    # plt.plot(l, k)
+    # plt.show()
+
 #    p_before = np.log(-2)
 
     # Nx = 20; Nr =20
@@ -2106,9 +2077,9 @@ if __name__ == '__main__':
 
 # ------------------------- Sublimation heat ------------------------------- #
 
-    tg = 298
+    tg = 4.2
     ts = 4.2
-    # print("delta_h ", delta_h(tg, ts))
+    print("delta_h ", delta_h(tg, ts))
 
 # ------------------------- specific heat of solid nitrogen (J/(kg*K)) ------------------------------- #
 
@@ -2121,10 +2092,9 @@ if __name__ == '__main__':
 
     # print("c_c ", c_c(ts))
 
-# ------------------------- coefficient of thermal conductivity of copper (RRR=10) (W/(m*K)) ------------------------------- #
-
+# thermal conductivity of copper (RRR=10) (W/(m*K)) ------------------------------- #
     T = 4.2
-    # print("k_cu", k_cu(T))
+    print("k_cu", k_cu(4))
 
 # ------------------------- self mass diffusivity of nitrogen (m^2/s) ------------------------------- #
 
@@ -2182,8 +2152,24 @@ if __name__ == '__main__':
 # ------------------------- Heat transferred ------------------------------- #
 
     tw = 298
-    BW_coe = 0.02
-    print("q_h ", q_h(tw, BW_coe))
+
+    k = np.zeros(30000, dtype=np.float64())
+    l = np.linspace(4.2, 30, 30000)
+    for i in range(len(l)):
+        k[i] = q_h(l[i])
+
+    # k = np.zeros(30000, dtype=np.float64())
+    # k[l] = q_he(l[:])
+    # for x, i in zip(l, range(len(l))):
+    #     k[i] = q_h(x)
+
+    #  in l:
+        # k[x] = q_h(x, BW_coe=0.017)
+
+    plt.figure()
+    plt.plot(l, k)
+    plt.show()
+    # print("q_h ", q_h(tw, BW_coe))
 
 # ------------------------- Exponential Smoothing ------------------------------- #
     # p_in = 8000

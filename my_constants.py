@@ -28,7 +28,6 @@ print("dx", dx, "dr", dr, "dt", dt, "Cou_r",
 
 #   Tuning parameters
 # Coefficient for the film boiling of He I (we need to adjust optimal value)
-BW_coe = 0.021  # W/K
 Sc_PP = 0.95  # Condensation\boiling coeffcient
 
 #   Parameters
