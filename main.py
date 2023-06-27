@@ -232,8 +232,8 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
             exit()
 
         print("calculating wall temperature")
+
 # insert wall function
-# NOTE: should i input initial or calculated values
         Tw2, Ts2, Tc2, qhe, dt2nd_w_m, q_dep = Cu_Wall_function(
             ur1, T1, Tw1, Tc1, Ts1, T_in, del_SN, de_timestep, e1, u1, rho1, p1, T2, p2, e2, rho2, u2, ur2)
 
@@ -282,12 +282,12 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
         # rho3, ux3, ur3, u3, e3, T3, p3, Pe3 = delete_surface_inviscid(
         #     rho3, ux3, ur3, u3, e3, T3, p3, Pe3)
 
-# PLOTTING FIELDS
-        plot_imshow(p3, ux3, T3, rho3, e3)
-
 # SAVING DATA
         save_data(i, dt, rho3, ux3, ur3, u3, e3,
                   T3, Tw2, Ts2, de0, p3, de1, Pe3)
+
+# PLOTTING FIELDS
+        plot_imshow(p3, ux3, T3, rho3, e3)
 
 
 if __name__ == "__main__":

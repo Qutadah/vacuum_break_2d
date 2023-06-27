@@ -1473,7 +1473,7 @@ def bulk_values(T_s):
 
 @jit(nopython=True)
 def integral_mass_delSN(de):
-    del_SN = np.zeros((Nx+1), dtype=(np.float64))
+    # del_SN = np.zeros((Nx+1), dtype=(np.float64))
     de0 = np.zeros((Nx+1), dtype=(np.float64))
     # Integrate deposited mass
     for m in np.arange(Nx+1):
@@ -1535,7 +1535,7 @@ def Cu_Wall_function(urx, Tx, Twx, Tcx, Tsx, T_in, delSN, de1, ex, ux, rhox, px,
             print(
                 "This is del_SN > 1e-5 condition, conduction across SN2 layer considered")
 
-# heatflux into copper wall from frost layer
+            # heatflux into copper wall from frost layer
             qi[m] = k_sn*(Tsx[m]-Twx[m])/delSN[m]
             # print("qi: ", qi)
             # check_negative(qi, n)
@@ -1555,7 +1555,7 @@ def Cu_Wall_function(urx, Tx, Twx, Tcx, Tsx, T_in, delSN, de1, ex, ux, rhox, px,
 
 # SN2 Tc equation
 # SN2 surface temperature calculation
-        if delSN < 1e-5:
+        if delSN[m] < 1e-5:
             Tc2[m] = Tw2[m]
             Ts2[m] = 2*Tc2[m] - Tw2[m]
         else:
@@ -1862,7 +1862,7 @@ def m_de(T, P, T_s, de, dm):
 
 # @numba.jit('f8(f8,f8)')
 @jit(nopython=True)
-def q_h(tw, BW_coe=0.017):  # W/K
+def q_h(tw, BW_coe=0.017):  # (W/(m^2*K)
     # Boiling heat transfer rate of helium (W/(m^2*K))
     # delT = ts-4.2
     delT = tw-4.2
@@ -2154,7 +2154,7 @@ if __name__ == '__main__':
     tw = 298
 
     k = np.zeros(30000, dtype=np.float64())
-    l = np.linspace(4.2, 30, 30000)
+    l = np.linspace(4.2, 100, 30000)
     for i in range(len(l)):
         k[i] = q_h(l[i])
 
