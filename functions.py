@@ -46,18 +46,20 @@ def dt2nd_wall(m, Tw1, T_in):
 
 @jit(nopython=True)
 def dt2nd_w_matrix(Tw, T_in):
+    dt2nd_w_m = np.zeros((Nx+1), dtype=(np.float64))
+
     for m in np.arange(Nx+1):
         if m == 0:
-            dt2nd[m] = (T_in - 2 * Tw[m] +
-                        Tw[m+1])/(dx**2)  # 3-point CD
+            dt2nd_w_m[m] = (T_in - 2 * Tw[m] +
+                            Tw[m+1])/(dx**2)  # 3-point CD
     #       dt2nd = Tw1[m+1]-Tw1[m]-Tw1[m-1]+T_in
         elif m == Nx:
             # print("m=Nx", m)
-            dt2nd[m] = (-Tw[m-3] + 4*Tw[m-2] - 5*Tw[m-1] +
-                        2*Tw[m]) / (dx**2)  # Four point BWD
+            dt2nd_w_m[m] = (-Tw[m-3] + 4*Tw[m-2] - 5*Tw[m-1] +
+                            2*Tw[m]) / (dx**2)  # Four point BWD
         else:
-            dt2nd[m] = Tw[m-1]-2*Tw[m]+Tw[m+1]/(dx**2)
-    return dt2nd_wall
+            dt2nd_w_m[m] = Tw[m-1]-2*Tw[m]+Tw[m+1]/(dx**2)
+    return dt2nd_w_m
 
 
 # @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8)')
@@ -1305,7 +1307,7 @@ def delta_h(tg, ts):
 @jit(nopython=True)
 def c_n(ts):
     #   Calculate specific heat of solid nitrogen (J/(kg*K))
-    print("Ts for c_n specific heat SN2 calc: ", ts)
+    # print("Ts for c_n specific heat SN2 calc: ", ts)
     if ts > 35.6:
         cn = (4696.25245-393.92323*ts+17.11194*ts**2 -
               0.35784*ts**3+0.00371*ts**4-1.52168E-5*ts**5)
@@ -1329,7 +1331,7 @@ def v_m(tg):
 @jit(nopython=True)
 def c_c(ts):
     #   Calculate the heat capacity of copper (J/(kg*K))
-    print("Ts for c_c (specific heat copper) calc: ", ts)
+    # print("Ts for c_c (specific heat copper) calc: ", ts)
     #  print("ts",ts)
     c_copper = 1.22717-10.74168*np.log10(ts)**1+15.07169*np.log10(
         ts)**2-6.69438*np.log10(ts)**3+1.00666*np.log10(ts)**4-0.00673*np.log10(ts)**5
@@ -1341,7 +1343,7 @@ def c_c(ts):
 @jit(nopython=True)
 def k_cu(T):
     #   Calculate the coefficient of thermal conductivity of copper (RRR=10) (W/(m*K)) (for pde governing copper wall, heat conducted in the x axis.)
-    print("Tw for k_cu copper: ", T)
+    # print("Tw for k_cu copper: ", T)
     k1 = 3.00849+11.34338*T+1.20937*T**2-0.044*T**3+3.81667E-4 * \
         T**4+2.98945E-6*T**5-6.47042E-8*T**6+2.80913E-10*T**7
     k2 = 1217.49161-13.76657*T-0.01295*T**2+0.00188*T**3-1.77578E-5 * \
@@ -1450,8 +1452,10 @@ def bulk_values(T_s):
 
 @jit(nopython=True)
 def integral_mass_delSN(de):
+    de0 = np.zeros((Nx+1), dtype=(np.float64))
     # Integrate deposition mass
-    de0 += dt*np.pi*D*de
+    for m in np.arange(Nx+1):
+        de0[m] += dt*np.pi*D*de[m]
 
 # Calculate the SN2 layer thickness
     del_SN = de0/np.pi/D/rho_sn
@@ -1486,9 +1490,13 @@ def gas_surface_temp_check(T, Ts, ur, e, u, rho):
 @jit(nopython=True)
 def Cu_Wall_function(ur, Tx, Twx, Tcx, Tsx, T_in, delSN, de):
     # define wall second derivative
-    dt2nd_wall = dt2nd_w_matrix(Tw, T_in)
+    dt2nd_w_m = dt2nd_w_matrix(Twx, T_in)
     qi = np.zeros((Nx+1), dtype=(np.float64))
     q_dep = np.zeros((Nx+1), dtype=(np.float64))
+    Tw2 = np.zeros((Nx+1), dtype=(np.float64))
+    Tc2 = np.zeros((Nx+1), dtype=(np.float64))
+    Ts2 = np.zeros((Nx+1), dtype=(np.float64))
+    qhe = np.zeros((Nx+1), dtype=(np.float64))
 
 # Initial calculations:
 
@@ -1501,7 +1509,7 @@ def Cu_Wall_function(ur, Tx, Twx, Tcx, Tsx, T_in, delSN, de):
                 "This is del_SN > 1e-5 condition, conduction across SN2 layer considered")
 
 # heatflux into copper wall from frost layer
-            qi[m] = k_sn*(Ts[m]-Tw[m])/delSN[m]
+            qi[m] = k_sn*(Tsx[m]-Twx[m])/delSN[m]
             # print("qi: ", qi)
             # check_negative(qi, n)
         else:
@@ -1512,24 +1520,26 @@ def Cu_Wall_function(ur, Tx, Twx, Tcx, Tsx, T_in, delSN, de):
 
 
 # pipe wall equation
-    Tw = Twx + dt/(w_coe*c_c(Twx))*(qi-q_h(Twx, BW_coe)*Do/D) + \
-        dt/(rho_cu*c_c(Twx))*k_cu(Twx)*dt2nd_wall
+        Tw2[m] = Twx[m] + dt/(w_coe*c_c(Twx[m]))*(qi[m]-q_h(Twx[m], BW_coe)
+                                                  * Do/D) + dt/(rho_cu*c_c(Twx[m]))*k_cu(Twx[m])*dt2nd_w_m[m]
     #     print("Tw2: ", Tw2[m])
     #     check_negative(Tw2[m], n)
 
 # q deposited into frost layer. Nusselt convection neglected
 # NOTE: Check this addition operation, is this correct? 2d and 1d rows
 
-    q_dep = de[:]*(1/2*(ur[:, Nr])**2 + delta_h(T[:, Nr], Tsx[:]))
+    q_dep[:] = de[:]*(1/2*(ur[:, Nr])**2 + delta_h(Tx[:, Nr], Tsx[:]))
 
-    # Q_dep will change if T =Ts and will be zero.
+    # NOTE: delta_h will change if T =Ts and will be zero.
     # NOTE: Check this logic, very important
     for j in np.arange(Nx+1):
         if Tx[j] < Tsx[j]:
             q_dep[j] = de[j]*(1./2.*ur[j, Nr])**2
 
 # SN2 Center layer Tc equation
-    Tc2 = Tcx + dt * (q_dep-qi) / (rho_sn * c_n(Tsx)*delSN)
+    for j in np.arange(Nx+1):
+        Tc2[j] = Tcx[j] + dt * (q_dep[j]-qi[j]) / \
+            (rho_sn * c_n(Tsx[j])*delSN[j])
     # print("Tc2: ", Tc2[m, n])
     # check_negative(Tc2[m], n)
 
@@ -1537,8 +1547,10 @@ def Cu_Wall_function(ur, Tx, Twx, Tcx, Tsx, T_in, delSN, de):
     Ts2 = 2*Tcx - Twx
     # print("Ts2: ", Ts2[m])
     # check_negative(Ts2[m], n)
+    for m in np.arange(Nx+1):
+        qhe[m] = q_h(Twx[m], BW_coe)
 
-    return Tw2, Ts2, Tc2, qhe, dt2nd_wall
+    return Tw2, Ts2, Tc2, qhe, dt2nd_w_m
 
 
 @jit(nopython=True)

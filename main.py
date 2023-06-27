@@ -53,6 +53,8 @@ p1, rho1, ux1, ur1, u1, e1, T1, rho2, ux2, ur2, u2, e2, T2, p2, Tw1, Tw2, Ts1, T
 # constant inlet
 p_in, ux_in, ur_in, rho_in, e_in, T_in = val_in_constant()
 
+
+# setting wall and frost layer initial conditions
 # p_in, q_in, ux_in, ur_in, rho_in, e_in, T_in = val_in(0)
 print("p_in: ", p_in, "ux_in: ", ux_in, "ur_in: ", ur_in, "rho_in: ",
       rho_in, "e_in: ", e_in, "T_in: ", T_in)
@@ -212,13 +214,12 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
 
         # negative energy check
         if np.any(rk_out[5] < 0):
-            print("The Density Array has at least one negative value")
+            print("The energy has at least one negative value")
             exit()
 
         print("Calculating frost layer thickness")
-
 # calculate frost layer thickness
-        de0, del_SN = integral_mass_delSN(de1)
+        de0, del_SN = integral_mass_delSN(de_timestep)
 
         print("Performing check on negative frost layer thickness")
 
@@ -229,7 +230,7 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
         print("calculating wall temperature")
 # insert wall function
         Tw2, Ts2, Tc2, qhe, dt2nd_wall = Cu_Wall_function(
-            ur1, T1, Tw1, Tc1, Ts1, T_in, del_SN)
+            ur1, T1, Tw1, Tc1, Ts1, T_in, del_SN, de_timestep)
 
 # NOTE: Perform energy checks throughout the program
 
