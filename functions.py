@@ -251,7 +251,7 @@ def rhs_rho(d_dr, m_dx, N, S):
 
 # returns MOMENTUM RHS matrix
 def rhs_ma(dp_dx, rho, dt2r_ux, N, ux_dr, dt2x_ux, ux, ux_dx, ur, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix):
-
+    # NOTEL Should i add no slip BC?
     rhs_ux = -dp_dx/rho + visc_matrix/rho * (
         dt2r_ux + 1/N/dr*ux_dr + dt2x_ux) - ux * ux_dx - ur*ux_dr
 
@@ -385,18 +385,18 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
 
 
 # substituting for RK3 initial loop
-    qq = rho
-    pp = p
-    uu = u
-    tt = T
+    q = rho
+    p = p
+    u = u
+    t = T
 # First step
 # apply BCs
 # NOTE: apply outlet Bcs also.
 # l = [ux, ur, u, p, rho, T, e, Tw, Ts, Tc]
     for n in np.arange(3):
         if n == 0:
-            ux, u, e, T = no_slip(ux, u, p, rho)
-            l = inlet_BC(ux, ur, u, p, rho, T, e, p_in,
+            ux, u, e, T = no_slip(ux, u, p, rho, t, ur)
+            l = inlet_BC(ux, ur, u, p, rho, t, e, p_in,
                          ux_in, rho_in, T_in, e_in, Tw, Ts, Tc)
             # k = outlet_BC(uxn, urn, uun, pn, qn, Tn, en)
             q = l[4]
@@ -406,7 +406,7 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
 
             # print("starting temperature", l[5])
         else:  # n == 1, n==2:
-            uxx, uu, ee, tt = no_slip(uxx, uu, pp, qq)
+            uxx, uu, ee, tt = no_slip(uxx, uu, pp, qq, tt, urr)
             l = inlet_BC(uxx, urr, uu, pp, qq, tt, ee, p_in,
                          ux_in, rho_in, T_in, e_in, Tw, Ts, Tc)
             # k = outlet_BC(uxn, urn, uun, pn, qn, Tn, en)
@@ -455,6 +455,7 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
                             l[0], ux_dx, l[1], dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix)
         r_e = rhs_energy(grad_r, grad_x, N, S)
 
+
 # MAIN CALCULATIONS
         if n == 0:
 
@@ -463,73 +464,41 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
             uxx = ux + dt*r_ux
             urr = ur + dt*r_ur
             ee = e + dt*r_e
-# pressure recalculation
-            pp = qq * R/M_n * tt
-# velocity recalculation
-            uu = np.sqrt(uxx**2 + urr**2)
-# apply surface conditions
-            uxx, uu, ee, tt = no_slip(uxx, uu, pp, qq)
 
-# temperature, pressure, total velocity recalculation
-            uu = np.sqrt(uxx**2 + urr**2)
-            tt = 2./5.*(ee - 1./2. * qq*uu**2)
-            pp = qq * R/M_n * tt
-
-# save first loop RK3
-            Rks = Rks
-            save_RK3(n, Rks, dt, qq, uxx, urr, uu, ee,
-                     tt, pp, de_variable)
 # ensure no division by zero
             qq = no_division_zero(qq)
-
-# save matrices
-            save_RK3(n, Rks, dt, qq, uxx, urr, uu, ee,
-                     tt, pp, de_variable)
 
 # NOTE: # mass deposition calculation from first rhs and source terms. Should the mass deposition calculated be the current mdot?
             de_timestep = -1 * S * D/4.
             de_variable = de_timestep
 
-        elif n == 1:
-            # Second LHS calculations
-            qq = qq + dt*r
-            uxx = uxx + dt*r_ux
-            urr = urr + dt*r_ur
-            ee = ee + dt*r_e
-
-# pressure recalculation
-            pp = qq * R/M_n * tt
-# velocity recalculation
-            uu = np.sqrt(uxx**2 + urr**2)
-
-# de_variable calculation using new looped source term
-            de_variable = -1 * S * D/4.
-
-# apply surface conditions
-            uxx, uu, ee, tt = no_slip(uxx, uu, pp, qq)
-
 # radial velocity on surface is function of mass deposition
             urr[:, Nr] = de_variable[:]/qq[:, Nr]
 
-# temperature, pressure, total velocity recalculation
+# velocity recalculation
             uu = np.sqrt(uxx**2 + urr**2)
-            tt = 2./5.*(ee - 1./2. * qq*uu**2)
-            pp = qq * R/M_n * tt
 
-# second loop calculation
+# pressure recalculation
+            pp = (ee - 1./2.*qq*uu**2) * 2./5.
 
+# temperature recalculation
+            ee, tt = balance_energy(pp, qq, uu)
+
+# save first loop RK3
+            Rks = Rks
+            save_RK3(n, Rks, dt, qq, uxx, urr, uu, ee,
+                     tt, pp, de_variable)
+
+        elif n == 1:
+            # Second loop LHS calculations calculation
             qq = 0.75*q + 0.25*qq + 0.25*dt*r
             uxx = 0.75*ux + 0.25*uxx + 0.25*dt*r_ux
             urr = 0.75*ur + 0.25*urr + 0.25*dt*r_ur
             ee = 0.75*e + 0.25*ee + 0.25*dt*r_e
 
-# pressure recalculation
-            pp = qq * R/M_n * tt
-# velocity recalculation
-            uu = np.sqrt(uxx**2 + urr**2)
 
-# apply surface conditions, no slip condition
-            uxx, uu, ee, tt = no_slip(uxx, uu, pp, qq)
+# ensure no division by zero
+            qq = no_division_zero(qq)
 
 # de_variable calculation using new looped source term
             de_variable = -1 * S * D/4.
@@ -537,54 +506,57 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
 # radial velocity on surface is function of mass deposition
             urr[:, Nr] = de_variable[:]/qq[:, Nr]
 
-# temperature, pressure, total velocity recalculation
+# velocity recalculation
             uu = np.sqrt(uxx**2 + urr**2)
-            tt = 2./5.*(ee - 1./2. * qq*uu**2)
-            pp = qq * R/M_n * tt
 
-# ensure no division by zero
-            qq = no_division_zero(qq)
+# pressure recalculation
+            pp = (ee - 1./2.*qq*uu**2) * 2./5.
+
+# temperature recalculation
+            ee, tt = balance_energy(pp, qq, uu)
+
+# NOTE: Is this necessary?
+# # apply surface conditions
+#             uxx, uu, ee, tt = no_slip(uxx, uu, pp, qq, tt)
 
 # save matrices
             save_RK3(n, Rks, dt, qq, uxx, urr, uu, ee,
                      tt, pp, de_variable)
 
         else:  # n==2
-            # Third LHS calculations
-            qq = qq + dt*r
-            uxx = uxx + dt*r_ux
-            urr = urr + dt*r_ur
-            ee = ee + dt*r_e
 
-# third (final) loop calculation
+            # third (final) loop LHS calculations
             qn = 1/3*q + 2/3*qq + 2/3*dt*r
             uxn = 1/3*ux + 2/3*uxx + 2/3*dt*r_ux
             urn = 1/3*ur + 2/3*urr + 2/3*dt*r_ur
             en = 1/3*e + 2/3*ee + 2/3*dt*r_e
 
+# ensure no division by zero
+            qn = no_division_zero(qn)
 
-# pressure recalculation
-            pn = qn * R/M_n * tn
-# velocity recalculation
-            un = np.sqrt(uxn**2 + urn**2)
-
-# apply surface conditions, no slip condition
-            uxn, un, en, tn = no_slip(uxn, un, pn, qn)
+# de_variable calculation using new looped source term
+            de_variable = -1 * S * D/4.
 
 # radial velocity on surface is function of mass deposition
             urn[:, Nr] = de_variable[:]/qn[:, Nr]
 
-# temperature, pressure, total velocity recalculation
-            un = np.sqrt(uxx**2 + urr**2)
-            tn = 2./5.*(en - 1./2. * qn*un**2)
-            pn = qn * R/M_n * tn
+# velocity recalculation
+            un = np.sqrt(uxn**2 + urn**2)
 
-# ensure no division by zero
-            qn = no_division_zero(qn)
+# pressure recalculation
+            pn = (en - 1./2.*qn*un**2) * 2./5.
+
+# temperature recalculation
+            en, tn = balance_energy(pn, qn, un)
+
+
+# NOTE: Is this important?
+# apply surface conditions, no slip condition
+            # uxn, un, en, tn = no_slip(uxn, un, pn, qn, tn)
+
 # save matrices
             save_RK3(n, Rks, dt, qn, uxn, urn, un, en,
                      tn, pn, de_variable)
-
 
 # # No convective heat flux. q2 ?
 
@@ -1502,7 +1474,7 @@ def bulk_values(T_s):
 @jit(nopython=True)
 def integral_mass_delSN(de):
     de0 = np.zeros((Nx+1), dtype=(np.float64))
-    # Integrate deposition mass
+    # Integrate deposited mass
     for m in np.arange(Nx+1):
         de0[m] += dt*np.pi*D*de[m]
 
@@ -1588,7 +1560,7 @@ def Cu_Wall_function(urx, Tx, Twx, Tcx, Tsx, T_in, delSN, de, ex, ux, rhox, px, 
 # Calculate SN2 surface temp
     print("calculating Ts")
     print("calculating Tc")
-    for j in np.arange(Nx+1):
+    for j in np.arange(np.int64(1), np.int64(Nt+1)):
         # NOTE: check this condition
         if delSN[j] == 0:
             Tc2[j] = Tw2[j]
@@ -1606,16 +1578,19 @@ def Cu_Wall_function(urx, Tx, Twx, Tcx, Tsx, T_in, delSN, de, ex, ux, rhox, px, 
     # NOTE: delta_h will change if T =Ts and will be zero.
     # NOTE: Check this logic, very important
     print("Forcing Tg >= Ts")
-    for j in np.arange(Nx+1):
+    for j in np.arange(np.int64(1), np.int64(Nt+1)):
         # NOTE: Check this condition, ur1 or ur2
         if T2[j, Nr] < Ts2[j]:
             # NOTE: Should i use the old mass deposition? import mdot of last matrix?
             # NOTE: Is this the current or updated velocity?
+            print("q_dep dh =0")
             q_dep[j] = de[j]*(1./2.*urx[j, Nr])**2
             # NOTE: qi stays constant.
             # Force Tw2 = Ts2
+            print("T2= Ts2")
             T2[j, Nr] = Ts2[j]
             # recalculate Tc
+            print("recalc Tc")
             Tc2[j] = Tcx[j] + dt * (q_dep[j]-qi[j]) / \
                 (rho_sn * c_n(Tsx[j])*delSN[j])
             # NOTE: Shouldi recalculate Tw2? what about Tc2? Tw +Ts/2
@@ -1626,7 +1601,7 @@ def Cu_Wall_function(urx, Tx, Twx, Tcx, Tsx, T_in, delSN, de, ex, ux, rhox, px, 
 
     print("calculating qhe")
     # NOTE: Put a limiting factor for qhe
-    for m in np.arange(Nx+1):
+    for i in np.arange(np.int64(1), np.int64(Nt+1)):
         qhe[m] = q_h(Twx[m], BW_coe)
 
     # print("saving qhe")
@@ -1703,11 +1678,12 @@ def remove_timestepping():
 
 
 @jit(nopython=True)
-def no_slip(ux, u, p, rho):
+def no_slip(ux, u, p, rho, T, ur):
     ux[:, Nr] = 0
 # NOTE: Check radial velocity.... does this change mdot?
     # u[:, Nr] = 0
 # NOTE: How do i recalculate u?
+    u[:, Nr] = ur[:, Nr]
     e, T = balance_energy(p, rho, u)
     return ux, u, e, T
 
@@ -1770,6 +1746,14 @@ def outlet_BC(p, e, rho, ux, ur, u, rho_0):
 # recalculating energy from pressure and velocity
 
 
+# recalculating velocity from energy, T, rho
+def recalculate_velocity(e, rho, p):
+    u = np.sqrt((e-5./2.*p)*2./rho)
+    return u
+
+# recalculating energy from p, rho, and velocity
+
+
 @jit(nopython=True)
 def balance_energy(p, rho, u):
     e = 5./2. * p + 1./2 * rho*u**2
@@ -1788,10 +1772,10 @@ def balance_energy2(rho, T, u):
 @jit(nopython=True)
 def val_in_constant():
     #   Calculate instant flow rate (kg/s)
-    p_in = 1000.
+    p_in = 1100.
     T_in = 298.
     rho_in = p_in / T_in/R*M_n
-    ux_in = 30.
+    ux_in = 150.
     ur_in = 0.
     e_in = 5./2.*rho_in/M_n*R*T_in + 1./2.*rho_in*ux_in**2
     out = np.array([p_in, ux_in, ur_in, rho_in, e_in, T_in])
@@ -2250,67 +2234,3 @@ if __name__ == '__main__':
 
 
 # EXTRAS
-
-
-# def check_negative(var_in, n):  # CHECKS CALCULATIONS FOR NEGATIVE OR NAN VALUES
-#     # at surface
-#     if n == Nr:
-
-#         if var_in < 0:
-#             print("negative Surface", var_in)
-#             print("line ", get_linenumber())
-#             exit()
-#         if math.isnan(var_in):
-#             print("NAN Surface ", var_in)
-#             print("line ", get_linenumber())
-#             assert not math.isnan(var_in)
-
-#     # at BULK
-#     else:
-#         S1 = "Bulk"
-
-#         if var_in < 0:
-#             print("negative Bulk ", var_in)
-#             print("line ", get_linenumber())
-#             exit()
-#         if math.isnan(var_in):
-#             print("NAN Bulk ", var_in)
-#             print("line ", get_linenumber())
-#             assert not math.isnan(var_in)
-
-
-# def check_negative(var_in, var_name, n):  # CHECKS CALCULATIONS FOR NEGATIVE OR NAN VALUES
-#     #    value_name = locals().items()
-#     # value_name = varname(var_in)
-#     if type(var_in) == list:
-#         value_name = namestr(var_name, globals())
-
-#     # elif type(var_in)== np.float64:
-#     #     value_name = namestr(var_name, globals())[0]
-#     else:
-#         value_name = namestr(var_name, globals())[0]
-
-#     print("variable name", value_name)
-
-#     # at surface
-#     if n == Nr:
-#         S1 = "Surface"
-
-#         if var_in < 0:
-#             print("negative " + value_name + " in " + S1, var_in)
-#             exit()
-#         if math.isnan(var_in):
-#             print("NAN " + value_name + " in " + S1)
-#             assert not math.isnan(var_in)
-
-#     # at BULK
-#     else:
-#         S1 = "Bulk"
-
-
-#         if var_in < 0:
-#             print("negative " + value_name + " in " + S1, var_in)
-#             exit()
-#         if math.isnan(var_in):
-#             print("NAN " + value_name + " in " + S1)
-#             assert not math.isnan(var_in)

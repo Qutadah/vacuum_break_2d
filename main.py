@@ -35,12 +35,12 @@ def check_negative(var_in, n):  # CHECKS CALCULATIONS FOR NEGATIVE OR NAN VALUES
             assert not math.isnan(var_in)
 
 
-## ----------------------------------------- logging ----------------------------------------- ##
+# logging
 # wb = openpyxl.Workbook()
 # ws = wb.active
 
 
-#### -----------------------------------------   Calculate initial values ----------------------------------------- #
+# Calculate initial values
 T_0, rho_0, p_0, e_0, ux_0 = bulk_values(T_s)
 
 # ----------------- Array initialization ----------------------------
@@ -58,8 +58,8 @@ p_in, ux_in, ur_in, rho_in, e_in, T_in = val_in_constant()
 # p_in, q_in, ux_in, ur_in, rho_in, e_in, T_in = val_in(0)
 print("p_in: ", p_in, "ux_in: ", ux_in, "ur_in: ", ur_in, "rho_in: ",
       rho_in, "e_in: ", e_in, "T_in: ", T_in)
-### ------------------------------------- PREPPING AREA - smoothing ------------------------------------------------- ########
 
+# PREPPING AREA - smoothing
 p1, rho1, T1, ux1, u1, e1 = smoothing_inlet(
     p1, rho1, T1, ux1, ur1, ux_in, u1, p_in, p_0, rho_in, rho_0, n_trans)
 
@@ -82,7 +82,7 @@ print("Applying No-slip BC")
 
 # NOTE: Do i need more boundary conditions?
 # ---------- NO SLIP BC
-ux1, u1, e1, T1 = no_slip(ux1, u1, p1, rho1)
+ux1, u1, e1, T1 = no_slip(ux1, u1, p1, rho1, T1, ur1)
 
 
 # ------  inlet BCs
@@ -289,12 +289,6 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
         save_data(i, dt, rho3, ux3, ur3, u3, e3,
                   T3, Tw2, Ts2, de0, p3, de1, Pe3)
 
-# VTK CONVERSION - not working - not important
-        # vtk_convert(rho3, ux3, ur3, u3, e3, T3, Tw2, Ts2, de0, p3, de1, Pe3)
-        # numpyToVTK(rho3)
-        # numpyToVTK(ux3)
-        # numpyToVTK(ur3)
-
 
 if __name__ == "__main__":
     # main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2,
@@ -305,150 +299,7 @@ if __name__ == "__main__":
 
 # END OF PROGRAM
 
-# Equations ------------------------------------------- #
-
-    # Integrate deposition mass
-    # de0[m] += dt*np.pi*D*de1[m]
-    # print("deposition mass surface", de0[m])
-    # check_negative(de0[m], n)
-
-    # Calculate the SN2 layer thickness
-    # del_SN = de0[m]/np.pi/D/rho_sn
-    # print("del_SN: ", del_SN)
-    # check_negative(del_SN, n)
-
-
-#                     ur2[m, n] = de1[m]/rho2[m, n]
-#                     ux2[m, n] = 0.  # no slip boundary condition.
-#                     u2[m, n] = np.sqrt(ux1[m, n]**2 + ur1[m, n]**2)
-
-#                     print("ur1 surface", ur1[m, n], "u1 surface", u1[m, n],
-#                           "ur2 surface", ur2[m, n], "u2 surface", u2[m, n])
-#                     # check_negative(ur2[m, n], n)
-#                     check_negative(u2[m, n], n)
-
-#                     # internal energy current timestep
-#                     eps = 5./2.*p1[m, n]
-#                     e1[m, n] = eps + 1./2. * rho1[m, n] * ur1[m, n]**2
-#                     print("rho1 ", rho1[m, n])
-#                     check_negative(rho1[m, n], n)
-
-#                     # define wall second derivative
-#                     # dt2nd = dt2nd_wall((m, Tw1))
-
-#                 # Radial heat transfer within Copper section
-
-# # Only consider the thermal resistance through SN2 layer when thickness is larger than a small preset value (taking average value)
-
-# # NOTE: CHECK THIS LOGIC TREE
-
-#                     #     # q deposited into frost layer. Nusselt convection neglected
-#                     # q_dep = de1[m]*(1/2*(ur1[m, n])**2 +
-#                     #                 delta_h(T1[m, n], Ts1[m]))
-
-#                     # if del_SN > 1e-5:
-#                     #     print(
-#                     #         "This is del_SN > 1e-5 condition, conduction across SN2 layer considered")
-
-#                     #     # heatflux into copper wall from frost layer
-#                     #     qi = k_sn*(Ts1[m]-Tw1[m])/del_SN
-#                     #     print("qi: ", qi)
-#                     #     check_negative(qi, n)
-
-    #    # pipe wall equation
-    #     Tw2[m] = Tw1[m] + dt/(w_coe*c_c(Tw1[m]))*(
-    #         qi-q_h(Tw1[m], BW_coe)*Do/D)+dt/(rho_cu*c_c(Tw1[m]))*k_cu(Tw1[m])*dt2nd
-    #     print("Tw2: ", Tw2[m])
-    #     check_negative(Tw2[m], n)
-
-    #     # SN2 Center layer Tc equation
-    #     Tc2[m] = Tc1[m] + dt * \
-    #         (q_dep-qi) / (rho_sn * c_n(Ts1[m, n]*del_SN))
-    #     print("Tc2: ", Tc2[m, n])
-    #     check_negative(Tc2[m], n)
-
-    # else:
-    #     # heatflux into copper wall from frost layer
-    #     qi = 0
-    #     print("qi: ", qi)
-    #     check_negative(qi, n)
-
-    # pipe wall equation
-    # Tw2[m] = Tw1[m] + dt/(w_coe*c_c(Tw1[m]))*(
-    #     qi-q_h(Tw1[m], BW_coe)*Do/D)+dt/(rho_cu*c_c(Tw1[m]))*k_cu(Tw1[m])*dt2nd
-    # print("Tw2: ", Tw2[m])
-    # check_negative(Tw2[m], n)
-
-    # SN2 Center layer Tc equation
-    # NOTE: Is this te wall temperature?
-    # Tc2[m] = Tw2[m]
-    # print("Tc2: ", Tc2[m])
-
-    # Calculate SN2 surface temp
-    # Ts2[m] = 2*Tc2[m] - Tw2[m]
-    # print("Ts2: ", Ts2[m])
-    # check_negative(Ts2[m], n)
-
-    # NOTE: CHECK THIS SURFACE TEMPERATURE BC with Yolanda
-    # if T2[m, n] < Ts2[m]: # or T2[m, n] > Ts2[m]
-    #     e2[m, n] = 5./2.*rho2[m, n]*R*Ts2[m] / \
-    #         M_n + 1./2.*rho2[m, n]*ur2[m, n]**2
-
-    #     print("THIS IS T2 < Ts")
-    #     print("e2 surface", e2[m, n])
-    #     check_negative(e2[m, n], n)
-
-    #     T2[m, n] = 2./5.*(e2[m, n] - 1./2.*rho2[m, n]
-    #                       * ur2[m, n]**2.)*M_n/rho2[m, n]/R
-    #     print(
-    #         "T2 surface recalculated to make it equal to wall temperature (BC)", T2[m, n])
-    #     check_negative(T2[m, n], n)
-
-    # Heat transfer rate helium
-    # qhe[m] = q_h(Tw1[m], BW_coe)*np.pi*Do
-
-    # print("line 759", "Ts1", Ts1[m], "Ts2", Ts2[m], "Tc2", Tc2[m], "c_c(Ts1[m])", c_c(Ts1[m]), "qh", q_h(Ts1[m], BW_coe), "k_cu(Ts1[m])", k_cu(Ts1[m]), "dt2nd", dt2nd)
-    # print("qhe: ", qhe[m])
-    # check_negative(qhe[m], n)
-
-#                    p2[m, n] = rho2[m, n] * R * T2[m, n]/M_n
-
-    # append [m,n]
-    # my_values = [de1[m], rho1[m, n], - dt/(n*dr*dr)*(rho1[m, n]*(n)*dr*ur1[m, n] - rho1[m, n-1]*(
-    #         n-1)*dr*ur1[m, n-1]), - 4*dt/D * de1[m], rho2[m,n], ur2[m,n], u2[m,n], eps, p1[m,n], e1[m,n],-dt / \
-    #         (n*dr)*(e2_dr),  e2_dr, e2, T2, - dt*4 / \
-    #         D*de1[m]*(e1[m, n]/rho1[m, n]),p2[m,n]]    # Create list of values
-    # pd.DataFrame({"[m,n]":[[m,n]])
-    # df1.append(my_values)
-    # my_data.loc[l] = my_values      # Append values as new row
-
-    # # logging results
-
-    # ws["A"+str(m*n)] = [m,n]
-    # ws["B1"] =
-    # ws["C1"] =
-    # ws["D1"] =
-    # ws["E1"] =
-    # ws["F1"] =
-    # ws["G1"] =
-
-
-## -------------------------------- EXTRAS ----------------------------------------#
-
-
-## -------------------------------- value checks ----------------------------------------#
-
-# checking Ts = Tg
-    # print(Ts1[:])
-    # print(T1[:, Nr])
-
-    # if np.array_equiv(Ts1[:], T1[:, Nr]) == True:
-    #     # if (Ts1[:] == T1[:, Nr]):
-    #     print("first check complete, Tg = Ts")
-    # else:
-    #     print("check false")
-    #     exit()
-## -------------------------------------------- Plotting values after BCs-------------------------------------------- ##
+# Plotting values after BCs
 
 #         # fig, axs = plt.subplots(2, 2)
 # #        print("Radius", R_cyl)
@@ -501,7 +352,7 @@ if __name__ == "__main__":
 
     """
 
-# ----------------------- end plot radius ---------------------------------------- #
+# end plot radius
     # plt.figure()
     # plt.subplot(210)
     # plt.scatter(r, b, label="Velocity", color='red')
@@ -564,3 +415,10 @@ if __name__ == "__main__":
 # define global tx to save in worksheets.
 
 #        tx = t
+
+
+# VTK CONVERSION - not working - not important
+    # vtk_convert(rho3, ux3, ur3, u3, e3, T3, Tw2, Ts2, de0, p3, de1, Pe3)
+    # numpyToVTK(rho3)
+    # numpyToVTK(ux3)
+    # numpyToVTK(ur3)

@@ -4,11 +4,66 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="132b26e0-586f-4363-878d-6fd311eefb50" name="Changes" comment="" />
+    <list default="true" id="132b26e0-586f-4363-878d-6fd311eefb50" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/0.0/Tg.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/0.0/Tg.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/0.0/de_rate.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/0.0/de_rate.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/0.0/e.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/0.0/e.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/0.0/p.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/0.0/p.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/0.0/rho.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/0.0/rho.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/0.0/u.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/0.0/u.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/0.0/ur.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/0.0/ur.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/0.0/ux.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/0.0/ux.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/1.0/Tg.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/1.0/Tg.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/1.0/de_rate.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/1.0/de_rate.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/1.0/e.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/1.0/e.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/1.0/p.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/1.0/p.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/1.0/rho.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/1.0/rho.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/1.0/u.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/1.0/u.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/1.0/ur.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/1.0/ur.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/1.0/ux.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/1.0/ux.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/2.0/Tg.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/2.0/Tg.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/2.0/de_rate.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/2.0/de_rate.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/2.0/e.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/2.0/e.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/2.0/p.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/2.0/p.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/2.0/rho.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/2.0/rho.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/2.0/u.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/2.0/u.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/2.0/ur.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/2.0/ur.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RK3/0.0001/2.0/ux.csv" beforeDir="false" afterPath="$PROJECT_DIR$/RK3/0.0001/2.0/ux.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/functions.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gradients/d_dr.csv" beforeDir="false" afterPath="$PROJECT_DIR$/gradients/d_dr.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gradients/dp_dr.csv" beforeDir="false" afterPath="$PROJECT_DIR$/gradients/dp_dr.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gradients/dp_dx.csv" beforeDir="false" afterPath="$PROJECT_DIR$/gradients/dp_dx.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gradients/grad_r.csv" beforeDir="false" afterPath="$PROJECT_DIR$/gradients/grad_r.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gradients/grad_x.csv" beforeDir="false" afterPath="$PROJECT_DIR$/gradients/grad_x.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gradients/m_dx.csv" beforeDir="false" afterPath="$PROJECT_DIR$/gradients/m_dx.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gradients/ur_dr.csv" beforeDir="false" afterPath="$PROJECT_DIR$/gradients/ur_dr.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gradients/ur_dx.csv" beforeDir="false" afterPath="$PROJECT_DIR$/gradients/ur_dx.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gradients/ux_dr.csv" beforeDir="false" afterPath="$PROJECT_DIR$/gradients/ux_dr.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gradients/ux_dx.csv" beforeDir="false" afterPath="$PROJECT_DIR$/gradients/ux_dx.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/initial_conditions/Tg.csv" beforeDir="false" afterPath="$PROJECT_DIR$/initial_conditions/Tg.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/initial_conditions/de.csv" beforeDir="false" afterPath="$PROJECT_DIR$/initial_conditions/de.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/initial_conditions/de_rate.csv" beforeDir="false" afterPath="$PROJECT_DIR$/initial_conditions/de_rate.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/initial_conditions/e.csv" beforeDir="false" afterPath="$PROJECT_DIR$/initial_conditions/e.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/initial_conditions/p.csv" beforeDir="false" afterPath="$PROJECT_DIR$/initial_conditions/p.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/initial_conditions/pe.csv" beforeDir="false" afterPath="$PROJECT_DIR$/initial_conditions/pe.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/initial_conditions/rho.csv" beforeDir="false" afterPath="$PROJECT_DIR$/initial_conditions/rho.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/initial_conditions/tc.csv" beforeDir="false" afterPath="$PROJECT_DIR$/initial_conditions/tc.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/initial_conditions/ts.csv" beforeDir="false" afterPath="$PROJECT_DIR$/initial_conditions/ts.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/initial_conditions/tw.csv" beforeDir="false" afterPath="$PROJECT_DIR$/initial_conditions/tw.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/initial_conditions/u.csv" beforeDir="false" afterPath="$PROJECT_DIR$/initial_conditions/u.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/initial_conditions/ur.csv" beforeDir="false" afterPath="$PROJECT_DIR$/initial_conditions/ur.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/initial_conditions/ux.csv" beforeDir="false" afterPath="$PROJECT_DIR$/initial_conditions/ux.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/my_constants.py" beforeDir="false" afterPath="$PROJECT_DIR$/my_constants.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
@@ -23,14 +78,36 @@
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "WebServerToolWindowFactoryState": "false",
+    "last_opened_file_path": "C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
-  <component name="RunManager">
+  <component name="RunManager" selected="Python.main">
+    <configuration name="2d-vacuumbreak-explicit-V1-func-calc" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
+      <module name="2d-vacuumbreak-explicit" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="C:\Users\rababqjt\Documents\programming\git-repos\2d-vacuumbreak-explicit\.venv\Scripts\python.exe" />
+      <option name="SDK_NAME" value="Python 3.8 (2d-vacuumbreak-explicit)" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration default="true" type="PythonConfigurationType" factoryName="Python">
       <module name="2d-vacuumbreak-explicit" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -53,6 +130,34 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="2d-vacuumbreak-explicit" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/main.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Python.2d-vacuumbreak-explicit-V1-func-calc" />
+      <item itemvalue="Python.main" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.main" />
+      </list>
+    </recent_temporary>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
@@ -63,6 +168,7 @@
       <option name="presentableId" value="Default" />
       <updated>1684606166903</updated>
       <workItem from="1684606193054" duration="5662000" />
+      <workItem from="1687846506176" duration="840000" />
     </task>
     <servers />
   </component>
