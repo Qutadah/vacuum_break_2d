@@ -151,8 +151,9 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
     print("Checking finite values in N matrix")
     assert np.isfinite(N).all()
 
-    print("Time looping started")
-    for i in np.arange(np.int64(0), np.int64(Nt+1)):
+    for i in np.arange(np.int64(1), np.int64(Nt+1)):
+        print("Time looping started")
+        print("Iteration: #", i)
 
         # variable inl et
         # p_in, q_in, ux_in, ur_in, rho_in, e_in = val_in(
@@ -170,7 +171,7 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
         # Initialized 0 and then put in RK3 function to recalculate at all timesteps
 
         print("Creating empty de_timestep matrix to save final mass deposition")
-        if i == 0:
+        if i == 1:
             de_timestep = np.zeros((Nx+1), dtype=(np.float64))  # place holder
 
         else:
@@ -181,7 +182,7 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
         # RK3 time integration
         # rk_out = [de_timestep, qn, uxn, urn, uun, en, tn, pn]
         rk_out = tvdrk3(
-            ux1, ur1, u1, p1, rho1, T1, e1, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, de1, de_timestep, Tw1, Ts1, Tc1)
+            ux1, ur1, u1, p1, rho1, T1, e1, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, de1, de_timestep, Tw1, Ts1, Tc1, i)
 
         print("Rk3 complete")
 
@@ -195,6 +196,9 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
         T2 = rk_out[6]
         p2 = rk_out[7]
 
+# NOTE: RECALCULATE ENERGIES IMPORTANT
+        e, T = balance_energy(p, rho, u)
+        e, p = balance_energy2(rho, T, u)
 
 # calculating Peclet for field, helps later for differencing scheme used
         Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
@@ -229,8 +233,15 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
 
         print("calculating wall temperature")
 # insert wall function
-        Tw2, Ts2, Tc2, qhe, dt2nd_wall = Cu_Wall_function(
-            ur1, T1, Tw1, Tc1, Ts1, T_in, del_SN, de_timestep)
+# NOTE: should i input initial or calculated values
+        Tw2, Ts2, Tc2, qhe, dt2nd_w_m, q_dep = Cu_Wall_function(
+            ur1, T1, Tw1, Tc1, Ts1, T_in, del_SN, de_timestep, e1, u1, rho1, p1, T2, p2, e2, rho2, u2, ur2)
+
+# save qhe, qdep matrices in timestep
+        print("saving qhe")
+        save_qhe(i, dt, qhe)
+        print("saving q_dep")
+        save_qdep(i, dt, q_dep)
 
 # NOTE: Perform energy checks throughout the program
 

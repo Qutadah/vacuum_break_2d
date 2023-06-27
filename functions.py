@@ -356,7 +356,7 @@ def energy_difference_dt(e1, e2):
 
 
 # This iterates RK3 for all equations
-def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, de_variable, de_constant, Tw, Ts, Tc):
+def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, de_variable, de_constant, Tw, Ts, Tc, Rks):
     q = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))  # place holder
 
 
@@ -475,8 +475,16 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
             tt = 2./5.*(ee - 1./2. * qq*uu**2)
             pp = qq * R/M_n * tt
 
+# save first loop RK3
+            Rks = Rks
+            save_RK3(n, Rks, dt, qq, uxx, urr, uu, ee,
+                     tt, pp, de_variable)
 # ensure no division by zero
             qq = no_division_zero(qq)
+
+# save matrices
+            save_RK3(n, Rks, dt, qq, uxx, urr, uu, ee,
+                     tt, pp, de_variable)
 
 # NOTE: # mass deposition calculation from first rhs and source terms. Should the mass deposition calculated be the current mdot?
             de_timestep = -1 * S * D/4.
@@ -537,6 +545,10 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
 # ensure no division by zero
             qq = no_division_zero(qq)
 
+# save matrices
+            save_RK3(n, Rks, dt, qq, uxx, urr, uu, ee,
+                     tt, pp, de_variable)
+
         else:  # n==2
             # Third LHS calculations
             qq = qq + dt*r
@@ -569,6 +581,9 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
 
 # ensure no division by zero
             qn = no_division_zero(qn)
+# save matrices
+            save_RK3(n, Rks, dt, qn, uxn, urn, un, en,
+                     tn, pn, de_variable)
 
 
 # # No convective heat flux. q2 ?
@@ -1286,7 +1301,7 @@ def f_ts(ps):
 @jit(nopython=True)
 def delta_h(tg, ts):
     #   Calculate sublimation heat of nitrogen (J/kg)  ## needed for thermal resistance of SN2 layer when thickness is larger than reset value.
-    print("Tg, Ts for delta_h calc: ", tg, ts)
+    # print("Tg, Ts for delta_h calc: ", tg, ts)
     delta_h62 = 6775.0/0.028
     if ts > 35.6:
         h_s = 4696.25245*62.0-393.92323*62.0**2/2+17.11194*62.0**3/3-0.35784*62.0**4/4+0.00371*62.0**5/5-1.52168E-5*62.0**6/6 -\
@@ -1327,26 +1342,26 @@ def v_m(tg):
     return v_mean
 
 
-def save_qhe():
+def save_qhe(tx, dt, qhe):
+    incrementx = (tx+1)*dt
     pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/' + \
-        "{:.4f}".format(increment) + '/'
+        "{:.4f}".format(incrementx) + '/'
     newpath = pathname
     if not os.path.exists(newpath):
         os.makedirs(newpath)
     os.chdir(pathname)
-    np.savetxt("qhe.csv", qhe1, delimiter=",")
-    return
+    np.savetxt("qhe.csv", qhe, delimiter=",")
 
 
-def save_qdep():
+def save_qdep(tx, dt, qdep):
+    incrementy = (tx+1)*dt
     pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/' + \
-        "{:.4f}".format(increment) + '/'
+        "{:.4f}".format(incrementy) + '/'
     newpath = pathname
     if not os.path.exists(newpath):
         os.makedirs(newpath)
     os.chdir(pathname)
-    np.savetxt("q_dep.csv", q_dep1, delimiter=",")
-    return
+    np.savetxt("q_dep1.csv", qdep, delimiter=",")
 
 
 def save_mdot():
@@ -1522,7 +1537,7 @@ def gas_surface_temp_check(T, Ts, ur, e, u, rho):
 
 
 @jit(nopython=True)
-def Cu_Wall_function(ur, Tx, Twx, Tcx, Tsx, T_in, delSN, de):
+def Cu_Wall_function(urx, Tx, Twx, Tcx, Tsx, T_in, delSN, de, ex, ux, rhox, px, T2, p2, e2, rho2, u2, ur2):
     # define wall second derivative
     dt2nd_w_m = dt2nd_w_matrix(Twx, T_in)
     qi = np.zeros((Nx+1), dtype=(np.float64))
@@ -1562,30 +1577,60 @@ def Cu_Wall_function(ur, Tx, Twx, Tcx, Tsx, T_in, delSN, de):
 # q deposited into frost layer. Nusselt convection neglected
 # NOTE: Check this addition operation, is this correct? 2d and 1d rows
 
-    q_dep[:] = de[:]*(1/2*(ur[:, Nr])**2 + delta_h(Tx[:, Nr], Tsx[:]))
-
-    # NOTE: delta_h will change if T =Ts and will be zero.
-    # NOTE: Check this logic, very important
-    for j in np.arange(Nx+1):
-        if Tx[j] < Tsx[j]:
-            q_dep[j] = de[j]*(1./2.*ur[j, Nr])**2
+    print("calculating q_dep")
+    for k in np.arange(Nx+1):
+        q_dep[k] = de[k]*(1/2*(urx[k, Nr])**2 + delta_h(Tx[k, Nr], Tsx[k]))
 
 # SN2 Center layer Tc equation
+# Calculate SN2 surface temp
+    print("calculating Ts")
+    print("calculating Tc")
     for j in np.arange(Nx+1):
-        Tc2[j] = Tcx[j] + dt * (q_dep[j]-qi[j]) / \
-            (rho_sn * c_n(Tsx[j])*delSN[j])
+        # NOTE: check this condition
+        if delSN[j] == 0:
+            Tc2[j] = Tw2[j]
+            Ts2[j] = Tw2[j]
+        else:
+            Tc2[j] = Tcx[j] + dt * (q_dep[j]-qi[j]) / \
+                (rho_sn * c_n(Tsx[j])*delSN[j])
+            Ts2[j] = 2*Tc2[j] - Tw2[j]
     # print("Tc2: ", Tc2[m, n])
     # check_negative(Tc2[m], n)
 
-# Calculate SN2 surface temp
-    Ts2 = 2*Tcx - Twx
     # print("Ts2: ", Ts2[m])
     # check_negative(Ts2[m], n)
+
+    # NOTE: delta_h will change if T =Ts and will be zero.
+    # NOTE: Check this logic, very important
+    print("Forcing Tg >= Ts")
+    for j in np.arange(Nx+1):
+        # NOTE: Check this condition, ur1 or ur2
+        if T2[j, Nr] < Ts2[j]:
+            # NOTE: Should i use the old mass deposition? import mdot of last matrix?
+            # NOTE: Is this the current or updated velocity?
+            q_dep[j] = de[j]*(1./2.*urx[j, Nr])**2
+            # NOTE: qi stays constant.
+            # Force Tw2 = Ts2
+            T2[j, Nr] = Ts2[j]
+            # recalculate Tc
+            Tc2[j] = Tcx[j] + dt * (q_dep[j]-qi[j]) / \
+                (rho_sn * c_n(Tsx[j])*delSN[j])
+            # NOTE: Shouldi recalculate Tw2? what about Tc2? Tw +Ts/2
+
+        print("recalculating energies")
+        T2, e2, p2, rho2, u2 = gas_surface_temp_check(
+            T2, Ts2, ur2, e2, u2, rho2)
+
+    print("calculating qhe")
+    # NOTE: Put a limiting factor for qhe
     for m in np.arange(Nx+1):
         qhe[m] = q_h(Twx[m], BW_coe)
-    save_qhe()
-    save_qdep()
-    return Tw2, Ts2, Tc2, qhe, dt2nd_w_m
+
+    # print("saving qhe")
+    # save_qhe(i, dt, qhe)
+    # print("saving q_dep")
+    # save_qdep(i,dt,q_dep)
+    return Tw2, Ts2, Tc2, qhe, dt2nd_w_m, q_dep
 
 
 @jit(nopython=True)
@@ -1860,7 +1905,7 @@ def m_de(T, P, T_s, de, dm):
     else:
         m_out = 0
     rho_min = p_0*M_n/R/T
-    m_out = 0  # NO HEAT TRANSFER/ MASS DEPOSITION CASE
+    # m_out = 0  # NO HEAT TRANSFER/ MASS DEPOSITION CASE
     return m_out  # Output: mass deposition flux, no convective heat flux
 
 
@@ -1874,7 +1919,7 @@ def q_h(tw, BW_coe):
     q_con = 0.375*1000.*delT  # Convection
     q_nu = 58.*1000.*(delT**2.5)  # Nucleate boiling
     q_tr = 7500.  # Transition to film boiling
-    print("qcond: ", q_con, "q_nu: ", q_nu, "q_tr: ", q_tr)
+    # print("qcond: ", q_con, "q_nu: ", q_nu, "q_tr: ", q_tr)
     tt = np.power(q_tr/10000./BW_coe, 1./1.25)
     b2 = tt-1.
     # Breen and Westwater Correlation with tuning parameter
@@ -1897,9 +1942,9 @@ def q_h(tw, BW_coe):
         q_max1 = (BW_coe*np.power(tt+b2, 1.25))*10000
         q_he = (1.25/2/b2*10000*BW_coe*(1/2.25*np.power(delT, 2.25)-(tt-b2) /
                 1.25*np.power(delT, 1.25))-q_min)/(q_max-q_min)*(q_max1-q_tr)+q_tr
-    print("rate of heat transfer to helium:", q_he)
-    print("q_h calc: ", q_he, "Tw: ", tw)
-    q_he = 0  # NO HEAT TRANSFER CASE
+    # print("rate of heat transfer to helium:", q_he)
+    # print("q_h calc: ", q_he, "Tw: ", tw)
+    # q_he = 0  # NO HEAT TRANSFER CASE
     return q_he
 
 # Initialization
@@ -1952,6 +1997,63 @@ def save_data(tx, dt, rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1, pe):
     np.savetxt("de_rate.csv", de1, delimiter=",")
     np.savetxt("p.csv", p1, delimiter=",")
     np.savetxt("peclet.csv", pe, delimiter=",")
+
+
+def save_RK3(x, tx, dt, rho1, ux1, ur1, u1, e1, T1, p1, de1):
+    increment = (tx+1)*dt
+
+    pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/RK3/' + \
+        "{:.4f}".format(increment) + '/' + "{:.1f}".format(x) + '/'
+    newpath = pathname
+    if not os.path.exists(newpath):
+        os.makedirs(newpath)
+    os.chdir(pathname)
+    np.savetxt("rho.csv", rho1, delimiter=",")
+    np.savetxt("Tg.csv", T1, delimiter=",")
+    np.savetxt("u.csv", u1, delimiter=",")
+    np.savetxt("ux.csv", ux1, delimiter=",")
+    np.savetxt("ur.csv", ur1, delimiter=",")
+    np.savetxt("e.csv", e1, delimiter=",")
+    np.savetxt("de_rate.csv", de1, delimiter=",")
+    np.savetxt("p.csv", p1, delimiter=",")
+
+
+def save_RK3_2(x, tx, dt, rho1, ux1, ur1, u1, e1, T1, p1, de1):
+    increment = (tx+1)*dt
+
+    pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/RK3/' + \
+        "{:.4f}".format(increment) + '/' + "{:.1f}".format(x) + '/'
+    newpath = pathname
+    if not os.path.exists(newpath):
+        os.makedirs(newpath)
+    os.chdir(pathname)
+    np.savetxt("rho1.csv", rho1, delimiter=",")
+    np.savetxt("Tg1.csv", T1, delimiter=",")
+    np.savetxt("u1.csv", u1, delimiter=",")
+    np.savetxt("ux1.csv", ux1, delimiter=",")
+    np.savetxt("ur1.csv", ur1, delimiter=",")
+    np.savetxt("e1.csv", e1, delimiter=",")
+    np.savetxt("de_rate1.csv", de1, delimiter=",")
+    np.savetxt("p1.csv", p1, delimiter=",")
+
+
+def save_RK3_3(x, tx, dt, rho1, ux1, ur1, u1, e1, T1, p1, de1):
+    increment = (tx+1)*dt
+
+    pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/RK3/' + \
+        "{:.4f}".format(increment) + '/' + "{:.1f}".format(x) + '/'
+    newpath = pathname
+    if not os.path.exists(newpath):
+        os.makedirs(newpath)
+    os.chdir(pathname)
+    np.savetxt("rho_f.csv", rho1, delimiter=",")
+    np.savetxt("Tg_f.csv", T1, delimiter=",")
+    np.savetxt("u_f.csv", u1, delimiter=",")
+    np.savetxt("ux_f.csv", ux1, delimiter=",")
+    np.savetxt("ur_f.csv", ur1, delimiter=",")
+    np.savetxt("e_f.csv", e1, delimiter=",")
+    np.savetxt("de_rate_f.csv", de1, delimiter=",")
+    np.savetxt("p_f.csv", p1, delimiter=",")
 
 
 def namestr(obj, namespace):  # Returns variable name for check_negative function
