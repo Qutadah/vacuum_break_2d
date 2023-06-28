@@ -82,7 +82,7 @@ print("Applying No-slip BC")
 
 # NOTE: Do i need more boundary conditions?
 # ---------- NO SLIP BC
-ux1, u1, e1, T1 = no_slip(ux1, u1, p1, rho1, T1, ur1)
+ux1, u1, e1, T1, ur1, p1, rho1 = no_slip(ux1, u1, p1, rho1, T1, ur1)
 
 
 # ------  inlet BCs
@@ -90,6 +90,8 @@ print("Applying inlet BCs")
 ux1, ur1, u1, p1, rho1, T1, e1, Tw1, Ts1, Tc1 = inlet_BC(
     ux1, ur1, u1, p1, rho1, T1, e1, p_in, ux_in, rho_in, T_in, e_in, Tw1, Ts1, Tc1)
 
+
+# initial
 
 # Calculating Peclet number in the grid points to determine differencing scheme
 Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
@@ -137,6 +139,7 @@ save_gradients(d_dr, m_dx, dp_dx, ux_dx, ux_dr,
 
 # def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2, Tw2, Ts2, Tc2, de1, T3):
 print("Main loop started")
+
 
 def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de1, p3, rho3, T3, ux3, ur3, u3, e3, pe, Tw1, Ts1, Tc1):
 
@@ -283,7 +286,7 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
 
 # SAVING DATA
         save_data(i, dt, rho3, ux3, ur3, u3, e3,
-                  T3, Tw2, Ts2, de0, p3, de1, Pe3, q_dep, qhe, visc_matrix3)
+                  T3, Tw2, Ts2, de0, p3, de2, Pe3, q_dep, qhe, visc_matrix3)
 
 # PLOTTING FIELDS
         plot_imshow(p3, ux3, T3, rho3, e3)

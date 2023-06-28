@@ -32,7 +32,7 @@ Sc_PP = 0.95  # Condensation\boiling coeffcient
 
 #   Parameters
 sample = 100  # Sample coeffcient
-n_trans = 60  # Smoothing control for initial condition
+n_trans = 20  # Smoothing control for initial condition
 T_s = 4.2  # Temperature boundaries
 
 #   Constants
