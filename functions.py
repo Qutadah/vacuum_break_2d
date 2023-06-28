@@ -198,6 +198,7 @@ def viscous_matrix(T, P):
     for m in np.arange(Nx+1):
         for n in np.arange(Nr+1):
             visc_matrix[m, n] = mu_n(T[m, n], P[m, n])
+    # save_visc(i, dt, visc_matrix)
 
 # perform NAN value matrix checks:
     print("performing finite check on visc_matrix")
@@ -359,7 +360,6 @@ def energy_difference_dt(e1, e2):
 def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, de_variable, de_constant, Tw, Ts, Tc, Rks):
     q = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))  # place holder
 
-
 # create N matrix:
     N = n_matrix()
 
@@ -403,6 +403,7 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
             ux = l[0]
             ur = l[1]
             e = l[6]
+            print("first RK3 loop temperature", l[5])
 
             # print("starting temperature", l[5])
         else:  # n == 1, n==2:
@@ -410,8 +411,10 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
             l = inlet_BC(uxx, urr, uu, pp, qq, tt, ee, p_in,
                          ux_in, rho_in, T_in, e_in, Tw, Ts, Tc)
             # k = outlet_BC(uxn, urn, uun, pn, qn, Tn, en)
-            if n == 1:
-                print("second RK3 loop temperature", l[5])
+            # if n == 1:
+            # print("second RK3 loop temperature", l[5])
+            # if n == 2:
+            # print("third RK3 loop temperature", l[5])
 
             qq = l[4]
             uxx = l[0]
@@ -432,6 +435,7 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
 
     # viscosity calculations
         # print("l: ", l[5], l[3])
+        print("Calculating viscosity for RK3 loop #", n)
         visc_matrix = viscous_matrix(l[5], l[3])
         # if n == 2:
         # print(visc_matrix)
@@ -561,104 +565,9 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
 # # No convective heat flux. q2 ?
 
     print("RK3 looping complete")
-    rk_out = [de_timestep, qn, uxn, urn, un, en, tn, pn]
+    rk_out = [de_timestep, qn, uxn, urn, un, en, tn, pn, visc_matrix]
     return rk_out
 
-    # Calculate the SN2 layer thickness
-    # del_SN = de0[m]/np.pi/D/rho_sn
-    # print("del_SN: ", del_SN)
-    # check_negative(del_SN, n)
-
-#                     de1[m] = 0
-
-#
-
-#                     ur2[m, n] = de1[m]/rho2[m, n]
-#                     ux2[m, n] = 0.  # no slip boundary condition.
-#                     u2[m, n] = np.sqrt(ux1[m, n]**2 + ur1[m, n]**2)
-
-
-#                     # define wall second derivative
-#                     # dt2nd = dt2nd_wall((m, Tw1))
-
-#                 # Radial heat transfer within Copper section
-
-# # Only consider the thermal resistance through SN2 layer when thickness is larger than a small preset value (taking average value)
-
-# # NOTE: CHECK THIS LOGIC TREE
-
-#                     #     # q deposited into frost layer. Nusselt convection neglected
-#                     # q_dep = de1[m]*(1/2*(ur1[m, n])**2 +
-#                     #                 delta_h(T1[m, n], Ts1[m]))
-
-#                     # if del_SN > 1e-5:
-#                     #     print(
-#                     #         "This is del_SN > 1e-5 condition, conduction across SN2 layer considered")
-
-#                     #     # heatflux into copper wall from frost layer
-#                     #     qi = k_sn*(Ts1[m]-Tw1[m])/del_SN
-#                     #     print("qi: ", qi)
-#                     #     check_negative(qi, n)
-
-    #    # pipe wall equation
-    #     Tw2[m] = Tw1[m] + dt/(w_coe*c_c(Tw1[m]))*(
-    #         qi-q_h(Tw1[m], BW_coe)*Do/D)+dt/(rho_cu*c_c(Tw1[m]))*k_cu(Tw1[m])*dt2nd
-    #     print("Tw2: ", Tw2[m])
-    #     check_negative(Tw2[m], n)
-
-    #     # SN2 Center layer Tc equation
-    #     Tc2[m] = Tc1[m] + dt * \
-    #         (q_dep-qi) / (rho_sn * c_n(Ts1[m, n]*del_SN))
-    #     print("Tc2: ", Tc2[m, n])
-    #     check_negative(Tc2[m], n)
-
-    # else:
-    #     # heatflux into copper wall from frost layer
-    #     qi = 0
-    #     print("qi: ", qi)
-    #     check_negative(qi, n)
-
-    # pipe wall equation
-    # Tw2[m] = Tw1[m] + dt/(w_coe*c_c(Tw1[m]))*(
-    #     qi-q_h(Tw1[m], BW_coe)*Do/D)+dt/(rho_cu*c_c(Tw1[m]))*k_cu(Tw1[m])*dt2nd
-    # print("Tw2: ", Tw2[m])
-    # check_negative(Tw2[m], n)
-
-    # SN2 Center layer Tc equation
-    # NOTE: Is this te wall temperature?
-    # Tc2[m] = Tw2[m]
-    # print("Tc2: ", Tc2[m])
-
-    # Calculate SN2 surface temp
-    # Ts2[m] = 2*Tc2[m] - Tw2[m]
-    # print("Ts2: ", Ts2[m])
-    # check_negative(Ts2[m], n)
-
-    # NOTE: CHECK THIS SURFACE TEMPERATURE BC with Yolanda
-    # if T2[m, n] < Ts2[m]: # or T2[m, n] > Ts2[m]
-    #     e2[m, n] = 5./2.*rho2[m, n]*R*Ts2[m] / \
-    #         M_n + 1./2.*rho2[m, n]*ur2[m, n]**2
-
-    #     print("THIS IS T2 < Ts")
-    #     print("e2 surface", e2[m, n])
-    #     check_negative(e2[m, n], n)
-
-    #     T2[m, n] = 2./5.*(e2[m, n] - 1./2.*rho2[m, n]
-    #                       * ur2[m, n]**2.)*M_n/rho2[m, n]/R
-    #     print(
-    #         "T2 surface recalculated to make it equal to wall temperature (BC)", T2[m, n])
-    #     check_negative(T2[m, n], n)
-
-    # Heat transfer rate helium
-    # qhe[m] = q_h(Tw1[m], BW_coe)*np.pi*Do
-
-    # print("line 759", "Ts1", Ts1[m], "Ts2", Ts2[m], "Tc2", Tc2[m], "c_c(Ts1[m])", c_c(Ts1[m]), "qh", q_h(Ts1[m], BW_coe), "k_cu(Ts1[m])", k_cu(Ts1[m]), "dt2nd", dt2nd)
-    # print("qhe: ", qhe[m])
-    # check_negative(qhe[m], n)
-
-#                    p2[m, n] = rho2[m, n] * R * T2[m, n]/M_n
-
- # ENDDDDDDD
 
 # adaptive timestep
 # def calc_dt(cfl, gamma_n, q, nx, nr, dx, dr):
@@ -1314,37 +1223,48 @@ def v_m(tg):
     return v_mean
 
 
-def save_qhe(tx, dt, qhe):
-    incrementx = (tx+1)*dt
-    pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/' + \
-        "{:.4f}".format(incrementx) + '/'
-    newpath = pathname
-    if not os.path.exists(newpath):
-        os.makedirs(newpath)
-    os.chdir(pathname)
-    np.savetxt("qhe.csv", qhe, delimiter=",")
+# def save_qhe(tx, dt, qhe):
+#     incrementx = (tx+1)*dt
+#     pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/' + \
+#         "{:.4f}".format(incrementx) + '/'
+#     newpath = pathname
+#     if not os.path.exists(newpath):
+#         os.makedirs(newpath)
+#     os.chdir(pathname)
+#     np.savetxt("qhe.csv", qhe, delimiter=",")
 
 
-def save_qdep(tx, dt, qdep):
-    incrementy = (tx+1)*dt
-    pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/' + \
-        "{:.4f}".format(incrementy) + '/'
-    newpath = pathname
-    if not os.path.exists(newpath):
-        os.makedirs(newpath)
-    os.chdir(pathname)
-    np.savetxt("q_dep1.csv", qdep, delimiter=",")
+# def save_visc(tx, dt, array):
+#     increment = (tx+1)*dt
+#     pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/' + \
+#         "{:.4f}".format(increment) + '/'
+#     newpath = pathname
+#     if not os.path.exists(newpath):
+#         os.makedirs(newpath)
+#     os.chdir(pathname)
+#     np.savetxt("visc.csv", array, delimiter=",")
 
 
-def save_mdot():
-    pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/' + \
-        "{:.4f}".format(increment) + '/'
-    newpath = pathname
-    if not os.path.exists(newpath):
-        os.makedirs(newpath)
-    os.chdir(pathname)
-    np.savetxt("de1.csv", de1, delimiter=",")
-    return
+# def save_qdep(tx, dt, qdep):
+#     incrementy = (tx+1)*dt
+#     pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/' + \
+#         "{:.4f}".format(incrementy) + '/'
+#     newpath = pathname
+#     if not os.path.exists(newpath):
+#         os.makedirs(newpath)
+#     os.chdir(pathname)
+#     np.savetxt("q_dep1.csv", qdep, delimiter=",")
+
+
+# def save_mdot():
+#     pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/' + \
+#         "{:.4f}".format(increment) + '/'
+#     newpath = pathname
+#     if not os.path.exists(newpath):
+#         os.makedirs(newpath)
+#     os.chdir(pathname)
+#     np.savetxt("de1.csv", de1, delimiter=",")
+#     return
 
 # @numba.jit('f8(f8)')
 
@@ -1592,7 +1512,9 @@ def Cu_Wall_function(urx, Tx, Twx, Tcx, Tsx, T_in, delSN, de1, ex, ux, rhox, px,
     # save_qhe(i, dt, qhe)
     # print("saving q_dep")
     # save_qdep(i,dt,q_dep)
-    return Tw2, Ts2, Tc2, qhe, dt2nd_w_m, q_dep
+    print("Wall function complete")
+    w_out = [Tw2, Ts2, Tc2, qhe, dt2nd_w_m, q_dep]
+    return w_out
 
 
 @jit(nopython=True)
@@ -1927,7 +1849,7 @@ def save_initial_conditions(rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1, 
     np.savetxt("pe.csv", pe, delimiter=",")
 
 
-def save_data(tx, dt, rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1, pe):
+def save_data(tx, dt, rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1, pe, qhe, qdep, visc):
     increment = (tx+1)*dt
 
     pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/' + \
@@ -1948,6 +1870,9 @@ def save_data(tx, dt, rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1, pe):
     np.savetxt("de_rate.csv", de1, delimiter=",")
     np.savetxt("p.csv", p1, delimiter=",")
     np.savetxt("peclet.csv", pe, delimiter=",")
+    np.savetxt("qhe.csv", qhe, delimiter=",")
+    np.savetxt("qdep.csv", qdep, delimiter=",")
+    np.savetxt("visc.csv", visc, delimiter=",")
 
 
 def save_RK3(x, tx, dt, rho1, ux1, ur1, u1, e1, T1, p1, de1):
@@ -2030,7 +1955,7 @@ def delete_surface_inviscid(rho, ux, ur, u, e, T, p, pe):
     return [rho3, ux3, ur3, u3, e3, T3, p3, pe3]
 
 
-def delete_r0_point(rho2, ux2, ur2, u2, e2, T2, p1, pe):
+def delete_r0_point(rho2, ux2, ur2, u2, e2, T2, p1, pe, visc):
     rho3 = np.delete(rho2, 0, axis=1)
     ux3 = np.delete(ux2, 0, axis=1)
     ur3 = np.delete(ur2, 0, axis=1)
@@ -2039,7 +1964,8 @@ def delete_r0_point(rho2, ux2, ur2, u2, e2, T2, p1, pe):
     T3 = np.delete(T2, 0, axis=1)
     p3 = np.delete(p1, 0, axis=1)
     pe3 = np.delete(pe, 0, axis=1)
-    return [rho3, ux3, ur3, u3, e3, T3, p3, pe3]
+    visc3 = np.delete(visc, 0, axis=1)
+    return [rho3, ux3, ur3, u3, e3, T3, p3, pe3, visc3]
 
 
 if __name__ == '__main__':

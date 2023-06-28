@@ -142,14 +142,13 @@ print("Main loop started")
 def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de1, p3, rho3, T3, ux3, ur3, u3, e3, pe, Tw, Ts, Tc):
 
     # ------------------------------------- Time iteration  --------------------------------------------- #
-
     # create N matrix: needed once only
     print("Creating N grid points matrix")
     N = n_matrix()
 
     # print(N)
-    print("Checking finite values in N matrix")
-    assert np.isfinite(N).all()
+    # print("Checking finite values in N matrix")
+    # assert np.isfinite(N).all()
 
     for i in np.arange(np.int64(1), np.int64(Nt+1)):
         print("Time looping started")
@@ -195,6 +194,7 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
         e2 = rk_out[5]
         T2 = rk_out[6]
         p2 = rk_out[7]
+        visc_matrix = rk_out[8]
 
 # NOTE: RECALCULATE ENERGIES IMPORTANT
         e, T = balance_energy(p2, rho2, u2)
@@ -234,24 +234,31 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
         print("calculating wall temperature")
 
 # insert wall function
-        Tw2, Ts2, Tc2, qhe, dt2nd_w_m, q_dep = Cu_Wall_function(
+
+        w_out = Cu_Wall_function(
             ur1, T1, Tw1, Tc1, Ts1, T_in, del_SN, de_timestep, e1, u1, rho1, p1, T2, p2, e2, rho2, u2, ur2)
 
+    # defining next values from RK3
+        Tw2 = w_out[0]
+        Ts2 = w_out[1]
+        Tc2 = w_out[2]
+        qhe = w_out[3]
+        dt2nd_w_m = w_out[4]
+        q_dep = w_out[5]
+
+
 # save qhe, qdep matrices in timestep
-        print("saving qhe")
-        save_qhe(i, dt, qhe)
-        print("saving q_dep")
-        save_qdep(i, dt, q_dep)
+        # print("saving qhe")
+        # save_qhe(i, dt, qhe)
+        # print("saving q_dep")
+        # save_qdep(i, dt, q_dep)
 
 # NOTE: Perform energy checks throughout the program
-
-        print("making sure wall Tg> Ts")
 # check Ts1 and T2 temperatures align, rebalances energies within
-        T2, e2, p2, rho2, u2 = gas_surface_temp_check(
-            T2, Ts2, ur2, e2, u2, rho2)
 
-
-#  recalculate T, P, Ts, Tc, Tw, use 1st order schemes, enough for the wall equation.
+        # print("making sure wall Tg> Ts")
+        # T2, e2, p2, rho2, u2 = gas_surface_temp_check(
+        # T2, Ts2, ur2, e2, u2, rho2)
 
 # find difference in energies across timesteps
         # d_e = energy_difference_dt(e1, e2)
@@ -276,18 +283,26 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
 
 # DELETE R=0 Point/Column
 # The 3 index indicates matrices with no r=0, deleted column..
-        rho3, ux3, ur3, u3, e3, T3, p3, Pe3 = delete_r0_point(
-            rho1, ux1, ur1, u1, e1, T1, p1, Pe2)
+        print("Deleting the r=0 for plotting and saving purposes")
+        rho3, ux3, ur3, u3, e3, T3, p3, Pe3, visc_matrix3 = delete_r0_point(
+            rho1, ux1, ur1, u1, e1, T1, p1, Pe2, visc_matrix)
 
         # rho3, ux3, ur3, u3, e3, T3, p3, Pe3 = delete_surface_inviscid(
         #     rho3, ux3, ur3, u3, e3, T3, p3, Pe3)
 
 # SAVING DATA
         save_data(i, dt, rho3, ux3, ur3, u3, e3,
-                  T3, Tw2, Ts2, de0, p3, de1, Pe3)
+                  T3, Tw2, Ts2, de0, p3, de1, Pe3, q_dep, qhe, visc_matrix3)
 
 # PLOTTING FIELDS
         plot_imshow(p3, ux3, T3, rho3, e3)
+
+        # if np.any(T2[:, Nr] < Ts2):
+        #     if i == 0:
+        #         aii = 0
+        #     else:
+        #         ae += aii
+        #     print("Tg<Ts detected", ae)
 
 
 if __name__ == "__main__":
