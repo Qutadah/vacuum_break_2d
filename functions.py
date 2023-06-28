@@ -215,16 +215,25 @@ def viscous_matrix(T, P):
 
 
 # return S term matrix, returns next mdot. input previous de
-def source_mass_depo_matrix(rho_0, T, P, Ts1, rho, ux, ur, de):  # -4/D* mdot
+def source_mass_depo_matrix(rho_0, T, P, Ts1, rho, ux, ur, de, N):  # -4/D* mdot
     dm = np.zeros((Nx+1), dtype=(np.float64))
     dm_r = np.zeros((Nx+1), dtype=(np.float64))
     de3 = np.zeros((Nx+1), dtype=(np.float64))
     S = np.zeros((Nx+1), dtype=(np.float64))
 
     # chosen at gridpoint Nr-1 because at Nr, ux =0
-    dm = rho[:, Nr-1]*ux[:, Nr-1] - rho[:, Nr-2]*ux[:, Nr-2]
-    dm_r = rho[:, Nr] * Nr*dr*ur[:, Nr] - \
-        rho[:, Nr-1]*(Nr-1)*dr*ur[:, Nr-1]
+    for m in np.arange(Nx+1):
+        if m == Nx:
+            dm[m] = rho[m, Nr-1]*ux[m, Nr-1] - rho[m-1, Nr-1]*ux[m-1, Nr-1]
+        else:
+            dm[m] = rho[m+1, Nr-1]*ux[m+1, Nr-1] - rho[m, Nr-1]*ux[m, Nr-1]
+    for m in np.arange(Nx+1):
+        if m == Nx:
+            dm_r[m] = rho[m, Nr] * Nr*dr*ur[m, Nr] - \
+                rho[m, Nr-1]*(Nr-1)*dr*ur[m, Nr-1]
+        else:
+            dm_r[m] = rho[m, Nr] * Nr*dr*ur[m, Nr] - \
+                rho[m, Nr-1]*(Nr-1)*dr*ur[m, Nr-1]
 
 # skip m=0, not needed
     for m in np.arange(np.int64(1), np.int64(Nx+1)):
@@ -234,7 +243,7 @@ def source_mass_depo_matrix(rho_0, T, P, Ts1, rho, ux, ur, de):  # -4/D* mdot
             #       T1[m, n], p1[m, n], Ts1[m], de1[m], rho1[m, n], ur1[m, n])
             # print("stopped here source_mass fcn")
             de3[m] = m_de(T[m, Nr], P[m, Nr], Ts1[m],
-                          de[m], dm[m], dm_r[m])  # used BWD
+                          de[m], dm[m], dm_r[m], ur[m, Nr], N)  # used BWD
             # print("m_de / de1 calculated:", de1[m])
             # check_negative(de1[m], n)
         else:
@@ -458,7 +467,7 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
             de_var = de
             # print("de_variable: ", de_variable)
         S_out = source_mass_depo_matrix(
-            rho_0, l[5], l[3], l[8], l[4], l[0], l[1], de_var)
+            rho_0, l[5], l[3], l[8], l[4], l[0], l[1], de_var, N)
         # This de1 is returned again, first calculation is the right one for this iteration. it takes last values.
         de_var = S_out[0]
         # CALCULATING RHS USING LOOP VALUES
@@ -1604,6 +1613,7 @@ def inlet_BC(ux, ur, u, p, rho, T, e, p_inl, ux_inl, rho_inl, T_inl, e_inl, Tw, 
     Tw[0] = T_inl
     Ts[0] = T_inl
     Tc[0] = T_inl
+    Tw = Ts
     u = np.sqrt(ux**2. + ur**2.)
 
     e, T = balance_energy(p, rho, u)
@@ -1738,7 +1748,7 @@ def Peclet_grid(pe, u, D_hyd, p, T):
 # returns mass deposition rate to put in de1 matrix
 # @numba.jit('f8(f8,f8,f8,f8,f8)')
 @jit(nopython=True)
-def m_de(T, P, Ts1, de, dm, dm_r):
+def m_de(T, P, Ts1, de, dm, dm_r, ur, N):
     p_0 = bulk_values(T_s)[2]
     # print("mdot calc: ", "Tg: ", T, " P: ",
     #       P, "Ts: ", T_s, "de: ", de, "dm: ", dm)
@@ -1759,6 +1769,8 @@ def m_de(T, P, Ts1, de, dm, dm_r):
         # Correlated Hertz-Knudsen Relation #####
         m_out = np.sqrt(M_n/2/np.pi/R)*Sc_PP * \
             (gam1*P/np.sqrt(T)-P_s/np.sqrt(Ts1))
+        print("m_out calc", m_out)
+
         if Ts1 > 25:
             print("P>P0, P>Ps")
             # Arbitrary smooth the transition to steady deposition
@@ -1770,11 +1782,13 @@ def m_de(T, P, Ts1, de, dm, dm_r):
         rho_min = p_0*M_n/R/T
         # sqrt(7./5.*R*T/M_n)*rho
         # Used Conti in X-direction, since its absolute flux.
-        m_max = D/4./dt*(rho-rho_min)-D/4./dx*dm
+        m_max[:] = D/4./dt*(rho[:, Nr-1]-rho_min)-D/4./dx*dm - D/4. * \
+            1/N[:, Nr-1]/dr*(rho[:, Nr-1]*N[:, Nr-1]*dr*ur[:,
+                             Nr-1] - rho[:, Nr-2]*N[:, Nr-2]*dr*ur[:, Nr-2])
 
         # using conti surface
         # m_max = D/4./dt*(rho-rho_min)-D/4. * (1/Nr/dr*dm_r)
-        print("m_max: ", m_max)
+        print("m_max", m_max, "dm", dm)
         if m_out > m_max:
             m_out = m_max
             # print("mout = mmax")
