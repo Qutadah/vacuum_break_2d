@@ -215,27 +215,34 @@ def viscous_matrix(T, P):
 
 
 # return S term matrix, returns next mdot. input previous de
-def source_mass_depo_matrix(rho_0, T, P, T_s, rho, ur, de):  # -4/D* mdot
+def source_mass_depo_matrix(rho_0, T, P, Ts1, rho, ux, ur, de):  # -4/D* mdot
     dm = np.zeros((Nx+1), dtype=(np.float64))
-    de1 = np.zeros((Nx+1), dtype=(np.float64))
+    dm_r = np.zeros((Nx+1), dtype=(np.float64))
+    de3 = np.zeros((Nx+1), dtype=(np.float64))
     S = np.zeros((Nx+1), dtype=(np.float64))
+
+    # chosen at gridpoint Nr-1 because at Nr, ux =0
+    dm = rho[:, Nr-1]*ux[:, Nr-1] - rho[:, Nr-2]*ux[:, Nr-2]
+    dm_r = rho[:, Nr] * Nr*dr*ur[:, Nr] - \
+        rho[:, Nr-1]*(Nr-1)*dr*ur[:, Nr-1]
 
 # skip m=0, not needed
     for m in np.arange(np.int64(1), np.int64(Nx+1)):
-        dm[m] = rho[m, Nr] * Nr*dr*ur[m, Nr]-rho[m, Nr-1]*(Nr-1)*dr*ur[m, Nr-1]
         if rho[m, Nr] > 2.*rho_0:
             # print("temp gas",T1[m,n], "pressure", p1_before_dep, "temp wall: ", Tw1[m],"mass depo", de1[m], "dm", rho1[m, n]*n*dr*ur1[m, n]-rho1[m, n-1]*n*dr*ur1[m, n-1], "n grid point", n)
             # print("inputs m_de calc: [T1, p1, Ts1, de1, rho1, ur1]",
             #       T1[m, n], p1[m, n], Ts1[m], de1[m], rho1[m, n], ur1[m, n])
             # print("stopped here source_mass fcn")
-            de1[m] = m_de(T[m, Nr], P[m, Nr], T_s[m],
-                          de[m], dm[m])  # used BWD
+            de3[m] = m_de(T[m, Nr], P[m, Nr], Ts1[m],
+                          de[m], dm[m], dm_r[m])  # used BWD
             # print("m_de / de1 calculated:", de1[m])
             # check_negative(de1[m], n)
         else:
-            de1[m] = 0.
-    S = -1*4./D * de1
-    return S
+            de3[m] = 0.
+    print("de2", de3)
+    S = -4./D * de3     # 1d array
+    S_out = [de3, S]
+    return S_out
 
 
 # returns continuity RHS matrix, including source term S
@@ -278,9 +285,11 @@ def no_division_zero(array):
 
 
 # returns ENERGY RHS matrix including source terms
-def rhs_energy(grad_r, grad_x, N, S):
+def rhs_energy(grad_r, grad_x, N, S, p, rho, u):
+    S_e = np.zeros((Nx+1), dtype=(np.float64))
     rhs_e = - 1/N/dr*grad_r - grad_x
-    rhs_e[:, Nr] = - 1/N[:, Nr]/dr*grad_r[:, Nr] + S[:]
+    S_e[:] = S[:]*(5./2.*p[:, Nr]/rho[:, Nr] + 1./2.*u[:, Nr]**2)
+    rhs_e[:, Nr] = - 1/N[:, Nr]/dr*grad_r[:, Nr] + S_e[:]
 
     return rhs_e
     # ri = rhsInv(nx,ny,nz,dx,dy,dz,q,iflx)
@@ -357,7 +366,7 @@ def energy_difference_dt(e1, e2):
 
 
 # This iterates RK3 for all equations
-def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, de_variable, de_constant, Tw, Ts, Tc, Rks):
+def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, de, Tw, Ts, Tc, Rks):
     q = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))  # place holder
 
 # create N matrix:
@@ -403,7 +412,7 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
             ux = l[0]
             ur = l[1]
             e = l[6]
-            print("first RK3 loop temperature", l[5])
+            # print("first RK3 loop temperature", l[5])
 
             # print("starting temperature", l[5])
         else:  # n == 1, n==2:
@@ -446,18 +455,18 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
         # This function takes into account density large enough to have mass deposition case.
         print("Calculating Source term matrix")
         if n == 0:
-            de_variable = de_constant
+            de_var = de
             # print("de_variable: ", de_variable)
-        S = source_mass_depo_matrix(
-            rho_0, l[5], l[3], l[8], l[4], l[1], de_variable)
+        S_out = source_mass_depo_matrix(
+            rho_0, l[5], l[3], l[8], l[4], l[0], l[1], de_var)
         # This de1 is returned again, first calculation is the right one for this iteration. it takes last values.
-
+        de_var = S_out[0]
         # CALCULATING RHS USING LOOP VALUES
         print("Calculating RHS terms matrices")
-        r = rhs_rho(d_dr, m_dx, N, S)
+        r = rhs_rho(d_dr, m_dx, N, S_out[1])
         r_ux, r_ur = rhs_ma(dp_dx, l[4], dt2r_ux, N, ux_dr, dt2x_ux,
                             l[0], ux_dx, l[1], dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix)
-        r_e = rhs_energy(grad_r, grad_x, N, S)
+        r_e = rhs_energy(grad_r, grad_x, N, S_out[1], l[3], l[4], l[2])
 
 
 # MAIN CALCULATIONS
@@ -472,12 +481,8 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
 # ensure no division by zero
             qq = no_division_zero(qq)
 
-# NOTE: # mass deposition calculation from first rhs and source terms. Should the mass deposition calculated be the current mdot?
-            de_timestep = -1 * S * D/4.
-            de_variable = de_timestep
-
 # radial velocity on surface is function of mass deposition
-            urr[:, Nr] = de_variable[:]/qq[:, Nr]
+            urr[:, Nr] = S_out[0]/qq[:, Nr]
 
 # velocity recalculation
             uu = np.sqrt(uxx**2 + urr**2)
@@ -490,8 +495,9 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
 
 # save first loop RK3
             Rks = Rks
+            de2 = de_var
             save_RK3(n, Rks, dt, qq, uxx, urr, uu, ee,
-                     tt, pp, de_variable)
+                     tt, pp, S_out[0])
 
         elif n == 1:
             # Second loop LHS calculations calculation
@@ -504,11 +510,8 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
 # ensure no division by zero
             qq = no_division_zero(qq)
 
-# de_variable calculation using new looped source term
-            de_variable = -1 * S * D/4.
-
 # radial velocity on surface is function of mass deposition
-            urr[:, Nr] = de_variable[:]/qq[:, Nr]
+            urr[:, Nr] = S_out[0]/qq[:, Nr]
 
 # velocity recalculation
             uu = np.sqrt(uxx**2 + urr**2)
@@ -525,7 +528,7 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
 
 # save matrices
             save_RK3(n, Rks, dt, qq, uxx, urr, uu, ee,
-                     tt, pp, de_variable)
+                     tt, pp, de2)
 
         else:  # n==2
 
@@ -538,11 +541,8 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
 # ensure no division by zero
             qn = no_division_zero(qn)
 
-# de_variable calculation using new looped source term
-            de_variable = -1 * S * D/4.
-
 # radial velocity on surface is function of mass deposition
-            urn[:, Nr] = de_variable[:]/qn[:, Nr]
+            urn[:, Nr] = S_out[0]/qn[:, Nr]
 
 # velocity recalculation
             un = np.sqrt(uxn**2 + urn**2)
@@ -559,13 +559,12 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
             # uxn, un, en, tn = no_slip(uxn, un, pn, qn, tn)
 
 # save matrices
-            save_RK3(n, Rks, dt, qn, uxn, urn, un, en,
-                     tn, pn, de_variable)
+            save_RK3(n, Rks, dt, qn, uxn, urn, un, en, tn, pn, S_out[0])
 
 # # No convective heat flux. q2 ?
 
     print("RK3 looping complete")
-    rk_out = [de_timestep, qn, uxn, urn, un, en, tn, pn, visc_matrix]
+    rk_out = [de2, qn, uxn, urn, un, en, tn, pn, visc_matrix]
     return rk_out
 
 
@@ -1739,7 +1738,7 @@ def Peclet_grid(pe, u, D_hyd, p, T):
 # returns mass deposition rate to put in de1 matrix
 # @numba.jit('f8(f8,f8,f8,f8,f8)')
 @jit(nopython=True)
-def m_de(T, P, T_s, de, dm):
+def m_de(T, P, Ts1, de, dm, dm_r):
     p_0 = bulk_values(T_s)[2]
     # print("mdot calc: ", "Tg: ", T, " P: ",
     #       P, "Ts: ", T_s, "de: ", de, "dm: ", dm)
@@ -1754,24 +1753,28 @@ def m_de(T, P, T_s, de, dm):
     u_mean1 = de/rho  # mean flow velocity towards the wall.
     beta = u_mean1/v_m1  # this is Beta from Hertz Knudson
     gam1 = gamma(beta)  # deviation from Maxwellian velocity.
-    P_s = f_ps(T_s)
+    P_s = f_ps(Ts1)
 
     if P > P_s and P > p_0:
         # Correlated Hertz-Knudsen Relation #####
         m_out = np.sqrt(M_n/2/np.pi/R)*Sc_PP * \
-            (gam1*P/np.sqrt(T)-P_s/np.sqrt(T_s))
-        if T_s > 25:
+            (gam1*P/np.sqrt(T)-P_s/np.sqrt(Ts1))
+        if Ts1 > 25:
             print("P>P0, P>Ps")
             # Arbitrary smooth the transition to steady deposition
             # NOTE: Check this smoothing function.
-            m_out = m_out*exp_smooth(T_s-25., 1., 0.05,
-                                     0.03, (f_ts(P*np.sqrt(T_s/T))-25.)/2.)
+            m_out = m_out*exp_smooth(Ts1-25., 1., 0.05,
+                                     0.03, (f_ts(P*np.sqrt(Ts1/T))-25.)/2.)
 
         # Speed of sound limit for the condensation flux
         rho_min = p_0*M_n/R/T
         # sqrt(7./5.*R*T/M_n)*rho
         # Used Conti in X-direction, since its absolute flux.
         m_max = D/4./dt*(rho-rho_min)-D/4./dx*dm
+
+        # using conti surface
+        # m_max = D/4./dt*(rho-rho_min)-D/4. * (1/Nr/dr*dm_r)
+        print("m_max: ", m_max)
         if m_out > m_max:
             m_out = m_max
             # print("mout = mmax")
@@ -1779,6 +1782,7 @@ def m_de(T, P, T_s, de, dm):
         m_out = 0
     rho_min = p_0*M_n/R/T
     # m_out = 0  # NO HEAT TRANSFER/ MASS DEPOSITION CASE
+    # print("de2: ", m_out)
     return m_out  # Output: mass deposition flux, no convective heat flux
 
 
@@ -1892,44 +1896,6 @@ def save_RK3(x, tx, dt, rho1, ux1, ur1, u1, e1, T1, p1, de1):
     np.savetxt("e.csv", e1, delimiter=",")
     np.savetxt("de_rate.csv", de1, delimiter=",")
     np.savetxt("p.csv", p1, delimiter=",")
-
-
-def save_RK3_2(x, tx, dt, rho1, ux1, ur1, u1, e1, T1, p1, de1):
-    increment = (tx+1)*dt
-
-    pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/RK3/' + \
-        "{:.4f}".format(increment) + '/' + "{:.1f}".format(x) + '/'
-    newpath = pathname
-    if not os.path.exists(newpath):
-        os.makedirs(newpath)
-    os.chdir(pathname)
-    np.savetxt("rho1.csv", rho1, delimiter=",")
-    np.savetxt("Tg1.csv", T1, delimiter=",")
-    np.savetxt("u1.csv", u1, delimiter=",")
-    np.savetxt("ux1.csv", ux1, delimiter=",")
-    np.savetxt("ur1.csv", ur1, delimiter=",")
-    np.savetxt("e1.csv", e1, delimiter=",")
-    np.savetxt("de_rate1.csv", de1, delimiter=",")
-    np.savetxt("p1.csv", p1, delimiter=",")
-
-
-def save_RK3_3(x, tx, dt, rho1, ux1, ur1, u1, e1, T1, p1, de1):
-    increment = (tx+1)*dt
-
-    pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/RK3/' + \
-        "{:.4f}".format(increment) + '/' + "{:.1f}".format(x) + '/'
-    newpath = pathname
-    if not os.path.exists(newpath):
-        os.makedirs(newpath)
-    os.chdir(pathname)
-    np.savetxt("rho_f.csv", rho1, delimiter=",")
-    np.savetxt("Tg_f.csv", T1, delimiter=",")
-    np.savetxt("u_f.csv", u1, delimiter=",")
-    np.savetxt("ux_f.csv", ux1, delimiter=",")
-    np.savetxt("ur_f.csv", ur1, delimiter=",")
-    np.savetxt("e_f.csv", e1, delimiter=",")
-    np.savetxt("de_rate_f.csv", de1, delimiter=",")
-    np.savetxt("p_f.csv", p1, delimiter=",")
 
 
 def namestr(obj, namespace):  # Returns variable name for check_negative function

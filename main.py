@@ -138,20 +138,11 @@ save_gradients(d_dr, m_dx, dp_dx, ux_dx, ux_dr,
 # def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2, Tw2, Ts2, Tc2, de1, T3):
 print("Main loop started")
 
+def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de1, p3, rho3, T3, ux3, ur3, u3, e3, pe, Tw1, Ts1, Tc1):
 
-def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de1, p3, rho3, T3, ux3, ur3, u3, e3, pe, Tw, Ts, Tc):
-
-    # ------------------------------------- Time iteration  --------------------------------------------- #
-    # create N matrix: needed once only
-    print("Creating N grid points matrix")
     N = n_matrix()
 
-    # print(N)
-    # print("Checking finite values in N matrix")
-    # assert np.isfinite(N).all()
-
     for i in np.arange(np.int64(1), np.int64(Nt+1)):
-        print("Time looping started")
         print("Iteration: #", i)
 
         # variable inl et
@@ -164,29 +155,29 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
         print("Assigning inlet values")
         p_in, ux_in, ur_in, rho_in, e_in, T_in = val_in_constant()
 
-        print("Creating empty de1 matrix to save variable mass deposition")
+        # print("Creating empty de1 matrix to save variable mass deposition")
         # de1 matrix this is the de_variable in RK3 function
-        de1 = np.zeros((Nx+1), dtype=(np.float64))  # mass deposition rate.
+        # de1 = np.zeros((Nx+1), dtype=(np.float64))  # mass deposition rate.
         # Initialized 0 and then put in RK3 function to recalculate at all timesteps
 
-        print("Creating empty de_timestep matrix to save final mass deposition")
-        if i == 1:
-            de_timestep = np.zeros((Nx+1), dtype=(np.float64))  # place holder
+        # print("Creating empty de_timestep matrix to save final mass deposition")
+        # if i == 1:
+        #     de_timestep = np.zeros((Nx+1), dtype=(np.float64))  # place holder
 
-        else:
-            # NOTE: This will take last de from RK3, i need the mass deposition rate of previous time step for the next
-            de_timestep = rk_out[0]
+        # else:
+        # #     # NOTE: This will take last de from RK3, i need the mass deposition rate of previous time step for the next
+        # de_var = rk_out[0]
         print("Rk3 next")
 
         # RK3 time integration
         # rk_out = [de_timestep, qn, uxn, urn, uun, en, tn, pn]
         rk_out = tvdrk3(
-            ux1, ur1, u1, p1, rho1, T1, e1, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, de1, de_timestep, Tw1, Ts1, Tc1, i)
+            ux1, ur1, u1, p1, rho1, T1, e1, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, de1, Tw1, Ts1, Tc1, i)
 
         print("Rk3 complete")
 
 # defining next values from RK3
-        de_timestep = rk_out[0]
+        de2 = rk_out[0]
         rho2 = rk_out[1]
         ux2 = rk_out[2]
         ur2 = rk_out[3]
@@ -223,7 +214,7 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
 
         print("Calculating frost layer thickness")
 # calculate frost layer thickness
-        de0, del_SN = integral_mass_delSN(de_timestep)
+        de0, del_SN = integral_mass_delSN(de2)
 
         print("Performing check on negative frost layer thickness")
 
@@ -236,7 +227,7 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
 # insert wall function
 
         w_out = Cu_Wall_function(
-            ur1, T1, Tw1, Tc1, Ts1, T_in, del_SN, de_timestep, e1, u1, rho1, p1, T2, p2, e2, rho2, u2, ur2)
+            ur1, T1, Tw1, Tc1, Ts1, T_in, del_SN, de1, e1, u1, rho1, p1, T2, p2, e2, rho2, u2, ur2)
 
     # defining next values from RK3
         Tw2 = w_out[0]
@@ -276,7 +267,7 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
         Tw1[:] = Tw2
         Ts1[:] = Ts2
         Tc1[:] = Tc2
-        de1[:] = de_timestep[:]
+        de1[:] = de2[:]
 
 # Recalculate PECLET
         Pe2 = Peclet_grid(Pe1, u1, D_hyd, p1, T1)
