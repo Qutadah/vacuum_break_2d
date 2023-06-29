@@ -438,10 +438,27 @@ def tvdrk3(ux, ur, u, p, rho, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_
         grad_x, grad_r = grad_e2_matrix(l[1], l[0], ux_in, e_in, l[6])
         dt2x_ux, dt2x_ur = dt2x_matrix(ux_in, ur_in, l[0], l[1])
         dt2r_ux, dt2r_ur = dt2r_matrix(l[0], l[1])
-        dt2x_ux, dt2x_ur = dt2x_matrix(ux_in, ur_in, l[0], l[1])
-        dt2r_ux, dt2r_ur = dt2r_matrix(l[0], l[1])
 
-    # viscosity calculations
+# Plot gradients with X
+        abb = [dp_dx, ux_dx, ur_dx, grad_x, dt2x_ux, dt2r_ux]
+        plt.figure()
+        x = np.linspace(0, 8.45, Nx)
+        y1 = [abb[0][:, Nr]]
+        y2 = [abb[1][:, Nr]]
+        # y3 = [abb[2][:, Nr]]
+        y4 = [abb[3][:, Nr]]
+        y5 = [abb[4][:, Nr]]
+        y6 = [abb[5][:, Nr]]
+
+        plt.plot(x, y1, color="black", label="dp_dx")
+        plt.plot(x, y2, color="blue", label="ux_dx")
+        # plt.plot(x, y3, color="red", label="ur_dx")
+        plt.plot(x, y4, color="yellow", label="grad_x")
+        plt.plot(x, y5, color="green", label="dt2x_ux")
+        plt.plot(x, y6, color="red", label="dt2r_ux")
+        plt.show()
+
+# viscosity calculations
         # print("l: ", l[5], l[3])
         print("Calculating viscosity for RK3 loop #", n)
         visc_matrix = viscous_matrix(l[5], l[3])
@@ -485,6 +502,7 @@ def tvdrk3(ux, ur, u, p, rho, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_
 # radial velocity on surface is function of mass deposition
             urr[:, Nr] = S_out[0]/qq[:, Nr]
 
+# This no slip is reapplied because the full NS is also solved at Nr, because we have dp/dx, ux is recalculated
             uxx[:, Nr] = 0
 
 # # No slip
