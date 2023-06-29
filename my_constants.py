@@ -18,9 +18,9 @@ L = 8.385  # With prepping region.
 Nx = 200  # Total length & spatial step - x direction 6.45
 R_cyl = 1.27e-2
 Nr = 15  # Total length & spatial step - r direction
-T = 3.
+T_sim = 3.
 Nt = 30000.  # Total time & time step
-dt = T/Nt
+dt = T_sim/Nt
 dx = L/Nx
 dr = R_cyl/Nr
 print("dx", dx, "dr", dr, "dt", dt, "Cou_r",

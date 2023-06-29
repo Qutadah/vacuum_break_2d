@@ -141,7 +141,7 @@ save_gradients(d_dr, m_dx, dp_dx, ux_dx, ux_dr,
 print("Main loop started")
 
 
-def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de1, p3, rho3, T3, ux3, ur3, u3, e3, pe, Tw1, Ts1, Tc1):
+def main_cal(p1, rho1, T1, ux1, ur1, u1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de1, p3, rho3, T3, ux3, ur3, u3, e3, pe, Tw1, Ts1, Tc1):
 
     N = n_matrix()
 
@@ -302,7 +302,7 @@ def main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de
 if __name__ == "__main__":
     # main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2,
     #          ur2, T2, e2, Tw2, Ts2, Tc2, de1, T3)
-    main_cal(p1, rho1, T1, ux1, ur1, e1, p2, rho2, T2, ux2, ur2,
+    main_cal(p1, rho1, T1, ux1, ur1, u1, e1, p2, rho2, T2, ux2, ur2,
              u2, e2, de0, de1, p3, rho3, T3, ux3, ur3, u3, e3, Pe1, Tw1, Ts1, Tc1)
 
 

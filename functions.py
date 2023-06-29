@@ -220,7 +220,6 @@ def source_mass_depo_matrix(rho_0, T, P, Ts1, rho, ux, ur, de, N):  # -4/D* mdot
     dm_r = np.zeros((Nx+1), dtype=(np.float64))
     de3 = np.zeros((Nx+1), dtype=(np.float64))
     S = np.zeros((Nx+1), dtype=(np.float64))
-
     # chosen at gridpoint Nr-1 because at Nr, ux =0
     for m in np.arange(Nx+1):
         if m == Nx:
@@ -234,23 +233,14 @@ def source_mass_depo_matrix(rho_0, T, P, Ts1, rho, ux, ur, de, N):  # -4/D* mdot
         else:
             dm_r[m] = rho[m, Nr] * Nr*dr*ur[m, Nr] - \
                 rho[m, Nr-1]*(Nr-1)*dr*ur[m, Nr-1]
-
 # skip m=0, not needed
-    for m in np.arange(np.int64(0), np.int64(Nx+1)):
+    de3 = m_de(T, P, ur,  Ts1, de, dm)  # dm_r[m], ur[m, Nr], N)  # used BWD
+    for m in np.arange(np.int64(1), np.int64(Nx+1)):
         if rho[m, Nr] > 2.*rho_0:
-            # print("temp gas",T1[m,n], "pressure", p1_before_dep, "temp wall: ", Tw1[m],"mass depo", de1[m], "dm", rho1[m, n]*n*dr*ur1[m, n]-rho1[m, n-1]*n*dr*ur1[m, n-1], "n grid point", n)
-            # print("inputs m_de calc: [T1, p1, Ts1, de1, rho1, ur1]",
-            #       T1[m, n], p1[m, n], Ts1[m], de1[m], rho1[m, n], ur1[m, n])
-            # print("stopped here source_mass fcn")
-            de3[m] = m_de(T[m, Nr], P[m, Nr], Ts1[m],
-                          de[m], dm[m])  # dm_r[m], ur[m, Nr], N)  # used BWD
-            # print("m_de / de1 calculated:", de1[m])
-            # check_negative(de1[m], n)
-        else:
             de3[m] = 0.
-    print("de2", de3)
     S = -4./D * de3     # 1d array
     S_out = [de3, S]
+    print("de3", de3)
     return S_out
 
 
@@ -375,7 +365,7 @@ def energy_difference_dt(e1, e2):
 
 
 # This iterates RK3 for all equations
-def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, de, Tw, Ts, Tc, Rks):
+def tvdrk3(ux, ur, u, p, rho, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, de, Tw, Ts, Tc, Rks):
     q = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))  # place holder
 
 # create N matrix:
@@ -404,17 +394,17 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
 
 # substituting for RK3 initial loop
     q = rho
-    p = p
-    u = u
-    t = T
-# First step
+#     p = p
+#     u = u
+#     t = T
+# # First step
 # apply BCs
 # NOTE: apply outlet Bcs also.
 # l = [ux, ur, u, p, rho, T, e, Tw, Ts, Tc]
     for n in np.arange(3):
         if n == 0:
-            ux, u, e, T, ur, p, rho = no_slip(ux, u, p, rho, t, ur)
-            l = inlet_BC(ux, ur, u, p, rho, t, e, p_in,
+            ux, u, e, tg, ur, p, rho = no_slip(ux, u, p, rho, tg, ur)
+            l = inlet_BC(ux, ur, u, p, rho, tg, e, p_in,
                          ux_in, rho_in, T_in, e_in, Tw, Ts, Tc)
             # k = outlet_BC(uxn, urn, uun, pn, qn, Tn, en)
             q = l[4]
@@ -467,6 +457,7 @@ def tvdrk3(ux, ur, u, p, rho, T, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_i
             de_var = de
             # print("de_variable: ", de_variable)
        # S_out = [de3, S]
+        # l = [ux, ur, u, p, rho, T, e, Tw, Ts, Tc]
         S_out = source_mass_depo_matrix(
             rho_0, l[5], l[3], l[8], l[4], l[0], l[1], de_var, N)
         # This de1 is returned again, first calculation is the right one for this iteration. it takes last values.
@@ -1750,61 +1741,76 @@ def Peclet_grid(pe, u, D_hyd, p, T):
 
 # returns mass deposition rate to put in de1 matrix
 # @numba.jit('f8(f8,f8,f8,f8,f8)')
-@jit(nopython=True)
-def m_de(T, P, Ts1, de, dm):  # dm_r, ur, N):
+# @jit(nopython=True)
+def m_de(T, P, ur, Ts1, de, dm):  # dm_r, ur, N):
+    print("T,P,ur, Ts1, de, dm", [T, P, ur, Ts1, de, dm])
+    rho = np.zeros((Nx+1, Nr+1), dtype=(np.float64,
+                   np.float64))  # place holder
+    v_m1 = np.zeros((Nx+1), dtype=(np.float64))
+    u_mean1 = np.zeros((Nx+1), dtype=(np.float64))
+    gam1 = np.zeros((Nx+1), dtype=(np.float64))
+    P_s = np.zeros((Nx+1), dtype=(np.float64))
+    rho_min = np.zeros((Nx+1), dtype=(np.float64))
+    beta = np.zeros((Nx+1), dtype=(np.float64))
+    m_out = np.zeros((Nx+1), dtype=(np.float64))
+
     p_0 = bulk_values(T_s)[2]
     # print("mdot calc: ", "Tg: ", T, " P: ",
     #       P, "Ts: ", T_s, "de: ", de, "dm: ", dm)
     #   Calculate deposition rate (kg/(m^2*s))
-    if T == 0:
-        T = 0.00001
-    rho = P*M_n/R/T
-# no division by zero
-    if rho == 0:
-        rho = 0.00001
-    v_m1 = np.sqrt(2*R*T/M_n)  # thermal velocity of molecules
-    u_mean1 = de/rho  # mean flow velocity towards the wall.
-    beta = u_mean1/v_m1  # this is Beta from Hertz Knudson
-    gam1 = gamma(beta)  # deviation from Maxwellian velocity.
-    P_s = f_ps(Ts1)
 
-    if (P > P_s and P > p_0):
-        # Correlated Hertz-Knudsen Relation #####
-        m_out = np.sqrt(M_n/2/np.pi/R)*Sc_PP * \
-            (gam1*P/np.sqrt(T)-P_s/np.sqrt(Ts1))
-        print("m_out calc", m_out)
+    for m in np.arange(np.int64(0), np.int64(Nx+1)):
+        if T[m, Nr] == 0:
+            T[m, Nr] = 0.00001
+        rho[m, Nr] = P[m, Nr]*M_n/R/T[m, Nr]
+    # # no division by zero
+    #     if rho[m,Nr] == 0:
+    #         rho[m,Nr] = 0.00001
+        v_m1[m] = np.sqrt(2*R*T[m, Nr]/M_n)  # thermal velocity of molecules
+        u_mean1[m] = de[m]/rho[m, Nr]  # mean flow velocity towards the wall.
+        beta[m] = u_mean1[m]/v_m1[m]  # this is Beta from Hertz Knudson
+        gam1[m] = gamma(beta[m])  # deviation from Maxwellian velocity.
+        P_s[m] = f_ps(Ts1[m])
 
-        if Ts1 > 25:
-            print("P>P0, P>Ps")
-            # Arbitrary smooth the transition to steady deposition
-            # NOTE: Check this smoothing function.
-            m_out = m_out*exp_smooth(Ts1-25., 1., 0.05,
-                                     0.03, (f_ts(P*np.sqrt(Ts1/T))-25.)/2.)
+        if (P[m, Nr] > P_s[m] and P[m, Nr] > p_0):
+            # Correlated Hertz-Knudsen Relation #####
+            m_out[m] = np.sqrt(M_n/2/np.pi/R)*Sc_PP * \
+                (gam1[m]*P[m, Nr]/np.sqrt(T[m, Nr])-P_s[m]/np.sqrt(Ts1[m]))
+            print("m_out calc", m_out)
 
-        # Speed of sound limit for the condensation flux
-        rho_min = p_0*M_n/R/T
-        # sqrt(7./5.*R*T/M_n)*rho
-        # Used Conti in X-direction, since its absolute flux.
-        # m_max[:] = D/4./dt*(rho[:, Nr-1]-rho_min)-D/4./dx*dm - D/4. * \
-        #     1/N[:, Nr-1]/dr*(rho[:, Nr-1]*N[:, Nr-1]*dr*ur[:,
-        #                      Nr-1] - rho[:, Nr-2]*N[:, Nr-2]*dr*ur[:, Nr-2])
+            if Ts1[m] > 25:
+                print("P>P0, P>Ps")
+                # Arbitrary smooth the transition to steady deposition
+                # NOTE: Check this smoothing function.
+                m_out[m] = m_out[m]*exp_smooth(Ts1[m]-25., 1., 0.05,
+                                               0.03, (f_ts(P[m, Nr]*np.sqrt(Ts1[m]/T[m, Nr]))-25.)/2.)
 
-        # using conti surface
-        # m_max = D/4./dt*(rho-rho_min)-D/4. * (1/Nr/dr*dm_r)
-        m_max = D/4./dt*(rho-rho_min)-D/4./dx*dm  # sqrt(7./5.*R*T/M_n)*rho
+            # Speed of sound limit for the condensation flux
+            rho_min[m] = p_0*M_n/R/T[m, Nr]
+            # sqrt(7./5.*R*T/M_n)*rho
+            # Used Conti in X-direction, since its absolute flux.
+            # m_max[:] = D/4./dt*(rho[:, Nr-1]-rho_min)-D/4./dx*dm - D/4. * \
+            #     1/N[:, Nr-1]/dr*(rho[:, Nr-1]*N[:, Nr-1]*dr*ur[:,
+            #                      Nr-1] - rho[:, Nr-2]*N[:, Nr-2]*dr*ur[:, Nr-2])
 
-        print("m_max", m_max, "dm", dm)
-        if m_out > m_max:
-            m_out = m_max
-            # print("mout = mmax")
-    else:
-        print("we are here")
-        m_out = 0
-    rho_min = p_0*M_n/R/T
-    # m_out = 0  # NO HEAT TRANSFER/ MASS DEPOSITION CASE
-    # print("de2: ", m_out)
-    print("m_out", m_out)
-    return m_out  # Output: mass deposition flux, no convective heat flux
+            # using conti surface
+            # m_max = D/4./dt*(rho-rho_min)-D/4. * (1/Nr/dr*dm_r)
+            m_max = np.zeros((Nx+1), dtype=(np.float64))
+            # dm is a matrix
+            for m in np.arange(Nx+1):
+                m_max[m] = D/4./dt*(rho[m, Nr]-rho_min[m]) - \
+                    D/4./dx*dm[m]  # sqrt(7./5.*R*T/M_n)*rho
+
+            if m_out[m] > m_max[m]:
+                m_out[m] = m_max[m]
+                # print("mout = mmax")
+        else:
+            m_out[m] = 0
+        rho_min[m] = p_0*M_n/R/T[m, Nr]
+        # m_out = 0  # NO HEAT TRANSFER/ MASS DEPOSITION CASE
+        # print("de2: ", m_out)
+        print("m_out", m_out)
+    return m_out  # Output: mass deposition flux, no convective heat flux MATRIX
 
 # def m_de(T, P, Ts1, de, dm, dm_r, ur, N):
 #     p_0 = bulk_values(T_s)[2]
