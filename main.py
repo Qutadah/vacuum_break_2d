@@ -51,8 +51,14 @@ p1, rho1, ux1, ur1, u1, e1, T1, rho2, ux2, ur2, u2, e2, T2, p2, Tw1, Tw2, Ts1, T
 # ---------------------  Smoothing inlet --------------------------------
 
 # constant inlet
-p_in, ux_in, ur_in, rho_in, e_in, T_in = val_in_constant()
+out_cons = val_in_constant()
 
+p_in = out_cons[0]
+ux_in = out_cons[1]
+ur_in = out_cons[2]
+rho_in = out_cons[3]
+e_in = out_cons[4]
+T_in = out_cons[5]
 
 # setting wall and frost layer initial conditions
 # p_in, q_in, ux_in, ur_in, rho_in, e_in, T_in = val_in(0)

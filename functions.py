@@ -121,10 +121,10 @@ def initialize_grid(p_0, rho_0, e_0, T_0, T_s):
     return out
 
 
-def initialize_ghost():
-    # This is for the ghost cells for the WENO reconstruction.
+# def initialize_ghost():
+#     # This is for the ghost cells for the WENO reconstruction.
 
-    return ro_rec, ux_rec,
+#     return ro_rec, ux_rec,
 
     # x-direction
     # if (iflx==1)
@@ -441,21 +441,42 @@ def tvdrk3(ux, ur, u, p, rho, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_
 
 # Plot gradients with X
         abb = [dp_dx, ux_dx, ur_dx, grad_x, dt2x_ux, dt2r_ux]
+        dpdx = np.zeros((Nx+1), dtype=(np.float64))  # place holder
+        uxdx = np.zeros((Nx+1), dtype=(np.float64))  # place holder
+        urdx = np.zeros((Nx+1), dtype=(np.float64))  # place holder
+        gradx = np.zeros((Nx+1), dtype=(np.float64))  # place holder
+        dt2xux = np.zeros((Nx+1), dtype=(np.float64))  # place holder
+        dt2rux = np.zeros((Nx+1), dtype=(np.float64))  # place holder
+
+# plotting and saving gradients
+        dpdx[:] = abb[0][:, Nr]
+        uxdx[:] = abb[1][:, Nr]
+        urdx[:] = abb[2][:, Nr]
+        gradx[:] = abb[3][:, Nr]
+        dt2xux[:] = abb[4][:, Nr]
+        dt2rux[:] = abb[5][:, Nr]
+
+        aa = 40
         plt.figure()
-        x = np.linspace(0, 8.45, Nx)
-        y1 = [abb[0][:, Nr]]
-        y2 = [abb[1][:, Nr]]
-        # y3 = [abb[2][:, Nr]]
-        y4 = [abb[3][:, Nr]]
-        y5 = [abb[4][:, Nr]]
-        y6 = [abb[5][:, Nr]]
+        x = np.linspace(0, aa, aa+1)
+        y1 = dpdx[0:aa+1]
+        y2 = uxdx[0:aa+1]
+        y3 = urdx[0:aa+1]
+        y4 = gradx[0:aa+1]
+        y5 = dt2xux[0:aa+1]
+        y6 = dt2rux[0:aa+1]
 
         plt.plot(x, y1, color="black", label="dp_dx")
         plt.plot(x, y2, color="blue", label="ux_dx")
-        # plt.plot(x, y3, color="red", label="ur_dx")
+        plt.plot(x, y3, color="brown", label="ur_dx")
         plt.plot(x, y4, color="yellow", label="grad_x")
         plt.plot(x, y5, color="green", label="dt2x_ux")
         plt.plot(x, y6, color="red", label="dt2r_ux")
+        # plt.legend()
+        # legend = ax.legend(loc='upper center', shadow=True, fontsize='x-large')
+
+        plt.legend(["dp_dx", "ux_dx", "ur_dx", "grad_x",
+                   "dt2x_ux", "dt2r_ux"], loc="lower right")
         plt.show()
 
 # viscosity calculations
@@ -1046,6 +1067,28 @@ def dt2nd_radial(ux1, ur1, m, n):
     return dt2nd_radial_ux1, dt2nd_radial_ur1
 
 
+def save_dt2x_matrix(array1, array2):
+    pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/second_gradients/'
+    newpath = pathname
+    if not os.path.exists(newpath):
+        os.makedirs(newpath)
+    os.chdir(pathname)
+    np.savetxt("dt2x_ux1.csv", array1, delimiter=",")
+    np.savetxt("dt2x_ur1.csv", array2, delimiter=",")
+    return
+
+
+def save_dt2r_matrix(array1, array2):
+    pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/second_gradients/'
+    newpath = pathname
+    if not os.path.exists(newpath):
+        os.makedirs(newpath)
+    os.chdir(pathname)
+    np.savetxt("dt2r_ux1.csv", array1, delimiter=",")
+    np.savetxt("dt2r_ur1.csv", array2, delimiter=",")
+    return
+
+
 def save_gradients(array2, array3, array4, array5, array6, array7, array8, array9, array10, array11):
     pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/gradients/'
     newpath = pathname
@@ -1100,7 +1143,7 @@ def dt2r_matrix(ux1, ur1):
             # --------------------------- dt2nd radial ur1 ---------------------------------#
                 dt2r_ur1[m, n] = (ur1[m, n+1] + ur1[m, n-1] -
                                   2*ur1[m, n])/(dr**2)  # CD
-                # print("dt2nd_radial_ur1:", dt2nd_radial_ur1)
+    save_dt2r_matrix(dt2r_ux1, dt2r_ur1)
     return dt2r_ux1, dt2r_ur1
 
 # @numba.jit('f8(f8,f8,f8,f8,f8,f8)')
@@ -1179,6 +1222,7 @@ def dt2x_matrix(ux_in, ur_in, ux1, ur1):
             # --------------------------- dt2nd axial ur1 ---------------------------------#
                 dt2x_ur1[m, n] = (ur1[m+1, n] + ur1[m-1, n] -
                                   2*ur1[m, n])/(dx**2)  # CD
+    save_dt2x_matrix(dt2x_ux1, dt2x_ur1)
     return dt2x_ux1, dt2x_ur1
 
 
@@ -1365,8 +1409,8 @@ def mu_n(T, P):
         7.402*tao**0.9*delta**2*np.exp(-1*delta**2) +\
         4.620*tao**0.3*delta**1*np.exp(-1*delta**3)
 #    print("viscosity from function:", (mu_n_1+mu_n_2)/1e6)
-    # mu_n_2 = 0
-    # mu_n_1 = 0
+    mu_n_2 = 0
+    mu_n_1 = 0
     # print("viscosity from function:", (mu_n_1+mu_n_2)/1e6)
 
     return (mu_n_1+mu_n_2)/1e6
@@ -1693,10 +1737,10 @@ def balance_energy2(rho, T, u):
 @jit(nopython=True)
 def val_in_constant():
     #   Calculate instant flow rate (kg/s)
-    p_in = 7000.
+    p_in = 1000.
     T_in = 298.
     rho_in = p_in / T_in/R*M_n
-    ux_in = 351.
+    ux_in = 20.
     ur_in = 0.
     e_in = 5./2.*rho_in/M_n*R*T_in + 1./2.*rho_in*ux_in**2
     out = np.array([p_in, ux_in, ur_in, rho_in, e_in, T_in])
