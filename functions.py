@@ -1753,6 +1753,7 @@ def m_de(T, P, ur, Ts1, de, dm):  # dm_r, ur, N):
     rho_min = np.zeros((Nx+1), dtype=(np.float64))
     beta = np.zeros((Nx+1), dtype=(np.float64))
     m_out = np.zeros((Nx+1), dtype=(np.float64))
+    m_max = np.zeros((Nx+1), dtype=(np.float64))
 
     p_0 = bulk_values(T_s)[2]
     # print("mdot calc: ", "Tg: ", T, " P: ",
@@ -1795,7 +1796,6 @@ def m_de(T, P, ur, Ts1, de, dm):  # dm_r, ur, N):
 
             # using conti surface
             # m_max = D/4./dt*(rho-rho_min)-D/4. * (1/Nr/dr*dm_r)
-            m_max = np.zeros((Nx+1), dtype=(np.float64))
             # dm is a matrix
             for m in np.arange(Nx+1):
                 m_max[m] = D/4./dt*(rho[m, Nr]-rho_min[m]) - \
@@ -1809,7 +1809,22 @@ def m_de(T, P, ur, Ts1, de, dm):  # dm_r, ur, N):
         rho_min[m] = p_0*M_n/R/T[m, Nr]
         # m_out = 0  # NO HEAT TRANSFER/ MASS DEPOSITION CASE
         # print("de2: ", m_out)
-        print("m_out", m_out)
+
+    print("m_out", m_out)
+
+    pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/m_dot/'
+    if os.path.exists(pathname):
+        location = "C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/"
+        dir = "m_dot"
+        path = os.path.join(location, dir)
+        shutil.rmtree(path)
+        # os.rmdir('C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/initial_conditions/')
+    if not os.path.exists(pathname):
+        os.makedirs(pathname)
+    os.chdir(pathname)
+    np.savetxt("m_out.csv", m_out, delimiter=",")
+    np.savetxt("m_max.csv", m_max, delimiter=",")
+
     return m_out  # Output: mass deposition flux, no convective heat flux MATRIX
 
 # def m_de(T, P, Ts1, de, dm, dm_r, ur, N):
