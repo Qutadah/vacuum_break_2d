@@ -485,6 +485,11 @@ def tvdrk3(ux, ur, u, p, rho, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_
 # radial velocity on surface is function of mass deposition
             urr[:, Nr] = S_out[0]/qq[:, Nr]
 
+            uxx[:, Nr] = 0
+
+# # No slip
+#             uxx, uu, ee, tt, urr, pp, qq = no_slip(uxx, uu, pp, qq, tt, urr)
+
 # velocity recalculation
             uu = np.sqrt(uxx**2 + urr**2)
 
@@ -513,6 +518,11 @@ def tvdrk3(ux, ur, u, p, rho, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_
 
 # radial velocity on surface is function of mass deposition
             urr[:, Nr] = S_out[0]/qq[:, Nr]
+
+            uxx[:, Nr] = 0
+
+# # No slip
+#             uxx, uu, ee, tt, urr, pp, qq = no_slip(uxx, uu, pp, qq, tt, urr)
 
 # velocity recalculation
             uu = np.sqrt(uxx**2 + urr**2)
@@ -544,6 +554,10 @@ def tvdrk3(ux, ur, u, p, rho, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_
 
 # radial velocity on surface is function of mass deposition
             urn[:, Nr] = S_out[0]/qn[:, Nr]
+
+            uxn[:, Nr] = 0
+# # No slip
+#             uxx, uu, ee, tt, urr, pp, qq = no_slip(uxx, uu, pp, qq, tt, urr)
 
 # velocity recalculation
             un = np.sqrt(uxn**2 + urn**2)
@@ -1764,6 +1778,7 @@ def m_de(T, P, ur, Ts1, de, dm):  # dm_r, ur, N):
         if T[m, Nr] == 0:
             T[m, Nr] = 0.00001
         rho[m, Nr] = P[m, Nr]*M_n/R/T[m, Nr]
+        rho_min[m] = p_0*M_n/R/T[m, Nr]
     # # no division by zero
     #     if rho[m,Nr] == 0:
     #         rho[m,Nr] = 0.00001
@@ -1787,7 +1802,6 @@ def m_de(T, P, ur, Ts1, de, dm):  # dm_r, ur, N):
                                                0.03, (f_ts(P[m, Nr]*np.sqrt(Ts1[m]/T[m, Nr]))-25.)/2.)
 
             # Speed of sound limit for the condensation flux
-            rho_min[m] = p_0*M_n/R/T[m, Nr]
             # sqrt(7./5.*R*T/M_n)*rho
             # Used Conti in X-direction, since its absolute flux.
             # m_max[:] = D/4./dt*(rho[:, Nr-1]-rho_min)-D/4./dx*dm - D/4. * \
@@ -1797,16 +1811,15 @@ def m_de(T, P, ur, Ts1, de, dm):  # dm_r, ur, N):
             # using conti surface
             # m_max = D/4./dt*(rho-rho_min)-D/4. * (1/Nr/dr*dm_r)
             # dm is a matrix
-            for m in np.arange(Nx+1):
-                m_max[m] = D/4./dt*(rho[m, Nr]-rho_min[m]) - \
-                    D/4./dx*dm[m]  # sqrt(7./5.*R*T/M_n)*rho
+            m_max[m] = D/4./dt*(rho[m, Nr]-rho_min[m]) - \
+                D/4./dx*dm[m]  # sqrt(7./5.*R*T/M_n)*rho
+            m_max[m] = 2.0e-30
 
             if m_out[m] > m_max[m]:
                 m_out[m] = m_max[m]
                 # print("mout = mmax")
         else:
             m_out[m] = 0
-        rho_min[m] = p_0*M_n/R/T[m, Nr]
         # m_out = 0  # NO HEAT TRANSFER/ MASS DEPOSITION CASE
         # print("de2: ", m_out)
 
