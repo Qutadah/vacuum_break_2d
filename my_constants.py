@@ -13,7 +13,7 @@ d_n = 364e-12
 Pr_n = 0.72
 
 #   Time and spatial step
-L = 8.385  # With prepping region.
+L = 6.45  # With prepping region.
 # L = 6.45
 Nx = 300  # Total length & spatial step - x direction 6.45
 R_cyl = 1.27e-2
@@ -25,7 +25,7 @@ dx = L/Nx
 dr = R_cyl/Nr
 print("dx", dx, "dr", dr, "dt", dt, "Cou_r",
       1.587*dt/dr, "Cou_x_Max", 1*dt/dx,)
-
+gamma_n2 = 1.4
 #   Tuning parameters
 # Coefficient for the film boiling of He I (we need to adjust optimal value)
 Sc_PP = 0.95  # Condensation\boiling coeffcient

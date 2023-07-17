@@ -28,7 +28,7 @@ u_in_x = 1.
 # @numba.jit('f8(f8,f8)')
 
 
-@jit(nopython=True)
+# @jit(nopython=True)
 def dt2nd_wall(m, Tw1, T_in):
 
     if m == 0:
@@ -44,7 +44,7 @@ def dt2nd_wall(m, Tw1, T_in):
     return dt2nd
 
 
-@jit(nopython=True)
+# @jit(nopython=True)
 def dt2nd_w_matrix(Tw, T_in):
     dt2nd_w_m = np.zeros((Nx+1), dtype=(np.float64))
 
@@ -116,8 +116,8 @@ def initialize_grid(p_0, rho_0, e_0, T_0, T_s):
                   np.float64))  # Peclet number
     Pe1 = np.zeros((Nx+1, Nr+1), dtype=(np.float64,
                    np.float64))  # Peclet number
-    out = [p1, rho1, ux1, ur1, u1, e1, T1, rho2, ux2, ur2, u2, e2, T2, p2, Tw1, Tw2,
-           Ts1, Ts2, Tc1, Tc2, de0, de1, qhe, rho3, ux3, ur3, u3, e3, T3, p3, Pe, Pe1]
+    out = [p1, rho1, ux1, ur1, u1, e1, T1, rho2, ux2, ur2, u2, e2, T2, p2,
+           Tw1, Tw2, Ts1, Ts2, Tc1, Tc2, de0, de1, rho3, ux3, ur3, u3, e3, T3, p3]
     return out
 
 
@@ -363,9 +363,10 @@ def energy_difference_dt(e1, e2):
 
     return d_e
 
-
 # This iterates RK3 for all equations
-def tvdrk3(ux, ur, u, p, rho, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, de, Tw, Ts, Tc, Rks):
+
+
+def tvdrk3(ux, ur, u, p, rho, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, de, Rks):
     q = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))  # place holder
 
 # create N matrix:
@@ -403,9 +404,9 @@ def tvdrk3(ux, ur, u, p, rho, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_
 # l = [ux, ur, u, p, rho, T, e, Tw, Ts, Tc]
     for n in np.arange(3):
         if n == 0:
-            ux, u, e, tg, ur, p, rho = no_slip(ux, u, p, rho, tg, ur)
+            p, tg, ux, ur, u, e = no_slip_no_mdot(p, rho, tg, ux, ur, u, e)
             l = inlet_BC(ux, ur, u, p, rho, tg, e, p_in,
-                         ux_in, rho_in, T_in, e_in, Tw, Ts, Tc)
+                         ux_in, rho_in, T_in, e_in)
             # k = outlet_BC(uxn, urn, uun, pn, qn, Tn, en)
             q = l[4]
             ux = l[0]
@@ -415,9 +416,10 @@ def tvdrk3(ux, ur, u, p, rho, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_
 
             # print("starting temperature", l[5])
         else:  # n == 1, n==2:
-            uxx, uu, ee, tt, urr, pp, qq = no_slip(uxx, uu, pp, qq, tt, urr)
+            pp, tt, uxx, urr, uu, ee = no_slip_no_mdot(
+                pp, qq, tt, uxx, urr, uu, ee)
             l = inlet_BC(uxx, urr, uu, pp, qq, tt, ee, p_in,
-                         ux_in, rho_in, T_in, e_in, Tw, Ts, Tc)
+                         ux_in, rho_in, T_in, e_in)
             # k = outlet_BC(uxn, urn, uun, pn, qn, Tn, en)
             # if n == 1:
             # print("second RK3 loop temperature", l[5])
@@ -526,8 +528,9 @@ def tvdrk3(ux, ur, u, p, rho, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_
 # This no slip is reapplied because the full NS is also solved at Nr, because we have dp/dx, ux is recalculated
             uxx[:, Nr] = 0
 
-# # No slip
-#             uxx, uu, ee, tt, urr, pp, qq = no_slip(uxx, uu, pp, qq, tt, urr)
+# No slip
+            pp, tt, uxx, urr, uu, ee = no_slip_no_mdot(
+                pp, qq, tt, uxx, urr, uu, ee)
 
 # velocity recalculation
             uu = np.sqrt(uxx**2 + urr**2)
@@ -536,7 +539,8 @@ def tvdrk3(ux, ur, u, p, rho, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_
             pp = (ee - 1./2.*qq*uu**2) * 2./5.
 
 # temperature recalculation
-            ee, tt = balance_energy(pp, qq, uu)
+            ee = 5./2. * p + 1./2 * rho*u**2
+            tt = pp/qq/R*M_n
 
 # save first loop RK3
             Rks = Rks
@@ -560,9 +564,6 @@ def tvdrk3(ux, ur, u, p, rho, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_
 
             uxx[:, Nr] = 0
 
-# # No slip
-#             uxx, uu, ee, tt, urr, pp, qq = no_slip(uxx, uu, pp, qq, tt, urr)
-
 # velocity recalculation
             uu = np.sqrt(uxx**2 + urr**2)
 
@@ -570,11 +571,12 @@ def tvdrk3(ux, ur, u, p, rho, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_
             pp = (ee - 1./2.*qq*uu**2) * 2./5.
 
 # temperature recalculation
-            ee, tt = balance_energy(pp, qq, uu)
+            tt = pp/qq/R*M_n
 
-# NOTE: Is this necessary?
-# # apply surface conditions
-#             uxx, uu, ee, tt = no_slip(uxx, uu, pp, qq, tt)
+# apply surface conditions
+            pp, tt, uxx, urr, uu, ee = no_slip_no_mdot(
+                pp, qq, tt, uxx, urr, uu, ee)
+
 
 # save matrices
             save_RK3(n, Rks, dt, qq, uxx, urr, uu, ee,
@@ -595,8 +597,6 @@ def tvdrk3(ux, ur, u, p, rho, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_
             urn[:, Nr] = S_out[0]/qn[:, Nr]
 
             uxn[:, Nr] = 0
-# # No slip
-#             uxx, uu, ee, tt, urr, pp, qq = no_slip(uxx, uu, pp, qq, tt, urr)
 
 # velocity recalculation
             un = np.sqrt(uxn**2 + urn**2)
@@ -605,12 +605,11 @@ def tvdrk3(ux, ur, u, p, rho, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_
             pn = (en - 1./2.*qn*un**2) * 2./5.
 
 # temperature recalculation
-            en, tn = balance_energy(pn, qn, un)
+            tn = pn/qn/R*M_n
 
-
-# NOTE: Is this important?
-# apply surface conditions, no slip condition
-            # uxn, un, en, tn = no_slip(uxn, un, pn, qn, tn)
+# no slip condition
+            pn, tn, uxn, urn, un, en = no_slip_no_mdot(
+                pn, qn, tn, uxn, urn, un, en)
 
 # save matrices
             save_RK3(n, Rks, dt, qn, uxn, urn, un, en, tn, pn, de_var)
@@ -618,7 +617,7 @@ def tvdrk3(ux, ur, u, p, rho, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_
 # # No convective heat flux. q2 ?
 
     print("RK3 looping complete")
-    rk_out = [de2, qn, uxn, urn, un, en, tn, pn, visc_matrix]
+    rk_out = [de2, qn, uxn, urn, un, en, tn, pn]
     return rk_out
 
 
@@ -1149,7 +1148,7 @@ def dt2r_matrix(ux1, ur1):
 # @numba.jit('f8(f8,f8,f8,f8,f8,f8)')
 
 
-@jit(nopython=True)
+# @jit(nopython=True)
 def dt2nd_axial(ux_in, ur_in, ux1, ur1, m, n):
     if m == 0:
         # --------------------------- dt2nd axial ux1 ---------------------------------#
@@ -1226,7 +1225,7 @@ def dt2x_matrix(ux_in, ur_in, ux1, ur1):
     return dt2x_ux1, dt2x_ur1
 
 
-@jit(nopython=True)
+# @jit(nopython=True)
 def f_ps(ts):
     #   Calculate saturated vapor pressure (Pa)
     ts = float(ts)
@@ -1244,7 +1243,7 @@ def f_ps(ts):
 
 
 # @numba.jit('f8(f8)')
-@jit(nopython=True)
+# @jit(nopython=True)
 def f_ts(ps):
     #   Calculate saturated vapor temperature (K)
     print("Ps for f_ts calc: ", ps)
@@ -1255,7 +1254,7 @@ def f_ts(ps):
 
 
 # @numba.jit('f8(f8,f8)')
-@jit(nopython=True)
+# @jit(nopython=True)
 def delta_h(tg, ts):
     #   Calculate sublimation heat of nitrogen (J/kg)  ## needed for thermal resistance of SN2 layer when thickness is larger than reset value.
     # print("Tg, Ts for delta_h calc: ", tg, ts)
@@ -1276,7 +1275,7 @@ def delta_h(tg, ts):
 
 
 # @numba.jit('f8(f8)')
-@jit(nopython=True)
+# @jit(nopython=True)
 def c_n(ts):
     #   Calculate specific heat of solid nitrogen (J/(kg*K))
     # print("Ts for c_n specific heat SN2 calc: ", ts)
@@ -1290,7 +1289,7 @@ def c_n(ts):
 
 
 # @numba.jit('f8(f8)')
-@jit(nopython=True)
+# @jit(nopython=True)
 def v_m(tg):
     #   Calculate arithmetic mean speed of gas molecules (m/s)
     print("Tg for v_m gas: ", tg)
@@ -1345,7 +1344,7 @@ def v_m(tg):
 # @numba.jit('f8(f8)')
 
 
-@jit(nopython=True)
+# @jit(nopython=True)
 def c_c(ts):
     #   Calculate the heat capacity of copper (J/(kg*K))
     # print("Ts for c_c (specific heat copper) calc: ", ts)
@@ -1357,7 +1356,7 @@ def c_c(ts):
 
 
 # @numba.jit('f8(f8)')
-@jit(nopython=True)
+# @jit(nopython=True)
 def k_cu(T):
     #   Calculate the coefficient of thermal conductivity of copper (RRR=10) (W/(m*K)) (for pde governing copper wall, heat conducted in the x axis.)
     # print("Tw for k_cu copper: ", T)
@@ -1370,7 +1369,7 @@ def k_cu(T):
 
 
 # @numba.jit('f8(f8,f8)')
-@jit(nopython=True)
+# @jit(nopython=True)
 def D_nn(T_g, P_g):
     #   Calculate self mass diffusivity of nitrogen (m^2/s)
     if T_g > 63:
@@ -1383,7 +1382,7 @@ def D_nn(T_g, P_g):
 
 
 # @numba.jit('f8(f8,f8)')
-@jit(nopython=True)
+# @jit(nopython=True)
 def mu_n(T, P):
     #   Calculate viscosity of nitrogen (Pa*s)
     # print("viscosity temp and pressure", T, P)
@@ -1417,7 +1416,7 @@ def mu_n(T, P):
 
 
 # @numba.jit('f8(f8)')
-@jit(nopython=True)
+# @jit(nopython=True)
 def gamma(a):
     #   Calculate the correction factor of mass flux
     gam1 = np.exp(-np.power(a, 2.))+a*np.sqrt(np.pi)*(1+math.erf(a))
@@ -1425,7 +1424,7 @@ def gamma(a):
 
 
 # @numba.jit('f8(f8,f8,f8,f8,f8)')
-@jit(nopython=True)
+# @jit(nopython=True)
 def exp_smooth(grid, hv, lv, order, tran):  # Q: from where did we get this?
     #   Exponential smooth from hv to lv
     coe = ((hv+lv)/2-lv)/(np.exp(order*tran)-1)
@@ -1441,7 +1440,7 @@ def exp_smooth(grid, hv, lv, order, tran):  # Q: from where did we get this?
     return s_result
 
 
-@jit(nopython=True)
+# @jit(nopython=True)
 def bulk_values(T_s):
     T_0 = T_s
     rho_0 = 1e-3  # An arbitrary small initial density in pipe, kg/m3
@@ -1467,7 +1466,7 @@ def bulk_values(T_s):
 #     return out
 
 
-@jit(nopython=True)
+# @jit(nopython=True)
 def integral_mass_delSN(de):
     # del_SN = np.zeros((Nx+1), dtype=(np.float64))
     de0 = np.zeros((Nx+1), dtype=(np.float64))
@@ -1485,7 +1484,7 @@ def integral_mass_delSN(de):
 # NOTE: does this affect the velocities? does mde change? and if yes, does it mean ur changes?
 
 
-@jit(nopython=True)
+# @jit(nopython=True)
 def gas_surface_temp_check(T, Ts, ur, e, u, rho):
     # print("starting Tg> Ts check")
     for m in np.arange(np.int64(0), np.int64(Nx+1)):
@@ -1503,12 +1502,13 @@ def gas_surface_temp_check(T, Ts, ur, e, u, rho):
     #     check_negative(T2[m, n], n)
 
     # NOTE: Energy is changed assuming density and radial velocity constant. Is this correct?
-    # print("balancing energies")
-    e, p = balance_energy2(rho, T, u)
+    p = rho*R*T/M_n
+    e = 5./2. * rho*R*T/M_n + 1./2 * rho*u**2
+
     return T, e, p, rho, u
 
 
-@jit(nopython=True)
+# @jit(nopython=True)
 def Cu_Wall_function(urx, Tx, Twx, Tcx, Tsx, T_in, delSN, de1, ex, ux, rhox, px, T2, p2, e2, rho2, u2, ur2):
     # define wall second derivative
     dt2nd_w_m = dt2nd_w_matrix(Twx, T_in)
@@ -1599,26 +1599,26 @@ def surface_BC(ux):
     return ux
 
 
-def parabolic_velocity(T, ux, ux_in):
+def parabolic_velocity(tg, u, u_in, Ut):
     for i in np.arange(n_trans):
         # diatomic gas gamma = 7/5   WE USED ANY POINT, since this preparation area is constant along R direction.
         # any temperature works, they are equl in the radial direction
-        v_max = np.sqrt(7./5.*R*T[i, 4]/M_n)
+        v_max = np.sqrt(7./5.*R*tg[i, 4]/M_n)
         for y in np.arange(Nr+1):
             # a = v_max
-            a = ux_in
+            a = u_in
             # a = v_max*(1.0 - ((y*dr)/R_cyl)**2)
             # print("parabolic y", y)
-            ux[i, y] = a
-            u[i, y] = ux[i, y]
+            u[i, y] = a
+            Ut[i, y] = u[i, y]
 
     # print("parabolic ux at center: ", ux1[i, 0])
-    out = ux, u
+    out = u, Ut
     return out
 
 
-@jit(nopython=True)
-def smoothing_inlet(p, rho, T, ux, ur, ux_in, u, p_in, p_0, rho_in, rho_0, n_trans):
+# @jit(nopython=True)
+def smoothing_inlet(p, rho, T, e, u, v, u_in, Ut, p_in, p_0, rho_in, rho_0, n_trans):
     for i in range(0, Nx+1):
         p[i, :] = exp_smooth(i+n_trans, p_in*2.-p_0, p_0, 0.4, n_trans)
     # print("P1 smoothing values", p1[i,:])
@@ -1627,8 +1627,8 @@ def smoothing_inlet(p, rho, T, ux, ur, ux_in, u, p_in, p_0, rho_in, rho_0, n_tra
     #    T1[i, :] = T_neck(i)
         # if i<51: T1[i]=T_in
         T[i, :] = p[i, :]/rho[i, :]/R*M_n
-        ux[i, :] = exp_smooth(i + n_trans, ux_in*2, 0, 0.4, n_trans)
-        u = np.sqrt(ux**2. + ur**2.)
+        u[i, :] = exp_smooth(i + n_trans, u_in*2, 0, 0.4, n_trans)
+        Ut[i, :] = np.sqrt(u[i, :]**2. + v[i, :]**2.)
         # v_max = np.sqrt(7./5.*R*T/M_n)  # diatomic gas gamma = 7/5
     #    u1[i, :] = exp_smooth(i + n_trans, ux_in*2, 0, 0.4, n_trans)
 
@@ -1640,9 +1640,9 @@ def smoothing_inlet(p, rho, T, ux, ur, ux_in, u, p_in, p_0, rho_in, rho_0, n_tra
         # print("p1 matrix after smoothing", p1)
         # else:
         #     e1[i, :] = 5/2*rho1[i, :]/M_n*R*T_in+1/2**rho1[i, :]*u1[i, :]**2
-    e, T = balance_energy(p, rho, u)
+        e[i, :] = 5./2. * p[i, :] + 1./2 * rho[i, :]*Ut[i, :]**2
     # for i in range(0, Nx+1):
-    out = p, rho, T, ux, u, e
+    out = p, rho, T, u, Ut, e
     return out
 
 # no slip BC at surface of pipe
@@ -1658,40 +1658,32 @@ def remove_timestepping():
         path = os.path.join(location, dir)
         shutil.rmtree(path)
 
+# @jit(nopython=True)
 
-@jit(nopython=True)
-def no_slip(ux, u, p, rho, T, ur):
-    ux[:, Nr] = 0
-# NOTE: Check radial velocity.... does this change mdot?
-    # u[:, Nr] = 0
-# NOTE: How do i recalculate u?
-    u[:, Nr] = ur[:, Nr]
-    rho = rho
-    p = p
-    ur[:, Nr] = ur[:, Nr]
-    e, T = balance_energy(p, rho, u)
-    return ux, u, e, T, ur, p, rho
+
+def no_slip_no_mdot(p, rho, tg, u, v, Ut, e):
+    # no mass deposition
+    u[:, Nr] = 0
+    v[:, Nr] = 0
+    Ut[:, Nr] = 0
+    e[:, Nr] = 5./2. * p[:, Nr] + 1./2 * rho[:, Nr]*Ut[:, Nr]**2
+    tg[:, Nr] = p[:, Nr]/rho[:, Nr]/R*M_n
+    return p, tg, u, v, Ut, e
 
 
 # @jit(nopython=True)
-def inlet_BC(ux, ur, u, p, rho, T, e, p_inl, ux_inl, rho_inl, T_inl, e_inl, Tw, Ts, Tc):
-    ux[0, :] = ux_inl
-    u[0, :] = ux_inl
+def inlet_BC(u, v, Ut, p, rho, T, e, p_inl, u_inl, rho_inl, T_inl, e_inl):
+    u[0, :] = u_inl
     p[0, :] = p_inl
     rho[0, :] = rho_inl
     T[0, :] = T_inl
     e[0, :] = e_inl
-    Tw[0] = T_inl
-    Ts[0] = T_inl
-    Tc[0] = T_inl
-    u = np.sqrt(ux**2. + ur**2.)
-
-    e, T = balance_energy(p, rho, u)
-
-    return [ux, ur, u, p, rho, T, e, Tw, Ts, Tc]
+gi    Ut = np.sqrt(u**2. + v**2.)
+    e = 5./2. * p + 1./2 * rho*Ut**2
+    return [u, v, Ut, p, rho, T, e]
 
 
-@jit(nopython=True)
+# @jit(nopython=True)
 def outlet_BC(p, e, rho, ux, ur, u, rho_0):
 
     for n in np.arange(Nr):
@@ -1703,12 +1695,10 @@ def outlet_BC(p, e, rho, ux, ur, u, rho_0):
                         rho[Nx-2, n]*ux[Nx-2, n], 0) / rho[Nx, n]
         u = np.sqrt(ux**2. + ur**2.)
         # e[Nx, n] = 2*e[Nx-1, n]-e[Nx-2, n]
-    e, T = balance_energy(p, rho, u)
-
+    e = 5./2. * p + 1./2 * rho*u**2
+    T = p/rho/R*M_n
     bc = [p, rho, ux, u, e]
     return bc
-
-# recalculating energy from pressure and velocity
 
 
 # recalculating velocity from energy, T, rho
@@ -1716,40 +1706,24 @@ def recalculate_velocity(e, rho, p):
     u = np.sqrt((e-5./2.*p)*2./rho)
     return u
 
-# recalculating energy from p, rho, and velocity
 
-
-@jit(nopython=True)
-def balance_energy(p, rho, u):
-    e = 5./2. * p + 1./2 * rho*u**2
-    T = p/rho/R*M_n
-    return e, T
-
-
-# recalculating energy from rho, T, and velocity
-@jit(nopython=True)
-def balance_energy2(rho, T, u):
-    e = 5./2. * rho*R*T/M_n + 1./2 * rho*u**2
-    p = rho*R*T/M_n
-    return e, p
-
-
-@jit(nopython=True)
+# @jit(nopython=True)
 def val_in_constant():
     #   Calculate instant flow rate (kg/s)
-    p_in = 1000.
+    p_in = 8000.
     T_in = 298.
     rho_in = p_in / T_in/R*M_n
-    ux_in = 20.
-    ur_in = 0.
-    e_in = 5./2.*rho_in/M_n*R*T_in + 1./2.*rho_in*ux_in**2
-    out = np.array([p_in, ux_in, ur_in, rho_in, e_in, T_in])
+    u_in = np.sqrt(gamma_n2*R/M_n*T_in)
+    v_in = 0.
+    Ut_in = np.sqrt(u_in**2 + v_in**2)
+    e_in = 5./2.*rho_in/M_n*R*T_in + 1./2.*rho_in*u_in**2
+    out = np.array([p_in, u_in, v_in, rho_in, e_in, T_in])
     return out
 
 # @numba.jit('f8(f8)')
 
 
-@jit(nopython=True)
+# @jit(nopython=True)
 def val_in(n):
     #   Calculate instant flow rate (kg/s)
     # Fitting results
@@ -1781,7 +1755,7 @@ def val_in(n):
 
 
 # @numba.jit('f8(f8,f8,f8,f8)')
-@jit(nopython=True)
+# @jit(nopython=True)
 def DN(T, P, u, T_w, rho):
     #   Calculate dimensionless numbers
     rho = P*M_n/R/T
@@ -1956,7 +1930,7 @@ def m_de(T, P, ur, Ts1, de, dm):  # dm_r, ur, N):
 # @numba.jit('f8(f8,f8)')
 
 
-@jit(nopython=True)
+# @jit(nopython=True)
 def q_h(tw, BW_coe=0.017):  # (W/(m^2*K)
     # Boiling heat transfer rate of helium (W/(m^2*K))
     # delT = ts-4.2
@@ -1996,7 +1970,7 @@ def q_h(tw, BW_coe=0.017):  # (W/(m^2*K)
 # Initialization
 
 
-def save_initial_conditions(rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1, pe, Tc1):
+def save_initial_conditions(rho1, ux1, ur1, u1, e1, T1, de0, p1, de1):
     pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/initial_conditions/'
     if os.path.exists(pathname):
         location = "C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/"
@@ -2013,16 +1987,16 @@ def save_initial_conditions(rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de1, 
     np.savetxt("ux.csv", ux1, delimiter=",")
     np.savetxt("ur.csv", ur1, delimiter=",")
     np.savetxt("e.csv", e1, delimiter=",")
-    np.savetxt("tw.csv", Tw1, delimiter=",")
-    np.savetxt("ts.csv", Ts1, delimiter=",")
-    np.savetxt("tc.csv", Tc1, delimiter=",")
+    # np.savetxt("tw.csv", Tw1, delimiter=",")
+    # np.savetxt("ts.csv", Ts1, delimiter=",")
+    # np.savetxt("tc.csv", Tc1, delimiter=",")
     np.savetxt("de.csv", de0, delimiter=",")
     np.savetxt("de_rate.csv", de1, delimiter=",")
     np.savetxt("p.csv", p1, delimiter=",")
-    np.savetxt("pe.csv", pe, delimiter=",")
+    # np.savetxt("pe.csv", pe, delimiter=",")
 
 
-def save_data(tx, dt, rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de2, pe, qhe, qdep, visc):
+def save_data(tx, dt, rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de2):
     increment = (tx+1)*dt
 
     pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/' + \
@@ -2043,9 +2017,9 @@ def save_data(tx, dt, rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1, de2, pe, qh
     np.savetxt("de_rate.csv", de2, delimiter=",")
     np.savetxt("p.csv", p1, delimiter=",")
     np.savetxt("peclet.csv", pe, delimiter=",")
-    np.savetxt("qhe.csv", qhe, delimiter=",")
-    np.savetxt("qdep.csv", qdep, delimiter=",")
-    np.savetxt("visc.csv", visc, delimiter=",")
+    # np.savetxt("qhe.csv", qhe, delimiter=",")
+    # np.savetxt("qdep.csv", qdep, delimiter=",")
+    # np.savetxt("visc.csv", visc, delimiter=",")
 
 
 def save_RK3(x, tx, dt, rho1, ux1, ur1, u1, e1, T1, p1, de1):
@@ -2067,30 +2041,7 @@ def save_RK3(x, tx, dt, rho1, ux1, ur1, u1, e1, T1, p1, de1):
     np.savetxt("p.csv", p1, delimiter=",")
 
 
-def namestr(obj, namespace):  # Returns variable name for check_negative function
-    return [name for name in namespace if namespace[name] is obj]
-
-
-def check_array(array_in):
-    if np.any(array_in < 0):
-        array_name = namestr(array_in, globals())[0]
-        print(array_name + " has at least one negative value.")
-        exit()
-
-
-def delete_surface_inviscid(rho, ux, ur, u, e, T, p, pe):
-    rho3 = np.delete(rho, Nr-1, axis=1)
-    ux3 = np.delete(ux, Nr-1, axis=1)
-    ur3 = np.delete(ur, Nr-1, axis=1)
-    u3 = np.delete(u, Nr-1, axis=1)
-    e3 = np.delete(e, Nr-1, axis=1)
-    T3 = np.delete(T, Nr-1, axis=1)
-    p3 = np.delete(p, Nr-1, axis=1)
-    pe3 = np.delete(pe, Nr-1, axis=1)
-    return [rho3, ux3, ur3, u3, e3, T3, p3, pe3]
-
-
-def delete_r0_point(rho2, ux2, ur2, u2, e2, T2, p1, pe, visc):
+def delete_r0_point(rho2, ux2, ur2, u2, e2, T2, p1):
     rho3 = np.delete(rho2, 0, axis=1)
     ux3 = np.delete(ux2, 0, axis=1)
     ur3 = np.delete(ur2, 0, axis=1)
@@ -2098,9 +2049,9 @@ def delete_r0_point(rho2, ux2, ur2, u2, e2, T2, p1, pe, visc):
     e3 = np.delete(e2, 0, axis=1)
     T3 = np.delete(T2, 0, axis=1)
     p3 = np.delete(p1, 0, axis=1)
-    pe3 = np.delete(pe, 0, axis=1)
-    visc3 = np.delete(visc, 0, axis=1)
-    return [rho3, ux3, ur3, u3, e3, T3, p3, pe3, visc3]
+    # pe3 = np.delete(pe, 0, axis=1)
+    # visc3 = np.delete(visc, 0, axis=1)
+    return [rho3, ux3, ur3, u3, e3, T3, p3]
 
 
 if __name__ == '__main__':

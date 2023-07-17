@@ -1,106 +1,57 @@
-from inspect import currentframe
 from my_constants import *
 from functions import *
-import logging
-import openpyxl
 import pandas as pd
 # @numba.jit()
 
-
-def get_linenumber():
-    cf = currentframe()
-    return cf.f_back.f_lineno
-
-
-# @numba.jit()
-def check_negative(var_in, n):  # CHECKS CALCULATIONS FOR NEGATIVE OR NAN VALUES
-    # at surface
-    if n == Nr:
-
-        if var_in < 0:
-            print("negative Surface", var_in)
-            exit()
-        if math.isnan(var_in):
-            print("NAN Surface ", var_in)
-            assert not math.isnan(var_in)
-
-    # at BULK
-    else:
-
-        if var_in < 0:
-            print("negative Bulk ", var_in)
-            exit()
-        if math.isnan(var_in):
-            print("NAN Bulk ", var_in)
-            assert not math.isnan(var_in)
-
-
-# logging
-# wb = openpyxl.Workbook()
-# ws = wb.active
-
-
 # Calculate initial values
-T_0, rho_0, p_0, e_0, ux_0 = bulk_values(T_s)
+T_0, rho_0, p_0, e_0, u_0 = bulk_values(T_s)
 
-# ----------------- Array initialization ----------------------------
+# Array initialization
 
-p1, rho1, ux1, ur1, u1, e1, T1, rho2, ux2, ur2, u2, e2, T2, p2, Tw1, Tw2, Ts1, Ts2, Tc1, Tc2, de0, de1, qhe, rho3, ux3, ur3, u3, e3, T3, p3, Pe, Pe1 = initialize_grid(
+p1, rho1, u1, v1, Ut1, e1, T1, rho2, u2, v2, Ut2, e2, T2, p2, Tw1, Tw2, Ts1, Ts2, Tc1, Tc2, de0, de1, rho3, u3, v3, Ut3, e3, T3, p3 = initialize_grid(
     p_0, rho_0, e_0, T_0, T_s)
 
-# ---------------------  Smoothing inlet --------------------------------
+#  Smoothing inlet
 
 # constant inlet
 out_cons = val_in_constant()
 
 p_in = out_cons[0]
-ux_in = out_cons[1]
-ur_in = out_cons[2]
+u_in = out_cons[1]
+v_in = out_cons[2]
 rho_in = out_cons[3]
 e_in = out_cons[4]
 T_in = out_cons[5]
 
 # setting wall and frost layer initial conditions
 # p_in, q_in, ux_in, ur_in, rho_in, e_in, T_in = val_in(0)
-print("p_in: ", p_in, "ux_in: ", ux_in, "ur_in: ", ur_in, "rho_in: ",
-      rho_in, "e_in: ", e_in, "T_in: ", T_in)
+print("p_in: ", p_in, "u_in: ", u_in, "v_in: ", v_in,
+      "rho_in: ", rho_in, "e_in: ", e_in, "T_in: ", T_in)
 
 # PREPPING AREA - smoothing
-p1, rho1, T1, ux1, u1, e1 = smoothing_inlet(
-    p1, rho1, T1, ux1, ur1, ux_in, u1, p_in, p_0, rho_in, rho_0, n_trans)
+p1, rho1, T1, u1, Ut1, e1 = smoothing_inlet(
+    p1, rho1, T1, e1,  u1, v1, u_in, Ut1, p_in, p_0, rho_in, rho_0, n_trans)
 
-# NOTE: should i remove it?
-# BC SURFACES
+# BC SURFACES- check deeo copy
 Ts1[:] = T1[:, Nr]
 Ts2[:] = Ts1
-Tw1[:] = T_s
-Tw2[:] = T_s
-Tc1[:] = T_s
-Tc2[:] = T_s
-
 
 # PARABOLIC VELOCITY PROFILE - inlet prepping area
 
-
-# ux, u = parabolic_velocity(ux1, ux_in, T1)
+u1, Ut1 = parabolic_velocity(T1, u1, u_in, Ut1)
 
 print("Applying No-slip BC")
 
-# NOTE: Do i need more boundary conditions?
-# ---------- NO SLIP BC
-ux1, u1, e1, T1, ur1, p1, rho1 = no_slip(ux1, u1, p1, rho1, T1, ur1)
+# NO SLIP BC
+p1, T1, u1, v1, Ut1, e1 = no_slip_no_mdot(p1, rho1, T1, u1, v1, Ut1, e1)
 
-
-# ------  inlet BCs
+# inlet BCs
 print("Applying inlet BCs")
-ux1, ur1, u1, p1, rho1, T1, e1, Tw1, Ts1, Tc1 = inlet_BC(
-    ux1, ur1, u1, p1, rho1, T1, e1, p_in, ux_in, rho_in, T_in, e_in, Tw1, Ts1, Tc1)
-
-
-# initial
+u1, v1, Ut1, p1, rho1, T1, e1 = inlet_BC(
+    u1, v1, Ut1, p1, rho1, T1, e1, p_in, u_in, rho_in, T_in, e_in)
 
 # Calculating Peclet number in the grid points to determine differencing scheme
-Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
+# Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
 
 
 # rho3, ux3, ur3, u3, e3, T3, p3, Pe3 = delete_r0_point(
@@ -114,21 +65,19 @@ remove_timestepping()
 # SAVING INITIAL MATRICES
 print("Saving initial fields")
 # save initial fields
-save_initial_conditions(rho1, ux1, ur1, u1, e1, T1,
-                        Tw1, Ts1, de0, p1, de1, Pe1, Tc1)
+save_initial_conditions(rho1, u1, v1, u1, e1, T1, de0, p1, de1)
 
 
 print("Plotting initial fields")
-plot_imshow(p1, ux1, T1, rho1, e1)
+plot_imshow(p1, u1, T1, rho1, e1)
 
 # Gradient starting matrices
 # calculate initial gradients matrix:
 print("Calculating initial gradients")
-d_dr, m_dx = grad_rho_matrix(ux_in, rho_in, ur1, ux1, rho1)
-dp_dx, ux_dx, ux_dr = grad_ux2_matrix(p_in, p1, ux_in, ux1)
-dp_dr, ur_dx, ur_dr = grad_ur2_matrix(p1, ur1, ur_in)
-grad_x, grad_r = grad_e2_matrix(ur1, ux1, ux_in, e_in, e1)
-
+d_dr, m_dx = grad_rho_matrix(u_in, rho_in, v1, u1, rho1)
+dp_dx, ux_dx, ux_dr = grad_ux2_matrix(p_in, p1, u_in, u1)
+dp_dr, ur_dx, ur_dr = grad_ur2_matrix(p1, v1, v_in)
+grad_x, grad_r = grad_e2_matrix(v1, u1, u_in, e_in, e1)
 
 print("Saving gradients to file")
 save_gradients(d_dr, m_dx, dp_dx, ux_dx, ux_dr,
@@ -147,7 +96,7 @@ save_gradients(d_dr, m_dx, dp_dx, ux_dx, ux_dr,
 print("Main loop started")
 
 
-def main_cal(p1, rho1, T1, ux1, ur1, u1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de1, p3, rho3, T3, ux3, ur3, u3, e3, pe, Tw1, Ts1, Tc1):
+def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de1, p3, rho3, T3, ux3, ur3, u3, e3, Tw1, Ts1, Tc1):
 
     N = n_matrix()
 
@@ -162,7 +111,7 @@ def main_cal(p1, rho1, T1, ux1, ur1, u1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0
 
         # constant inlet
         print("Assigning inlet values")
-        p_in, ux_in, ur_in, rho_in, e_in, T_in = val_in_constant()
+        p_in, u_in, v_in, rho_in, e_in, T_in = val_in_constant()
 
         # print("Creating empty de1 matrix to save variable mass deposition")
         # de1 matrix this is the de_variable in RK3 function
@@ -181,27 +130,22 @@ def main_cal(p1, rho1, T1, ux1, ur1, u1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0
         # RK3 time integration
         # rk_out = [de_timestep, qn, uxn, urn, uun, en, tn, pn]
         rk_out = tvdrk3(
-            ux1, ur1, u1, p1, rho1, T1, e1, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, de1, Tw1, Ts1, Tc1, i)
+            u1, v1, Ut1, p1, rho1, T1, e1, p_in, u_in, rho_in, T_in, e_in, rho_0, v_in, de1, i)
 
         print("Rk3 complete")
 
 # defining next values from RK3
         de2 = rk_out[0]
         rho2 = rk_out[1]
-        ux2 = rk_out[2]
-        ur2 = rk_out[3]
-        u2 = rk_out[4]
+        u2 = rk_out[2]
+        v2 = rk_out[3]
+        Ut2 = rk_out[4]
         e2 = rk_out[5]
         T2 = rk_out[6]
         p2 = rk_out[7]
-        visc_matrix = rk_out[8]
-
-# NOTE: RECALCULATE ENERGIES IMPORTANT
-        e, T = balance_energy(p2, rho2, u2)
-        e, p = balance_energy2(rho2, T2, u2)
 
 # calculating Peclet for field, helps later for differencing scheme used
-        Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
+        # Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
 
         print("NAN check next")
 
@@ -221,30 +165,30 @@ def main_cal(p1, rho1, T1, ux1, ur1, u1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0
             print("The energy has at least one negative value")
             exit()
 
-        print("Calculating frost layer thickness")
-# calculate frost layer thickness
-        de0, del_SN = integral_mass_delSN(de2)
+#         print("Calculating frost layer thickness")
+# # calculate frost layer thickness
+#         de0, del_SN = integral_mass_delSN(de2)
 
-        print("Performing check on negative frost layer thickness")
+#         print("Performing check on negative frost layer thickness")
 
-        if np.any(del_SN < 0):
-            print("negative frost layer thickness found")
-            exit()
+#         if np.any(del_SN < 0):
+#             print("negative frost layer thickness found")
+#             exit()
 
-        print("calculating wall temperature")
+#         print("calculating wall temperature")
 
 # insert wall function
 
-        w_out = Cu_Wall_function(
-            ur1, T1, Tw1, Tc1, Ts1, T_in, del_SN, de1, e1, u1, rho1, p1, T2, p2, e2, rho2, u2, ur2)
+        # w_out = Cu_Wall_function(
+        #     ur1, T1, Tw1, Tc1, Ts1, T_in, del_SN, de1, e1, u1, rho1, p1, T2, p2, e2, rho2, u2, ur2)
 
     # defining next values from RK3
-        Tw2 = w_out[0]
-        Ts2 = w_out[1]
-        Tc2 = w_out[2]
-        qhe = w_out[3]
-        dt2nd_w_m = w_out[4]
-        q_dep = w_out[5]
+        # Tw2 = w_out[0]
+        # Ts2 = w_out[1]
+        # Tc2 = w_out[2]
+        # qhe = w_out[3]
+        # dt2nd_w_m = w_out[4]
+        # q_dep = w_out[5]
 
 
 # save qhe, qdep matrices in timestep
@@ -267,9 +211,9 @@ def main_cal(p1, rho1, T1, ux1, ur1, u1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0
         print("Returning results for the next time iteration")
 
         rho1[:, :] = rho2
+        Ut1[:, :] = Ut2
         u1[:, :] = u2
-        ux1[:, :] = ux2
-        ur1[:, :] = ur2
+        v1[:, :] = v2
         e1[:, :] = e2
         p1[:, :] = p2
         T1[:, :] = T2
@@ -279,23 +223,20 @@ def main_cal(p1, rho1, T1, ux1, ur1, u1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0
         de1[:] = de2[:]
 
 # Recalculate PECLET
-        Pe2 = Peclet_grid(Pe1, u1, D_hyd, p1, T1)
+        # Pe2 = Peclet_grid(Pe1, u1, D_hyd, p1, T1)
 
 # DELETE R=0 Point/Column
 # The 3 index indicates matrices with no r=0, deleted column..
         print("Deleting the r=0 for plotting and saving purposes")
-        rho3, ux3, ur3, u3, e3, T3, p3, Pe3, visc_matrix3 = delete_r0_point(
-            rho1, ux1, ur1, u1, e1, T1, p1, Pe2, visc_matrix)
-
-        # rho3, ux3, ur3, u3, e3, T3, p3, Pe3 = delete_surface_inviscid(
-        #     rho3, ux3, ur3, u3, e3, T3, p3, Pe3)
+        rho3, u3, v3, Ut3, e3, T3, p3 = delete_r0_point(
+            rho1, ux1, ur1, u1, e1, T1, p1)
 
 # SAVING DATA
-        save_data(i, dt, rho3, ux3, ur3, u3, e3,
-                  T3, Tw2, Ts2, de0, p3, de2, Pe3, q_dep, qhe, visc_matrix3)
+        save_data(i, dt, rho3, u3, v3, Ut3, e3,
+                  T3, Tw2, Ts2, de0, p3, de2)
 
 # PLOTTING FIELDS
-        plot_imshow(p3, ux3, T3, rho3, e3)
+        plot_imshow(p3, u3, T3, rho3, e3)
 
         # if np.any(T2[:, Nr] < Ts2):
         #     if i == 0:
@@ -308,8 +249,8 @@ def main_cal(p1, rho1, T1, ux1, ur1, u1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0
 if __name__ == "__main__":
     # main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2,
     #          ur2, T2, e2, Tw2, Ts2, Tc2, de1, T3)
-    main_cal(p1, rho1, T1, ux1, ur1, u1, e1, p2, rho2, T2, ux2, ur2,
-             u2, e2, de0, de1, p3, rho3, T3, ux3, ur3, u3, e3, Pe1, Tw1, Ts1, Tc1)
+    main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2,
+             Ut2, e2, de0, de1, p3, rho3, T3, u3, v3, Ut3, e3, Tw1, Ts1, Tc1)
 
 
 # END OF PROGRAM
