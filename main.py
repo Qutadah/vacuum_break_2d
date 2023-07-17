@@ -1,7 +1,13 @@
 from my_constants import *
 from functions import *
-import pandas as pd
-# @numba.jit()
+
+# u : axial velocity
+# v : radial velocity
+
+print("Removing old timestepping folder")
+
+# remove timestepping folder
+remove_timestepping()
 
 # Calculate initial values
 T_0, rho_0, p_0, e_0, u_0 = bulk_values(T_s)
@@ -32,7 +38,7 @@ print("p_in: ", p_in, "u_in: ", u_in, "v_in: ", v_in,
 p1, rho1, T1, u1, Ut1, e1 = smoothing_inlet(
     p1, rho1, T1, e1,  u1, v1, u_in, Ut1, p_in, p_0, rho_in, rho_0, n_trans)
 
-# BC SURFACES- check deeo copy
+# BC SURFACES- check deep copy
 Ts1[:] = T1[:, Nr]
 Ts2[:] = Ts1
 
@@ -50,6 +56,9 @@ print("Applying inlet BCs")
 u1, v1, Ut1, p1, rho1, T1, e1 = inlet_BC(
     u1, v1, Ut1, p1, rho1, T1, e1, p_in, u_in, rho_in, T_in, e_in)
 
+p1, rho1, u1, Ut1, e1 = outlet_BC(p1, e1, rho1, u1, v1, Ut1, rho_0)
+
+
 # Calculating Peclet number in the grid points to determine differencing scheme
 # Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
 
@@ -57,10 +66,6 @@ u1, v1, Ut1, p1, rho1, T1, e1 = inlet_BC(
 # rho3, ux3, ur3, u3, e3, T3, p3, Pe3 = delete_r0_point(
 #     rho1, ux1, ur1, u1, e1, T1, p1, Pe1)
 
-print("Removing old timestepping folder")
-
-# remove timestepping folder
-remove_timestepping()
 
 # SAVING INITIAL MATRICES
 print("Saving initial fields")
@@ -130,19 +135,18 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0,
         # RK3 time integration
         # rk_out = [de_timestep, qn, uxn, urn, uun, en, tn, pn]
         rk_out = tvdrk3(
-            u1, v1, Ut1, p1, rho1, T1, e1, p_in, u_in, rho_in, T_in, e_in, rho_0, v_in, de1, i)
+            u1, v1, Ut1, p1, rho1, T1, e1, p_in, u_in, rho_in, T_in, e_in, rho_0, v_in, i)
 
         print("Rk3 complete")
 
 # defining next values from RK3
-        de2 = rk_out[0]
-        rho2 = rk_out[1]
-        u2 = rk_out[2]
-        v2 = rk_out[3]
-        Ut2 = rk_out[4]
-        e2 = rk_out[5]
-        T2 = rk_out[6]
-        p2 = rk_out[7]
+        rho2 = rk_out[0]
+        u2 = rk_out[1]
+        v2 = rk_out[2]
+        Ut2 = rk_out[3]
+        e2 = rk_out[4]
+        T2 = rk_out[5]
+        p2 = rk_out[6]
 
 # calculating Peclet for field, helps later for differencing scheme used
         # Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
@@ -153,15 +157,13 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0,
         for x in np.arange(len(rk_out)):
             assert np.isfinite(rk_out[x]).all()
 
-        print("Negative densities and energy next")
-
         # negative density check
-        if np.any(rk_out[1] < 0):
+        if np.any(rk_out[0] < 0):
             print("The Density Array has at least one negative value")
             exit()
 
         # negative energy check
-        if np.any(rk_out[5] < 0):
+        if np.any(rk_out[4] < 0):
             print("The energy has at least one negative value")
             exit()
 
@@ -220,7 +222,7 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0,
         Tw1[:] = Tw2
         Ts1[:] = Ts2
         Tc1[:] = Tc2
-        de1[:] = de2[:]
+        # de1[:] = de2[:]
 
 # Recalculate PECLET
         # Pe2 = Peclet_grid(Pe1, u1, D_hyd, p1, T1)
@@ -229,11 +231,11 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0,
 # The 3 index indicates matrices with no r=0, deleted column..
         print("Deleting the r=0 for plotting and saving purposes")
         rho3, u3, v3, Ut3, e3, T3, p3 = delete_r0_point(
-            rho1, ux1, ur1, u1, e1, T1, p1)
+            rho1, u1, v1, u1, e1, T1, p1)
 
 # SAVING DATA
         save_data(i, dt, rho3, u3, v3, Ut3, e3,
-                  T3, Tw2, Ts2, de0, p3, de2)
+                  T3, Tw2, Ts2, de0, p3)
 
 # PLOTTING FIELDS
         plot_imshow(p3, u3, T3, rho3, e3)
