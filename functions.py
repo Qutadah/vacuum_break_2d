@@ -1678,7 +1678,7 @@ def inlet_BC(u, v, Ut, p, rho, T, e, p_inl, u_inl, rho_inl, T_inl, e_inl):
     rho[0, :] = rho_inl
     T[0, :] = T_inl
     e[0, :] = e_inl
-gi    Ut = np.sqrt(u**2. + v**2.)
+    Ut = np.sqrt(u**2. + v**2.)
     e = 5./2. * p + 1./2 * rho*Ut**2
     return [u, v, Ut, p, rho, T, e]
 
