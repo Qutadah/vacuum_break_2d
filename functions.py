@@ -353,8 +353,6 @@ def rhs_energy(grad_r, grad_x, N, p, rho, u):
 #     return q2
 
 # This iterates RK3 for all equations
-
-
 def tvdrk3(ux, ur, u, p, q, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, Rks):
     # create N matrix:
     N = n_matrix()
@@ -385,26 +383,42 @@ def tvdrk3(ux, ur, u, p, q, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in
     for n in np.arange(3):
         if n == 0:
             p, tg, ux, ur, u, e = no_slip_no_mdot(p, q, tg, ux, ur, u, e)
-            ux, ur, u, p, rho, tg, e = inlet_BC(
+            # plot_imshow(p, u, tg, q, e)
+            ux, ur, u, p, q, tg, e = inlet_BC(
                 ux, ur, u, p, q, tg, e, p_in, ux_in, rho_in, T_in, e_in)
-            p, q, ux, u, e = outlet_BC(p, e, q, ux, ur, u, rho_0)
+            # plot_imshow(p, u, tg, q, e)
+            p, q, tg, ux, u, e = outlet_BC(p, e, q, ux, ur, u, rho_0)
             l = [p, q, tg, ux, ur, u, e]
+            # plot_imshow(p, u, tg, q, e)
 
         else:  # n == 1, n==2:
             pp, tt, uxx, urr, uu, ee = no_slip_no_mdot(
                 pp, qq, tt, uxx, urr, uu, ee)
-            pp, qq, uxx, uu, ee = outlet_BC(pp, ee, qq, uxx, urr, uu, rho_0)
+            # plot_imshow(pp, uu, tt, qq, ee)
             uxx, urr, uu, pp, qq, tt, ee = inlet_BC(
                 uxx, urr, uu, pp, qq, tt, ee, p_in, ux_in, rho_in, T_in, e_in)
+            # plot_imshow(pp, uu, tt, qq, ee)
+            pp, qq, tt, uxx, uu, ee = outlet_BC(
+                pp, ee, qq, uxx, urr, uu, rho_0)
+            # plot_imshow(pp, uu, tt, qq, ee)
             l = [pp, qq, tt, uxx, urr, uu, ee]
-# Calculating gradients (first and second) ---------------------------------------- #
+
+
+# Calculating gradients (first and second)
         print("Calculating gradients for RK3 loop #", n)
 
+        # def grad_rho_matrix(ux_in, rho_in, ur, ux, rho):
         d_dr, m_dx = grad_rho_matrix(ux_in, rho_in, l[4], l[3], l[1])
+        # def grad_ux2_matrix(p_in, p, ux_in, ux):  # bulk
         dp_dx, ux_dx, ux_dr = grad_ux2_matrix(p_in, l[0], ux_in, l[3])
+        # def grad_ur2_matrix(p, ur, ur_in):  # first derivatives
         dp_dr, ur_dx, ur_dr = grad_ur2_matrix(l[0], l[1], ur_in)
+        # def grad_e2_matrix(ur1, ux1, ux_in, e_in, e1):     # use
         grad_x, grad_r = grad_e2_matrix(l[4], l[3], ux_in, e_in, l[6])
+
+        # def dt2x_matrix(ux_in, ur_in, ux1, ur1):
         dt2x_ux, dt2x_ur = dt2x_matrix(ux_in, ur_in, l[3], l[4])
+        # def dt2r_matrix(ux1, ur1):
         dt2r_ux, dt2r_ur = dt2r_matrix(l[3], l[4])
 
 # Plot gradients with X
@@ -489,10 +503,12 @@ def tvdrk3(ux, ur, u, p, q, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in
 # ensure no division by zero
             qq = no_division_zero(qq)
 
-# pressure recalculation
+# Velocity
+            uu = np.sqrt(uxx**2. + urr**2.)
+# pressure defining
             pp = (ee - 1./2.*qq*uu**2) * 2./5.
 
-# no slip condition
+# no slip condition - pressure and temp recalculated within
             pp, tt, uxx, urr, uu, ee = no_slip_no_mdot(
                 pp, qq, tt, uxx, urr, uu, ee)
 
@@ -509,21 +525,22 @@ def tvdrk3(ux, ur, u, p, q, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in
             urr = 0.75*ur + 0.25*urr + 0.25*dt*r_ur
             ee = 0.75*e + 0.25*ee + 0.25*dt*r_e
 
-
 # ensure no division by zero
             qq = no_division_zero(qq)
 
-# pressure recalculation
+# Velocity
+            uu = np.sqrt(uxx**2. + urr**2.)
+
+# pressure defining
             pp = (ee - 1./2.*qq*uu**2) * 2./5.
 
-# no slip condition
+# no slip condition - pressure and temp recalculated within
             pp, tt, uxx, urr, uu, ee = no_slip_no_mdot(
                 pp, qq, tt, uxx, urr, uu, ee)
 
 # save matrices
             save_RK3(n, Rks, dt, qq, uxx, urr, uu, ee,
                      tt, pp)
-
         else:  # n==2
 
             # third (final) loop LHS calculations
@@ -534,22 +551,20 @@ def tvdrk3(ux, ur, u, p, q, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in
 
 # ensure no division by zero
             qn = no_division_zero(qn)
-# pressure recalculation
+# Velocity
+            un = np.sqrt(uxn**2. + urn**2.)
+# pressure defining
             pn = (en - 1./2.*qn*un**2) * 2./5.
-
-# no slip condition
+# no slip condition - pressure and temp recalculated within
             pn, tn, uxn, urn, un, en = no_slip_no_mdot(
                 pn, qn, tn, uxn, urn, un, en)
-
 # save matrices
             save_RK3(n, Rks, dt, qn, uxn, urn, un, en, tn, pn)
 
 # # No convective heat flux. q2 ?
-
     print("RK3 looping complete")
     rk_out = [qn, uxn, urn, un, en, tn, pn]
     return rk_out
-
 
 # adaptive timestep
 # def calc_dt(cfl, gamma_n, q, nx, nr, dx, dr):
@@ -583,8 +598,20 @@ def tvdrk3(ux, ur, u, p, q, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in
 #     return img
 
 
-def plot_imshow(p, ux, T, rho, e):
+def save_plots(i, p, ux, T, rho, e):
+    pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/fields/'
+    newpath = pathname
+    if not os.path.exists(newpath):
+        os.makedirs(newpath)
+    os.chdir(pathname)
+    plot_imshow(p, ux, T, rho, e)
+    # if os.path.exists(pathname):
+    #     location = "C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/"
+    #     dir = "fields"
+    #     path = os.path.join(location, dir)
 
+
+def plot_imshow(p, ux, T, rho, e):
     fig, axs = plt.subplots(5)
     fig.suptitle('Fields along tube for all R')
 
@@ -621,10 +648,22 @@ def plot_imshow(p, ux, T, rho, e):
 
     plt.xlabel("L(x)")
     plt.show()
-    return
+    # x = str(i) + '.png'
+    # plt.savefig(x)
 
 
-@jit(nopython=True)
+def init(p, ux, T, rho, e):
+    line.imshow(p, ux, T, rho, e)
+    return line
+
+
+def animate_func(p, ux, T, rho, e):
+    line.imshow(p, ux, T, rho, e)
+    return line
+
+# @jit(nopython=True)
+
+
 def grad_rho2(m, n, ux_in, rho_in, ur, ux, rho):
     # if m == 0:
     #     a = rho_in
@@ -1366,6 +1405,7 @@ def bulk_values(T_s):
     T_0 = T_s
     rho_0 = 1e-5  # An arbitrary small initial density in pipe, kg/m3
     p_0 = rho_0/M_n*R*T_0  # Initial pressure, Pa
+    print(p_0)
     e_0 = 5./2.*rho_0/M_n*R*T_0  # Initial internal energy
     ux_0 = 0
     bulk = [T_0, rho_0, p_0, e_0, ux_0]
@@ -1606,6 +1646,12 @@ def remove_timestepping():
         dir = "m_dot"
         path = os.path.join(location, dir)
         shutil.rmtree(path)
+    pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/fields/'
+    if os.path.exists(pathname):
+        location = "C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/"
+        dir = "fields"
+        path = os.path.join(location, dir)
+        shutil.rmtree(path)
 
 # Radial velocity assumed zero
 
@@ -1615,50 +1661,47 @@ def no_slip_no_mdot(p, rho, tg, u, v, Ut, e):
     u[:, Nr] = 0
     v[:, Nr] = 0
     Ut[:, Nr] = 0
-    e[:, Nr] = 5./2. * p[:, Nr] + 1./2 * rho[:, Nr]*Ut[:, Nr]**2
-    tg[:, Nr] = p[:, Nr]/rho[:, Nr]/R*M_n
+    # energy assumed constant
+    p = (e - 1./2.*rho*Ut**2) * 2./5.
+    tg = p/rho/R*M_n
     return p, tg, u, v, Ut, e
 
 
 # @jit(nopython=True)
 def inlet_BC(u, v, Ut, p, rho, T, e, p_inl, u_inl, rho_inl, T_inl, e_inl):
-    u[0, :] = u_inl
     p[0, :] = p_inl
     rho[0, :] = rho_inl
     T[0, :] = T_inl
     e[0, :] = e_inl
+    u[0, :] = u_inl
+    u[0, Nr] = 0  # no slip
     Ut = np.sqrt(u**2. + v**2.)
     e = 5./2. * p + 1./2 * rho*Ut**2
     return [u, v, Ut, p, rho, T, e]
 
-
 # @jit(nopython=True)
-def outlet_BC(p, e, rho, ux, ur, u, rho_0):
+
+
+def outlet_BC(p, e, rho, u, v, Ut, rho_0):
 
     for n in np.arange(Nr):
         p[Nx, n] = 2/5*(e[Nx, n]-1/2*rho[Nx, n]
-                        * u[Nx, n]**2)  # Pressure
+                        * Ut[Nx, n]**2)  # Pressure
 
         rho[Nx, n] = max(2*rho[Nx-1, n]-rho[Nx-2, n], rho_0)  # Free outflow
-        ux[Nx, n] = max(2*rho[Nx-1, n]*ux[Nx-1, n] -
-                        rho[Nx-2, n]*ux[Nx-2, n], 0) / rho[Nx, n]
-        u = np.sqrt(ux**2. + ur**2.)
+        u[Nx, n] = max(2*rho[Nx-1, n]*u[Nx-1, n] -
+                       rho[Nx-2, n]*u[Nx-2, n], 0) / rho[Nx, n]
+        u = np.sqrt(u**2. + v**2.)
         # e[Nx, n] = 2*e[Nx-1, n]-e[Nx-2, n]
-    e = 5./2. * p + 1./2 * rho*u**2
-    T = p/rho/R*M_n
-    bc = [p, rho, ux, u, e]
+    e = 5./2. * p + 1./2 * rho*Ut**2
+    tg = p/rho/R*M_n
+    bc = [p, rho, tg,  u, Ut, e]
     return bc
 
 # recalculating velocity from energy, T, rho
 
 
-def recalculate_velocity(e, rho, p):
-    u = np.sqrt((e-5./2.*p)*2./rho)
-    return u
-
 # @jit(nopython=True)
-
-
 def val_in_constant():
     #   Calculate instant flow rate (kg/s)
     p_in = 8000.

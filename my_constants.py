@@ -15,16 +15,16 @@ Pr_n = 0.72
 #   Time and spatial step
 L = 6.45  # With prepping region.
 # L = 6.45
-Nx = 450  # Total length & spatial step - x direction 6.45
+Nx = 400  # Total length & spatial step - x direction 6.45
 R_cyl = 1.27e-2
 Nr = 10  # Total length & spatial step - r direction
 T_sim = 3.
-Nt = 700000.  # Total time & time step
+Nt = 800000.  # Total time & time step
 dt = T_sim/Nt
 dx = L/Nx
 dr = R_cyl/Nr
 print("dx", dx, "dr", dr, "dt", dt, "Cou_r",
-      10*dt/dr, "Cou_x_Max", 500*dt/dx,)
+      10*dt/dr, "Cou_x_Max", 800*dt/dx,)
 gamma_n2 = 1.4
 #   Tuning parameters
 # Coefficient for the film boiling of He I (we need to adjust optimal value)
@@ -32,7 +32,7 @@ Sc_PP = 0.95  # Condensation\boiling coeffcient
 
 #   Parameters
 sample = 100  # Sample coeffcient
-n_trans = 50  # Smoothing control for initial condition
+n_trans = 20  # Smoothing control for initial condition
 T_s = 4.2  # Temperature boundaries
 
 #   Constants

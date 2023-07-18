@@ -1,6 +1,6 @@
 from my_constants import *
 from functions import *
-
+import matplotlib.animation as animation
 # u : axial velocity
 # v : radial velocity
 
@@ -56,7 +56,7 @@ print("Applying inlet BCs")
 u1, v1, Ut1, p1, rho1, T1, e1 = inlet_BC(
     u1, v1, Ut1, p1, rho1, T1, e1, p_in, u_in, rho_in, T_in, e_in)
 
-p1, rho1, u1, Ut1, e1 = outlet_BC(p1, e1, rho1, u1, v1, Ut1, rho_0)
+p1, rho1, T1, u1, Ut1, e1 = outlet_BC(p1, e1, rho1, u1, v1, Ut1, rho_0)
 
 
 # Calculating Peclet number in the grid points to determine differencing scheme
@@ -72,9 +72,10 @@ print("Saving initial fields")
 # save initial fields
 save_initial_conditions(rho1, u1, v1, u1, e1, T1, de0, p1, de1)
 
-
+# i1 = 0
 print("Plotting initial fields")
 plot_imshow(p1, u1, T1, rho1, e1)
+# save_plots(i1, p1, u1, T1, rho1, e1)
 
 # Gradient starting matrices
 # calculate initial gradients matrix:
@@ -199,17 +200,13 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0,
         # print("saving q_dep")
         # save_qdep(i, dt, q_dep)
 
-# NOTE: Perform energy checks throughout the program
 # check Ts1 and T2 temperatures align, rebalances energies within
 
         # print("making sure wall Tg> Ts")
         # T2, e2, p2, rho2, u2 = gas_surface_temp_check(
         # T2, Ts2, ur2, e2, u2, rho2)
 
-# find difference in energies across timesteps
-        # d_e = energy_difference_dt(e1, e2)
-
-# Returning results of current time step for i++
+# Returning result
         print("Returning results for the next time iteration")
 
         rho1[:, :] = rho2
@@ -238,14 +235,19 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0,
                   T3, Tw2, Ts2, de0, p3)
 
 # PLOTTING FIELDS
+        # if i > 22:
         plot_imshow(p3, u3, T3, rho3, e3)
+# First set up the figure, the axis, and the plot element we want to animate
+        # im = plt.imshow((p3, u3, T3, rho3, e3),
+        #                 interpolation='none', aspect='auto', vmin=0, vmax=1)
 
-        # if np.any(T2[:, Nr] < Ts2):
-        #     if i == 0:
-        #         aii = 0
-        #     else:
-        #         ae += aii
-        #     print("Tg<Ts detected", ae)
+# save_plots(i)
+# if np.any(T2[:, Nr] < Ts2):
+#     if i == 0:
+#         aii = 0
+#     else:
+#         ae += aii
+#     print("Tg<Ts detected", ae)
 
 
 if __name__ == "__main__":
@@ -253,7 +255,6 @@ if __name__ == "__main__":
     #          ur2, T2, e2, Tw2, Ts2, Tc2, de1, T3)
     main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2,
              Ut2, e2, de0, de1, p3, rho3, T3, u3, v3, Ut3, e3, Tw1, Ts1, Tc1)
-
 
 # END OF PROGRAM
 
