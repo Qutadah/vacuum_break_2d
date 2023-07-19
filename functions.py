@@ -23,7 +23,6 @@ warnings.simplefilter('ignore', category=NumbaDeprecationWarning)
 warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
 
 # u_in_x = np.sqrt(7./5.*R*T_in/M_n)*1.0  # Inlet velocity, m/s (gamma*RT)
-u_in_x = 1.
 
 # @numba.jit('f8(f8,f8)')
 
@@ -258,9 +257,22 @@ def rhs_rho(d_dr, m_dx, N):
 
 # returns MOMENTUM RHS matrix
 def rhs_ma(dp_dx, rho, dt2r_ux, N, ux_dr, dt2x_ux, ux, ux_dx, ur, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix):
-    # NOTEL Should i add no slip BC?
+
+    A = -dp_dx/rho
+    B = visc_matrix/rho * (
+        dt2r_ux + 1/N/dr*ux_dr + dt2x_ux)
+    C = ux * ux_dx
+    D = - ur*ux_dr
+
     rhs_ux = -dp_dx/rho + visc_matrix/rho * (
         dt2r_ux + 1/N/dr*ux_dr + dt2x_ux) - ux * ux_dx - ur*ux_dr
+
+    E = - dp_dr/rho
+    F = visc_matrix/rho * \
+        (- ur/(dr**2*N**2) + 1/N/dr*ur_dr +
+         dt2r_ur + dt2x_ur)
+    G = - ux * ur_dx
+    H = - ur*ur_dr
 
     rhs_ur = - dp_dr/rho + visc_matrix/rho * \
         (- ur/(dr**2*N**2) + 1/N/dr*ur_dr +
@@ -268,7 +280,7 @@ def rhs_ma(dp_dx, rho, dt2r_ux, N, ux_dr, dt2x_ux, ux, ux_dx, ur, dp_dr, dt2r_ur
     # surface equations
     # no momentum equations radial velocity 0 will be applied in the BCs after solving
 
-    return rhs_ux, rhs_ur
+    return rhs_ux, rhs_ur, A, B, C, D, E, F, G, H
 
 # assures no division by zero
 
@@ -288,7 +300,7 @@ def rhs_energy(grad_r, grad_x, N, p, rho, u):
     # S_e = np.zeros((Nx+1), dtype=(np.float64))
     rhs_e = - 1/N/dr*grad_r - grad_x
     # S_e[:] = S[:]*(5./2.*p[:, Nr]/rho[:, Nr] + 1./2.*u[:, Nr]**2)
-    rhs_e[:, Nr] = - 1/N[:, Nr]/dr*grad_r[:, Nr]
+    # rhs_e[:, Nr] = - 1/N[:, Nr]/dr*grad_r[:, Nr]
 
     return rhs_e
     # ri = rhsInv(nx,ny,nz,dx,dy,dz,q,iflx)
@@ -353,6 +365,128 @@ def rhs_energy(grad_r, grad_x, N, p, rho, u):
 #     return q2
 
 # This iterates RK3 for all equations
+
+def rk4(ux, ur, u, p, q, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, Rks):
+    # create N matrix:
+    N = n_matrix()
+
+    # print("Deep copying initial matrices")
+
+    qq = copy.deepcopy(q)  # density
+    qn = copy.deepcopy(q)
+
+    uxx = copy.deepcopy(q)  # velocity axial
+    uxn = copy.deepcopy(q)
+
+    urr = copy.deepcopy(q)  # velocity radial
+    urn = copy.deepcopy(q)
+
+    uu = copy.deepcopy(q)  # total velocity
+    un = copy.deepcopy(q)
+
+    ee = copy.deepcopy(q)  # energy
+    en = copy.deepcopy(q)
+
+    tt = copy.deepcopy(q)  # temperature
+    tn = copy.deepcopy(q)
+
+# # First step
+# apply BCs
+# l = [ux, ur, u, p, rho, T, e]
+    p, tg, ux, ur, u, e = no_slip_no_mdot(p, q, tg, ux, ur, u, e)
+    # plot_imshow(p, u, tg, q, e)
+    ux, ur, u, p, q, tg, e = inlet_BC(
+        ux, ur, u, p, q, tg, e, p_in, ux_in, rho_in, T_in, e_in)
+    # plot_imshow(p, u, tg, q, e)
+    p, q, tg, ux, u, e = outlet_BC(p, e, q, ux, ur, u, rho_0)
+    # plot_imshow(p, u, tg, q, e)
+
+# Calculating gradients (first and second)
+    print("Calculating gradients for RK3 loop #", n)
+
+# def grad_rho_matrix(ux_in, rho_in, ur, ux, rho):
+    d_dr, m_dx = grad_rho_matrix(ux_in, rho_in, l[4], l[3], l[1])
+# def grad_ux2_matrix(p_in, p, ux_in, ux):  # bulk
+    dp_dx, ux_dx, ux_dr = grad_ux2_matrix(p_in, l[0], ux_in, l[3])
+# def grad_ur2_matrix(p, ur, ur_in):  # first derivatives
+    dp_dr, ur_dx, ur_dr = grad_ur2_matrix(l[0], l[1], ur_in)
+# def grad_e2_matrix(ur1, ux1, ux_in, e_in, e1):     # use
+    grad_x, grad_r = grad_e2_matrix(l[4], l[3], ux_in, e_in, l[6])
+
+# def dt2x_matrix(ux_in, ur_in, ux1, ur1):
+    dt2x_ux, dt2x_ur = dt2x_matrix(ux_in, ur_in, l[3], l[4])
+# def dt2r_matrix(ux1, ur1):
+    dt2r_ux, dt2r_ur = dt2r_matrix(l[3], l[4])
+
+# # Plot gradients with X
+#     abb = [dp_dx, ux_dx, ur_dx, grad_x, dt2x_ux, dt2r_ux]
+#     dpdx = np.zeros((Nx+1), dtype=(np.float64))  # place holder
+#     uxdx = np.zeros((Nx+1), dtype=(np.float64))  # place holder
+#     urdx = np.zeros((Nx+1), dtype=(np.float64))  # place holder
+#     gradx = np.zeros((Nx+1), dtype=(np.float64))  # place holder
+#     dt2xux = np.zeros((Nx+1), dtype=(np.float64))  # place holder
+#     dt2rux = np.zeros((Nx+1), dtype=(np.float64))  # place holder
+
+# # plotting and saving gradients
+#         dpdx[:] = abb[0][:, Nr]
+#         uxdx[:] = abb[1][:, Nr]
+#         urdx[:] = abb[2][:, Nr]
+#         gradx[:] = abb[3][:, Nr]
+#         dt2xux[:] = abb[4][:, Nr]
+#         dt2rux[:] = abb[5][:, Nr]
+
+    # aa = 40
+    # plt.figure()
+    # x = np.linspace(0, aa, aa+1)
+    # y1 = dpdx[0:aa+1]
+    # y2 = uxdx[0:aa+1]
+    # y3 = urdx[0:aa+1]
+    # y4 = gradx[0:aa+1]
+    # y5 = dt2xux[0:aa+1]
+    # y6 = dt2rux[0:aa+1]
+
+    # plt.plot(x, y1, color="black", label="dp_dx")
+    # plt.plot(x, y2, color="blue", label="ux_dx")
+    # plt.plot(x, y3, color="brown", label="ur_dx")
+    # plt.plot(x, y4, color="yellow", label="grad_x")
+    # plt.plot(x, y5, color="green", label="dt2x_ux")
+    # plt.plot(x, y6, color="red", label="dt2r_ux")
+    # plt.legend()
+    # legend = ax.legend(loc='upper center', shadow=True, fontsize='x-large')
+
+    # plt.legend(["dp_dx", "ux_dx", "ur_dx", "grad_x",
+    #            "dt2x_ux", "dt2r_ux"], loc="lower right")
+    # plt.show()
+
+# viscosity calculations
+    print("Calculating viscosity for RK3 loop #", n)
+    visc_matrix = viscous_matrix(l[2], l[0])
+    # if n == 2:
+    # print(visc_matrix)
+    # print("Checking viscosity matrix")
+    assert np.isfinite(visc_matrix).all()
+
+    # de_variable (de1) matrix input.
+    # This function takes into account density large enough to have mass deposition case.
+    # print("Calculating Source term matrix")
+    # if n == 0:
+    # de_var = de
+    # print("de_variable: ", de_variable)
+    # S_out = [de3, S]
+    # l = [ux, ur, u, p, rho, T, e]
+    # S_out = source_mass_depo_matrix(
+    #     rho_0, l[5], l[3], l[8], l[4], l[0], l[1], de_var, N)
+    # This de1 is returned again, first calculation is the right one for this iteration. it takes last values.
+    # de_var = S_out[0]
+    # CALCULATING RHS USING LOOP VALUES
+    print("Calculating RHS terms matrices")
+
+    r = rhs_rho(d_dr, m_dx, N)
+    r_ux, r_ur = rhs_ma(dp_dx, l[1], dt2r_ux, N, ux_dr, dt2x_ux, l[3],
+                        ux_dx, l[4], dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix)
+    r_e = rhs_energy(grad_r, grad_x, N, l[0], l[1], l[5])
+    return r, r_u, r_v, r_e
+
 
 def tvdrk3(ux, ur, u, p, q, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, Rks):
     # create N matrix:
@@ -605,6 +739,9 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
     #     print("Temp outlet_BC has at least one negative value")
     #     exit()
     # print(tg)
+    # print("plotting")
+    # plot_imshow(p, Ut, tg, q, e)
+
 # Calculating gradients (first and second)
 
 # def grad_rho_matrix(ux_in, rho_in, ur, ux, rho):
@@ -648,7 +785,10 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
 
 # no slip condition - pressure and temp recalculated within
     pp, tt, uxx, urr, uu, ee = no_slip_no_mdot(pp, qq, tt, uxx, urr, uu, ee)
-    return pp, qq, tt, uxx, urr, uu
+    # print("plotting no slip")
+    # plot_imshow(pp, uu, tt, qq, ee)
+
+    return pp, qq, tt, uxx, urr, uu, ee
 
 
 # adaptive timestep
@@ -1489,13 +1629,12 @@ def bulk_values(T_s):
     T_0 = T_s
     rho_0 = 1e-5  # An arbitrary small initial density in pipe, kg/m3
     p_0 = rho_0/M_n*R*T_0  # Initial pressure, Pa
-    print(p_0)
     e_0 = 5./2.*p_0  # Initial internal energy
     u_0 = 0
     v_0 = 0
     Ut_0 = np.sqrt(u_0**2. + v_0**2.)
     bulk = [T_0, rho_0, p_0, e_0, Ut_0, u_0, v_0]
-    print("p_0: ", "T_0:", T_0, "rho_0: ", rho_0)
+    print("p_0: ", p_0, "T_0:", T_0, "rho_0: ", rho_0, "e_0: ", e_0)
     return bulk
 
 
@@ -1791,7 +1930,7 @@ def outlet_BC(p, e, rho, u, v, Ut, rho_0):
 # @jit(nopython=True)
 def val_in_constant():
     #   Calculate instant flow rate (kg/s)
-    p_in = 100000.
+    p_in = 600.
     T_in = 298.
     rho_in = p_in / T_in/R*M_n
     u_in = np.sqrt(gamma_n2*R/M_n*T_in)

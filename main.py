@@ -9,6 +9,33 @@ print("Removing old timestepping folder")
 # remove timestepping folder
 remove_timestepping()
 
+# Continuity terms
+rho_term_r = np.full(
+    (Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # rho_x
+rho_term_x = np.full(
+    (Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # rho_x
+
+# Momentum X terms
+pressure_x = np.full(
+    (Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # rho_x
+visc_x = np.full(
+    (Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # rho_x
+ux_x = np.full(
+    (Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # rho_x
+ur_x = np.full(
+    (Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # rho_x
+
+# Momentum R terms
+pressure_r = np.full(
+    (Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # rho_x
+visc_r = np.full(
+    (Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # rho_x
+ux_r = np.full(
+    (Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # rho_x
+ur_r = np.full(
+    (Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # rho_x
+
+
 # Calculate initial values
 T_0, rho_0, p_0, e_0, Ut_0, u_0, v_0 = bulk_values(T_s)
 
@@ -158,10 +185,13 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, 
 
 
 # simple time integration
-        p2, rho2, T2, u2, v2, Ut2 = simple_time(
+        p2, rho2, T2, u2, v2, Ut2, e2 = simple_time(
             p1, rho1, T1, u1, v1, Ut1, e1, p_in, rho_in, T_in, e_in, u_in, v_in, rho_0)
 
-        out = [p1, rho2, T2, u2, v2, Ut2]
+        out = [p2, rho2, T2, u2, v2, Ut2]
+
+# RK4
+
 # calculating Peclet for field, helps later for differencing scheme used
         # Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
 
@@ -218,6 +248,8 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, 
         # print("making sure wall Tg> Ts")
         # T2, e2, p2, rho2, u2 = gas_surface_temp_check(
         # T2, Ts2, ur2, e2, u2, rho2)
+        # print("plotting returning")
+        # plot_imshow(p2, u2, T2, rho2, e2)
 
 # Returning result
         print("Returning results for the next time iteration")
@@ -239,16 +271,16 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, 
 
 # DELETE R=0 Point/Column
 # The 3 index indicates matrices with no r=0, deleted column..
-        print("Deleting the r=0 for plotting and saving purposes")
+        print("Deleting the r=0")
         rho3, u3, v3, Ut3, e3, T3, p3 = delete_r0_point(
-            rho1, u1, v1, u1, e1, T1, p1)
+            rho1, u1, v1, Ut1, e1, T1, p1)
 
 # SAVING DATA
         save_data(i, dt, rho3, u3, v3, Ut3, e3,
                   T3, Tw2, Ts2, de0, p3)
 
 # PLOTTING FIELDS
-        if i == 1500:
+        if i == 200:
             plot_imshow(p3, u3, T3, rho3, e3)
 # First set up the figure, the axis, and the plot element we want to animate
         # im = plt.imshow((p3, u3, T3, rho3, e3),
