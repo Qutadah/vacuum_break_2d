@@ -247,11 +247,12 @@ def source_mass_depo_matrix(rho_0, T, P, Ts1, rho, ux, ur, de, N):  # -4/D* mdot
 def rhs_rho(d_dr, m_dx, N):
     # calculate source term
     rhs_rho = - 1/N/dr*d_dr - m_dx
+    A = - 1/N/dr*d_dr 
+    B = -m_dx
 
-    # # surface equation
-    # rhs_rho[:, Nr] = - 1/N[:, Nr]/dr*d_dr[:, Nr]
-    # rhs_rho[:,Nr] = -1/N/dr*d_dr  + S[:,Nr]
-
+    np.concatenate(([rho_term_r],[A]),axis=0)
+    np.concatenate(([rho_term_x],[B]),axis=0)
+    np.concatenate(([rhs_rho_term],[rhs_rho]),axis=0)
     return rhs_rho
 
 
@@ -279,8 +280,20 @@ def rhs_ma(dp_dx, rho, dt2r_ux, N, ux_dr, dt2x_ux, ux, ux_dx, ur, dp_dr, dt2r_ur
          dt2r_ur + dt2x_ur) - ux * ur_dx - ur*ur_dr
     # surface equations
     # no momentum equations radial velocity 0 will be applied in the BCs after solving
+    np.concatenate(([a],[b]),axis=0)
+    np.concatenate(([a],[b]),axis=0)
+    np.concatenate(([a],[b]),axis=0)
+    np.concatenate(([a],[b]),axis=0)
+    np.concatenate(([a],[b]),axis=0)
 
-    return rhs_ux, rhs_ur, A, B, C, D, E, F, G, H
+    np.concatenate(([a],[b]),axis=0)
+    np.concatenate(([a],[b]),axis=0)
+    np.concatenate(([a],[b]),axis=0)
+    np.concatenate(([a],[b]),axis=0)
+    np.concatenate(([a],[b]),axis=0)
+
+
+    return rhs_ux, rhs_ur
 
 # assures no division by zero
 
@@ -301,6 +314,9 @@ def rhs_energy(grad_r, grad_x, N, p, rho, u):
     rhs_e = - 1/N/dr*grad_r - grad_x
     # S_e[:] = S[:]*(5./2.*p[:, Nr]/rho[:, Nr] + 1./2.*u[:, Nr]**2)
     # rhs_e[:, Nr] = - 1/N[:, Nr]/dr*grad_r[:, Nr]
+    np.concatenate(([a],[b]),axis=0)
+    np.concatenate(([a],[b]),axis=0)
+    np.concatenate(([a],[b]),axis=0)
 
     return rhs_e
     # ri = rhsInv(nx,ny,nz,dx,dy,dz,q,iflx)

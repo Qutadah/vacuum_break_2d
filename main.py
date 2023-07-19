@@ -10,31 +10,28 @@ print("Removing old timestepping folder")
 remove_timestepping()
 
 # Continuity terms
-rho_term_r = np.full(
-    (Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # rho_x
-rho_term_x = np.full(
-    (Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # rho_x
+rho_term_r = np.zeros((Nx+1), dtype=(np.float64))
+rho_term_x = np.zeros((Nx+1), dtype=(np.float64))
+rhs_rho_term = np.zeros((Nx+1), dtype=(np.float64))
 
 # Momentum X terms
-pressure_x = np.full(
-    (Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # rho_x
-visc_x = np.full(
-    (Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # rho_x
-ux_x = np.full(
-    (Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # rho_x
-ur_x = np.full(
-    (Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # rho_x
-
+pressure_x = np.zeros((Nx+1), dtype=(np.float64))
+visc_x = np.zeros((Nx+1), dtype=(np.float64))
+ux_x = np.zeros((Nx+1), dtype=(np.float64))
+ur_x = np.zeros((Nx+1), dtype=(np.float64))
+rhs_ux_term = np.zeros((Nx+1), dtype=(np.float64))
 # Momentum R terms
-pressure_r = np.full(
-    (Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # rho_x
-visc_r = np.full(
-    (Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # rho_x
-ux_r = np.full(
-    (Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # rho_x
-ur_r = np.full(
-    (Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # rho_x
+pressure_r = np.zeros((Nx+1), dtype=(np.float64))
+visc_r = np.zeros((Nx+1), dtype=(np.float64))
+ux_r = np.zeros((Nx+1), dtype=(np.float64))
+ur_r = np.zeros((Nx+1), dtype=(np.float64))
+rhs_ur_term = np.zeros((Nx+1), dtype=(np.float64))
 
+# energy terms
+
+e_term1 = np.zeros((Nx+1), dtype=(np.float64))
+e_term2 = np.zeros((Nx+1), dtype=(np.float64))
+rhs_e_term = np.zeros((Nx+1), dtype=(np.float64))
 
 # Calculate initial values
 T_0, rho_0, p_0, e_0, Ut_0, u_0, v_0 = bulk_values(T_s)
