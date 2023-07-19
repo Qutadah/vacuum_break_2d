@@ -8,8 +8,6 @@ TODO:
 - check q_h function... its a fitting.
   check dt2nd derivative, its causing problems.
 
-- DENSITY IS THE SOURCE OF ALL MY PROBLEMS..... I SHOULD AVERAGE IT SOMEHOW....
-
 - TODO: CHECK
 
 - check mass deposition for best dt, dr, dx. NOT GETTING ANY CORRECT VALUES. used x equation.
@@ -30,16 +28,11 @@ TODO:
 
 TODO NEW WEEK:
 
-- fix symmetry condition at u=1
 - make 2d contour plot of derivatives.
-- inviscid flow simulation.
 - calculate Peclet number.
 - Central difference scheme fails to converge for Peclet number greater than 2.
 - Upwind differencing scheme is applicable for Pe > 2 for positive flow .
-- check characteristic length used grid size or Hydraulic diameter to evaluate peclet number.
-- peclet numer is ~ 1000 for my actual viscous case with ux = 1 meter.
 - employ flux vector splitting.
--
 - deriving m_sound equation... It is not giving correct values.
 
 - TODO:
@@ -52,8 +45,6 @@ NEXT:
 - RK4 time integration.
 - WENO or Lax for dt2nd_axial_ux.
 - TVD limiter for first gradients.
-
-- plot pressure, temperature ad
 
 TODO: VISCOUS FLOW - high speed, use flux splitting scheme
 
@@ -70,3 +61,7 @@ CONCLUSIONS.
 EXTRA
 
 - should i include convective term, and last n away from wall? This will need mesh refinement, as m_de is very small and to give us correct ur values, it needs to be in the control volume, and if its away from the grid point, the values are not necessarily correct.
+
+NOTE NEW NOTE: PLOT terms
+make animation
+add RK4 algorithm

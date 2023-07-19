@@ -10,7 +10,7 @@ print("Removing old timestepping folder")
 remove_timestepping()
 
 # Calculate initial values
-T_0, rho_0, p_0, e_0, u_0 = bulk_values(T_s)
+T_0, rho_0, p_0, e_0, Ut_0, u_0, v_0 = bulk_values(T_s)
 
 # Array initialization
 
@@ -21,6 +21,7 @@ p1, rho1, u1, v1, Ut1, e1, T1, rho2, u2, v2, Ut2, e2, T2, p2, Tw1, Tw2, Ts1, Ts2
 
 # constant inlet
 out_cons = val_in_constant()
+
 
 p_in = out_cons[0]
 u_in = out_cons[1]
@@ -38,6 +39,11 @@ print("p_in: ", p_in, "u_in: ", u_in, "v_in: ", v_in,
 p1, rho1, T1, u1, Ut1, e1 = smoothing_inlet(
     p1, rho1, T1, e1,  u1, v1, u_in, Ut1, p_in, p_0, rho_in, rho_0, n_trans)
 
+# negative temp check
+if np.any(T1 < 0):
+    print("Temp smoothing has at least one negative value")
+    exit()
+
 # BC SURFACES- check deep copy
 Ts1[:] = T1[:, Nr]
 Ts2[:] = Ts1
@@ -47,17 +53,29 @@ Ts2[:] = Ts1
 u1, Ut1 = parabolic_velocity(T1, u1, u_in, Ut1)
 
 print("Applying No-slip BC")
-
 # NO SLIP BC
 p1, T1, u1, v1, Ut1, e1 = no_slip_no_mdot(p1, rho1, T1, u1, v1, Ut1, e1)
+
+# negative temp check
+if np.any(T1 < 0):
+    print("Temp no slip after smoothing has at least one negative value")
+    exit()
 
 # inlet BCs
 print("Applying inlet BCs")
 u1, v1, Ut1, p1, rho1, T1, e1 = inlet_BC(
     u1, v1, Ut1, p1, rho1, T1, e1, p_in, u_in, rho_in, T_in, e_in)
+# negative temp check
+if np.any(T1 < 0):
+    print("Temp inlet_BC after smoothing has at least one negative value")
+    exit()
 
 p1, rho1, T1, u1, Ut1, e1 = outlet_BC(p1, e1, rho1, u1, v1, Ut1, rho_0)
 
+# negative temp check
+if np.any(T1 < 0):
+    print("Temp no slip after smoothing has at least one negative value")
+    exit()
 
 # Calculating Peclet number in the grid points to determine differencing scheme
 # Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
@@ -70,7 +88,7 @@ p1, rho1, T1, u1, Ut1, e1 = outlet_BC(p1, e1, rho1, u1, v1, Ut1, rho_0)
 # SAVING INITIAL MATRICES
 print("Saving initial fields")
 # save initial fields
-save_initial_conditions(rho1, u1, v1, u1, e1, T1, de0, p1, de1)
+save_initial_conditions(rho1, u1, v1, Ut1, e1, T1, de0, p1, de1)
 
 # i1 = 0
 print("Plotting initial fields")
@@ -102,7 +120,7 @@ save_gradients(d_dr, m_dx, dp_dx, ux_dx, ux_dr,
 print("Main loop started")
 
 
-def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0, de1, p3, rho3, T3, ux3, ur3, u3, e3, Tw1, Ts1, Tc1):
+def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, de1, p3, rho3, T3, u3, v3, Ut3, e3, Tw1, Ts1, Tc1, p_in, rho_in, T_in, e_in, u_in, v_in):
 
     N = n_matrix()
 
@@ -131,40 +149,35 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0,
         # else:
         # #     # NOTE: This will take last de from RK3, i need the mass deposition rate of previous time step for the next
         # de_var = rk_out[0]
-        print("Rk3 next")
+        # print("Rk3 next")
 
         # RK3 time integration
         # rk_out = [de_timestep, qn, uxn, urn, uun, en, tn, pn]
-        rk_out = tvdrk3(
-            u1, v1, Ut1, p1, rho1, T1, e1, p_in, u_in, rho_in, T_in, e_in, rho_0, v_in, i)
+        # rk_out = tvdrk3(
+        #     u1, v1, Ut1, p1, rho1, T1, e1, p_in, u_in, rho_in, T_in, e_in, rho_0, v_in, i)
 
-        print("Rk3 complete")
 
-# defining next values from RK3
-        rho2 = rk_out[0]
-        u2 = rk_out[1]
-        v2 = rk_out[2]
-        Ut2 = rk_out[3]
-        e2 = rk_out[4]
-        T2 = rk_out[5]
-        p2 = rk_out[6]
+# simple time integration
+        p2, rho2, T2, u2, v2, Ut2 = simple_time(
+            p1, rho1, T1, u1, v1, Ut1, e1, p_in, rho_in, T_in, e_in, u_in, v_in, rho_0)
 
+        out = [p1, rho2, T2, u2, v2, Ut2]
 # calculating Peclet for field, helps later for differencing scheme used
         # Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
 
         print("NAN check next")
 
 # perform NAN value matrix checks:
-        for x in np.arange(len(rk_out)):
-            assert np.isfinite(rk_out[x]).all()
+        for x in np.arange(len(out)):
+            assert np.isfinite(out[x]).all()
 
         # negative density check
-        if np.any(rk_out[0] < 0):
+        if np.any(rho2 < 0):
             print("The Density Array has at least one negative value")
             exit()
 
         # negative energy check
-        if np.any(rk_out[4] < 0):
+        if np.any(e2 < 0):
             print("The energy has at least one negative value")
             exit()
 
@@ -235,8 +248,8 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, ux2, ur2, u2, e2, de0,
                   T3, Tw2, Ts2, de0, p3)
 
 # PLOTTING FIELDS
-        # if i > 22:
-        plot_imshow(p3, u3, T3, rho3, e3)
+        if i == 1500:
+            plot_imshow(p3, u3, T3, rho3, e3)
 # First set up the figure, the axis, and the plot element we want to animate
         # im = plt.imshow((p3, u3, T3, rho3, e3),
         #                 interpolation='none', aspect='auto', vmin=0, vmax=1)
@@ -254,7 +267,7 @@ if __name__ == "__main__":
     # main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2,
     #          ur2, T2, e2, Tw2, Ts2, Tc2, de1, T3)
     main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2,
-             Ut2, e2, de0, de1, p3, rho3, T3, u3, v3, Ut3, e3, Tw1, Ts1, Tc1)
+             Ut2, e2, de0, de1, p3, rho3, T3, u3, v3, Ut3, e3, Tw1, Ts1, Tc1, p_in, rho_in, T_in, e_in, u_in, v_in)
 
 # END OF PROGRAM
 
