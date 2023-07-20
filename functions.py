@@ -315,10 +315,10 @@ def rhs_ma(i, dp_dx, rho, dt2r_ux, N, ux_dr, dt2x_ux, ux, ux_dx, ur, dp_dr, dt2r
     ur_x[i, :, :] = D
     rhs_ux_term[i, :, :] = rhs_ux
 
-    pressure_r[i, :, :] = A
-    visc_r[i, :, :] = B
-    ux_r[i, :, :] = C
-    ur_r[i, :, :] = D
+    pressure_r[i, :, :] = E
+    visc_r[i, :, :] = F
+    ux_r[i, :, :] = G
+    ur_r[i, :, :] = H
     rhs_ur_term[i, :, :] = rhs_ur
 
     return rhs_ux, rhs_ur, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term
@@ -749,10 +749,10 @@ def tvdrk3(ux, ur, u, p, q, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in
     rk_out = [qn, uxn, urn, un, en, tn, pn]
     return rk_out
 
+
+# def RK4():
+
 # simple time integration
-
-# def RK3():
-
 
 def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho_0, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term, i):
     N = n_matrix()
@@ -993,7 +993,7 @@ def grad_rho_matrix(ux_in, rho_in, ur, ux, rho):
 
             if j == 1:
                 # NOTE: SYMMETRY BC
-                d_dr[i, j] = (rho[i, j+2]*(j+2)*dr*ur[i, j+2] -
+                d_dr[i, j] = (rho[i, j+2]*(j+2)*dr*ur[i, j+2] +
                               rho[i, j] * j*dr*ur[i, j]) / (4*dr)
 
             elif j == Nr-1 or j == Nr:
@@ -1073,7 +1073,7 @@ def grad_ux2_matrix(p_in, p, ux_in, ux):  # bulk
     for m in np.arange(Nx+1):
         for n in np.arange(Nr+1):
             if n == 1:
-                # NOTE: SYMMETRY CONDITION HERE done
+                # NOTE: SYMMETRY CONDITION
                 ux_dr[m, n] = (ux[m, n+2] - ux[m, n])/(4*dr)
 
             elif n == Nr-1 or n == Nr:
@@ -1107,7 +1107,7 @@ def grad_ur2(m, n, p, ur, ur_in):  # first derivatives BULK
     if n == 1:
         # NOTE: Symmetry BC done
         dp_dr = (p[m, n+2] - p[m, n])/(4*dr)
-        ur_dr = (ur[m, n+2]-ur[m, n])/(4*dr)  # increased to 2dx
+        ur_dr = (ur[m, n+2] + ur[m, n])/(4*dr)
 
 # n == Nr-1
 
@@ -1153,9 +1153,9 @@ def grad_ur2_matrix(p, ur, ur_in):  # first derivatives BULK
         for n in np.arange(Nr+1):
 
             if n == 1:
-                # NOTE: Symmetry BC done
+                # NOTE: Symmetry BC
                 dp_dr[m, n] = (p[m, n+2] - p[m, n])/(4*dr)
-                ur_dr[m, n] = (ur[m, n+2]-ur[m, n])/(4*dr)  # increased to 2dx
+                ur_dr[m, n] = (ur[m, n+2] + ur[m, n])/(4*dr)
 
         # n == Nr-1
 
@@ -1203,7 +1203,7 @@ def grad_e2(m, n, ur1, ux1, ux_in, e_in, e1):     # use upwind for Pe > 2
 
     if n == 1:
         # NOTE: Symmetry BC done
-        grad_r = ((n+2)*dr*ur1[m, n+2]*e1[m, n+2] - n *
+        grad_r = ((n+2)*dr*ur1[m, n+2]*e1[m, n+2] + n *
                   dr*ur1[m, n]*e1[m, n])/(4*dr)  # ur=0 @ r=0 #CD
 
 # n == Nr-1:
@@ -1239,24 +1239,21 @@ def grad_e2(m, n, ur1, ux1, ux_in, e_in, e1):     # use upwind for Pe > 2
 def grad_e2_matrix(v, u, u_in, e_in, e):     # use upwind for Pe > 2
     grad_r = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     grad_x = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-
     for m in np.arange(Nx+1):
         for n in np.arange(Nr+1):
-            # We dont need the surface case, this is the bulk...
-
             if n == 1:
-                # NOTE: Symmetry BC done
-                grad_r[m, n] = ((n+2)*dr*v[m, n+2]*e[m, n+2] - n *
-                                dr*v[m, n]*e[m, n])/(4*dr)  # ur=0 @ r=0 #CD
+                # NOTE: Symmetry BC
+                grad_r[m, n] = ((n+2)*dr*v[m, n+2]*e[m, n+2] +
+                                n * dr*v[m, n]*e[m, n])/(4*dr)  # ur=0 @ r=0 #CD
 
-            # surface case
+# surface case
             if n == Nr:
                 grad_r[m, n] = (n*dr*v[m, n]*e[m, n] -
                                 (n-1)*dr*v[m, n-1]*e[m, n-1])/dr  # BWD
 
-        # n == Nr-1:
+# n == Nr-1:
             else:
-                grad_r[m, n] = ((n)*dr*v[m, n]*e[m, n] - (n-1)
+                grad_r[m, n] = (n*dr*v[m, n]*e[m, n] - (n-1)
                                 * dr*v[m, n-1]*e[m, n-1])/(dr)  # BWD
 
             # if m == 0:
@@ -1286,25 +1283,26 @@ def grad_e2_matrix(v, u, u_in, e_in, e):     # use upwind for Pe > 2
 # @jit(nopython=True)
 def dt2nd_radial(ux1, ur1, m, n):
     if n == 1:
-        # NOTE: Symmetry Boundary Condition assumed for ur1 radial derivative along x axis..
-        # --------------------------- dt2nd radial ux1 ---------------------------------#
-        dt2nd_radial_ux1 = (ux1[m, n+2] - ux1[m, n]) / (4*dr**2)
+        # NOTE: Symmetry Boundary Condition
 
-        # --------------------------- dt2nd radial ur1 ---------------------------------#
+        # dt2nd radial ux1
+        dt2nd_radial_ux1 = (ux1[m, n+2] - 3*ux1[m, n]) / (4*dr**2)
+
+# dt2nd radial ur1
         dt2nd_radial_ur1 = (ur1[m, n+2] - ur1[m, n]) / (4*dr**2)
 
-        # print("dt2nd_radial_ux1_n1:", dt2nd_radial_ux1)
-        # print("dt2nd_radial_ur1_n1:", dt2nd_radial_ur1)
+# print("dt2nd_radial_ux1_n1:", dt2nd_radial_ux1)
+# print("dt2nd_radial_ur1_n1:", dt2nd_radial_ur1)
 
     else:  # (n is between 1 and Nr)
 
-        # --------------------------- dt2nd radial ux1 ---------------------------------#
+        # dt2nd radial ux1
         dt2nd_radial_ux1 = (ux1[m, n+1] + ux1[m, n-1] -
                             2*ux1[m, n])/(dr**2)  # CD
-    # --------------------------- dt2nd radial ur1 ---------------------------------#
+# dt2nd radial ur1
         dt2nd_radial_ur1 = (ur1[m, n+1] + ur1[m, n-1] -
                             2*ur1[m, n])/(dr**2)  # CD
-        # print("dt2nd_radial_ur1:", dt2nd_radial_ur1)
+# print("dt2nd_radial_ur1:", dt2nd_radial_ur1)
     return dt2nd_radial_ux1, dt2nd_radial_ur1
 
 
@@ -1358,12 +1356,12 @@ def dt2r_matrix(u, v):
         for n in np.arange(Nr+1):
 
             if n == 1:
-                # NOTE: Symmetry Boundary Condition assumed for ur1 radial derivative along x axis..
-                # --------------------------- dt2nd radial ux1 ---------------------------------#
+                # NOTE: Symmetry Boundary Condition
+                # dt2nd radial ux1
                 dt2r_ux1[m, n] = (u[m, n+2] - u[m, n]) / (4*dr**2)
 
-                # --------------------------- dt2nd radial ur1 ---------------------------------#
-                dt2r_ur1[m, n] = (v[m, n+2] - v[m, n]) / (4*dr**2)
+# dt2nd radial ur1
+                dt2r_ur1[m, n] = (v[m, n+2] - 3*v[m, n]) / (4*dr**2)
 
                 # print("dt2nd_radial_ux1_n1:", dt2nd_radial_ux1)
                 # print("dt2nd_radial_ur1_n1:", dt2nd_radial_ur1)

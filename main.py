@@ -9,28 +9,29 @@ print("Removing old timestepping folder")
 # remove timestepping folder
 remove_timestepping()
 
+ss = 10
 # Continuity terms
-rho_r = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
-rho_x = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
-rhs_rho_term = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+rho_r = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+rho_x = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+rhs_rho_term = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
 
 # Momentum X terms
-pressure_x = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
-visc_x = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
-ux_x = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
-ur_x = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
-rhs_ux_term = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+pressure_x = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+visc_x = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+ux_x = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+ur_x = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+rhs_ux_term = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
 # Momentum R terms
-pressure_r = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
-visc_r = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
-ux_r = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
-ur_r = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
-rhs_ur_term = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+pressure_r = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+visc_r = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+ux_r = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+ur_r = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+rhs_ur_term = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
 # energy terms
 
-e_r = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
-e_x = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
-rhs_e_term = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+e_r = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+e_x = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+rhs_e_term = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
 
 # Calculate initial values
 T_0, rho_0, p_0, e_0, Ut_0, u_0, v_0 = bulk_values(T_s)
@@ -147,7 +148,7 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, 
 
     N = n_matrix()
 
-    for i in np.arange(np.int64(0), np.int64(8)):
+    for i in np.arange(np.int64(0), np.int64(ss)):
         print("Iteration: #", i)
 
         # variable inl et
@@ -276,35 +277,59 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, 
                   T3, Tw2, Ts2, de0, p3)
         print("i: ", i)
 
-        if i == 7:
-            x = np.linspace(0, 7, 8)
-            y = rho_x[:, 20, 30]
-            y = rho_r[:, 20, 30]
-            y = rhs_rho_term[:, 20, 30]
-            y = pressure_x[:, 20, 30]
-            y = visc_x[:, 20, 30]
-            y = ux_x[:, 20, 30]
-            y = ur_x[:, 20, 30]
-            y = rhs_ux_term[:, 20, 30]
+# point to plot terms with time
+        aa = 3
+        bb = 30
 
-            y = pressure_r[:, 20, 30]
-            y = visc_r[:, 20, 30]
-            y = ux_r[:, 20, 30]
-            y = ur_r[:, 20, 30]
-            y = rhs_ur_term[:, 20, 30]
+        if i == ss-1:
+            x = np.linspace(0, 7, ss)
+            fig, axs = plt.subplots(5)
+            plt.suptitle("Momentum R terms")
 
-            y = e_r[:, 20, 30]
-            y = e_x[:, 20, 30]
-            y = rhs_e_term[:, 20, 30]
+            # y1 = rho_x[:, aa, bb]
+            # y2 = rho_r[:, aa, bb]
+            # y3 = rhs_rho_term[:, aa, bb]
+            # axs[0].plot(x, y1)
+            # axs[1].plot(x, y2)
+            # axs[2].plot(x, y3)
 
-            plt.title("rho_r term")
-            plt.plot(x, y, color="red")
+            # y1 = pressure_x[:, aa, bb]
+            # y2 = visc_x[:, aa, bb]
+            # y3 = ux_x[:, aa, bb]
+            # y4 = ur_x[:, aa, bb]
+            # y5 = rhs_ux_term[:, aa, bb]
+            # axs[0].plot(x, y1)
+            # axs[1].plot(x, y2)
+            # axs[2].plot(x, y3)
+            # axs[3].plot(x, y4)
+            # # axs[4].plot(x, y5)
+
+            y1 = pressure_r[:, aa, bb]
+            y2 = visc_r[:, aa, bb]
+            y3 = ux_r[:, aa, bb]
+            y4 = ur_r[:, aa, bb]
+            y5 = rhs_ur_term[:, aa, bb]
+            axs[0].plot(x, y1)
+            axs[1].plot(x, y2)
+            axs[2].plot(x, y3)
+            axs[3].plot(x, y4)
+            axs[4].plot(x, y5)
+
+            # y1 = e_r[:, aa, bb]
+            # y2 = e_x[:, aa, bb]
+            # y3 = rhs_e_term[:, aa, bb]
+            # axs[0].plot(x, y1)
+            # axs[1].plot(x, y2)
+            # axs[2].plot(x, y3)
+
+            # plt.title("rhs_e_term term")
+            # plt.plot(x, y, color="red")
             plt.show()
 
 
 # PLOTTING FIELDS
-        if i == 200:
-            plot_imshow(p3, u3, T3, rho3, e3)
+        # if i == 200:
+        plot_imshow(p3, u3, T3, rho3, e3)
 # First set up the figure, the axis, and the plot element we want to animate
         # im = plt.imshow((p3, u3, T3, rho3, e3),
         #                 interpolation='none', aspect='auto', vmin=0, vmax=1)
