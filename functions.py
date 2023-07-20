@@ -274,7 +274,7 @@ def save_stack(x):
 
 
 # returns MOMENTUM RHS matrix
-def rhs_ma(dp_dx, rho, dt2r_ux, N, ux_dr, dt2x_ux, ux, ux_dx, ur, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term):
+def rhs_ma(i, dp_dx, rho, dt2r_ux, N, ux_dr, dt2x_ux, ux, ux_dx, ur, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term):
 
     A = -dp_dx/rho
     B = visc_matrix/rho * (
@@ -309,7 +309,19 @@ def rhs_ma(dp_dx, rho, dt2r_ux, N, ux_dr, dt2x_ux, ux, ux_dx, ur, dp_dr, dt2r_ur
     # np.concatenate(([ur_r], [H]), axis=0)
     # np.concatenate(([rhs_ur_term], [rhs_ur]), axis=0)
 
-    return rhs_ux, rhs_ur
+    pressure_x[i, :, :] = A
+    visc_x[i, :, :] = B
+    ux_x[i, :, :] = C
+    ur_x[i, :, :] = D
+    rhs_ux_term[i, :, :] = rhs_ux
+
+    pressure_r[i, :, :] = A
+    visc_r[i, :, :] = B
+    ux_r[i, :, :] = C
+    ur_r[i, :, :] = D
+    rhs_ur_term[i, :, :] = rhs_ur
+
+    return rhs_ux, rhs_ur, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term
 
 # assures no division by zero
 
@@ -325,7 +337,7 @@ def no_division_zero(array):
 # returns ENERGY RHS matrix including source terms
 
 
-def rhs_energy(grad_r, grad_x, N, e_r, e_x, rhs_e_term):
+def rhs_energy(i, grad_r, grad_x, N, e_r, e_x, rhs_e_term):
     # S_e = np.zeros((Nx+1), dtype=(np.float64))
     rhs_e = - 1/N/dr*grad_r - grad_x
     A = -  1/N/dr*grad_r
@@ -336,7 +348,10 @@ def rhs_energy(grad_r, grad_x, N, e_r, e_x, rhs_e_term):
     # np.concatenate(([e_x], [B]), axis=0)
     # np.concatenate(([rhs_e_term], [rhs_e]), axis=0)
 
-    return rhs_e
+    e_r[i, :, :] = A
+    e_x[i, :, :] = B
+    rhs_e_term[i, :, :] = rhs_e
+    return rhs_e, e_r, e_x, rhs_e_term
     # ri = rhsInv(nx,ny,nz,dx,dy,dz,q,iflx)
     # if (ivis==1)
     #     rv = rhsVis(nx,ny,nz,dx,dy,dz,q,Re)
@@ -799,9 +814,10 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
 
     r, rho_r, rho_x, rhs_rho_term = rhs_rho(
         i, d_dr, m_dx, N, rho_r, rho_x, rhs_rho_term)
-    r_ux, r_ur = rhs_ma(dp_dx, q, dt2r_ux, N, ux_dr, dt2x_ux, u,
-                        ux_dx, v, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term)
-    r_e = rhs_energy(grad_r, grad_x, N, e_r, e_x, rhs_e_term)
+    r_ux, r_ur, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term = rhs_ma(i, dp_dx, q, dt2r_ux, N, ux_dr, dt2x_ux, u,
+                                                                                                                  ux_dx, v, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term)
+    r_e, e_r, e_x, rhs_e_term = rhs_energy(
+        i, grad_r, grad_x, N, e_r, e_x, rhs_e_term)
 
 # first LHS calculations
     qq = q + dt*r
@@ -823,7 +839,7 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
     # print("plotting no slip")
     # plot_imshow(pp, uu, tt, qq, ee)
 
-    return pp, qq, tt, uxx, urr, uu, ee, rho_r, rho_x, rhs_rho_term
+    return pp, qq, tt, uxx, urr, uu, ee, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term
 
 
 # adaptive timestep

@@ -181,7 +181,7 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, 
 
 
 # simple time integration
-        p2, rho2, T2, u2, v2, Ut2, e2, rho_r, rho_x, rhs_rho_term = simple_time(
+        p2, rho2, T2, u2, v2, Ut2, e2, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term = simple_time(
             p1, rho1, T1, u1, v1, Ut1, e1, p_in, rho_in, T_in, e_in, u_in, v_in, rho_0, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term, i)
 
         out = [p2, rho2, T2, u2, v2, Ut2]
@@ -279,6 +279,23 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, 
         if i == 7:
             x = np.linspace(0, 7, 8)
             y = rho_x[:, 20, 30]
+            y = rho_r[:, 20, 30]
+            y = rhs_rho_term[:, 20, 30]
+            y = pressure_x[:, 20, 30]
+            y = visc_x[:, 20, 30]
+            y = ux_x[:, 20, 30]
+            y = ur_x[:, 20, 30]
+            y = rhs_ux_term[:, 20, 30]
+
+            y = pressure_r[:, 20, 30]
+            y = visc_r[:, 20, 30]
+            y = ux_r[:, 20, 30]
+            y = ur_r[:, 20, 30]
+            y = rhs_ur_term[:, 20, 30]
+
+            y = e_r[:, 20, 30]
+            y = e_x[:, 20, 30]
+            y = rhs_e_term[:, 20, 30]
 
             plt.title("rho_r term")
             plt.plot(x, y, color="red")
