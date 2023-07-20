@@ -11,27 +11,26 @@ remove_timestepping()
 
 # Continuity terms
 rho_r = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
-rho_x = np.zeros((Nx+1), dtype=(np.float64))
-rhs_rho_term = np.zeros((Nx+1), dtype=(np.float64))
+rho_x = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+rhs_rho_term = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
 
 # Momentum X terms
-pressure_x = np.zeros((Nx+1), dtype=(np.float64))
-visc_x = np.zeros((Nx+1), dtype=(np.float64))
-ux_x = np.zeros((Nx+1), dtype=(np.float64))
-ur_x = np.zeros((Nx+1), dtype=(np.float64))
-rhs_ux_term = np.zeros((Nx+1), dtype=(np.float64))
+pressure_x = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+visc_x = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+ux_x = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+ur_x = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+rhs_ux_term = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
 # Momentum R terms
-pressure_r = np.zeros((Nx+1), dtype=(np.float64))
-visc_r = np.zeros((Nx+1), dtype=(np.float64))
-ux_r = np.zeros((Nx+1), dtype=(np.float64))
-ur_r = np.zeros((Nx+1), dtype=(np.float64))
-rhs_ur_term = np.zeros((Nx+1), dtype=(np.float64))
-
+pressure_r = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+visc_r = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+ux_r = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+ur_r = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+rhs_ur_term = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
 # energy terms
 
-e_r = np.zeros((Nx+1), dtype=(np.float64))
-e_x = np.zeros((Nx+1), dtype=(np.float64))
-rhs_e_term = np.zeros((Nx+1), dtype=(np.float64))
+e_r = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+e_x = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+rhs_e_term = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
 
 # Calculate initial values
 T_0, rho_0, p_0, e_0, Ut_0, u_0, v_0 = bulk_values(T_s)
@@ -182,7 +181,7 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, 
 
 
 # simple time integration
-        p2, rho2, T2, u2, v2, Ut2, e2, rho_r = simple_time(
+        p2, rho2, T2, u2, v2, Ut2, e2, rho_r, rho_x, rhs_rho_term = simple_time(
             p1, rho1, T1, u1, v1, Ut1, e1, p_in, rho_in, T_in, e_in, u_in, v_in, rho_0, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term, i)
 
         out = [p2, rho2, T2, u2, v2, Ut2]
@@ -279,7 +278,7 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, 
 
         if i == 7:
             x = np.linspace(0, 7, 8)
-            y = rho_r[:, 100, 20]
+            y = rho_x[:, 20, 30]
 
             plt.title("rho_r term")
             plt.plot(x, y, color="red")

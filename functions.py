@@ -242,8 +242,9 @@ def source_mass_depo_matrix(rho_0, T, P, Ts1, rho, ux, ur, de, N):  # -4/D* mdot
     print("de3", de3)
     return S_out
 
-
 # returns continuity RHS matrix, including source term S
+
+
 def rhs_rho(i, d_dr, m_dx, N, rho_r, rho_x, rhs_rho_term):
     # calculate source term
     rhs_rho = - 1/N/dr*d_dr - m_dx
@@ -255,10 +256,12 @@ def rhs_rho(i, d_dr, m_dx, N, rho_r, rho_x, rhs_rho_term):
     # np.concatenate(([rhs_rho_term], [rhs_rho]), axis=0)
 
     rho_r[i, :, :] = A
+    rho_x[i, :, :] = B
+    rhs_rho_term[i, :, :] = rhs_rho
     # np.append(rho_r, A, axis=0)
     # save_stack(rho_r)
 
-    return rhs_rho, rho_r
+    return rhs_rho, rho_r, rho_x, rhs_rho_term
 
 
 def save_stack(x):
@@ -794,7 +797,8 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
 
     assert np.isfinite(visc_matrix).all()
 
-    r, rho_r = rhs_rho(i, d_dr, m_dx, N, rho_r, rho_x, rhs_rho_term)
+    r, rho_r, rho_x, rhs_rho_term = rhs_rho(
+        i, d_dr, m_dx, N, rho_r, rho_x, rhs_rho_term)
     r_ux, r_ur = rhs_ma(dp_dx, q, dt2r_ux, N, ux_dr, dt2x_ux, u,
                         ux_dx, v, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term)
     r_e = rhs_energy(grad_r, grad_x, N, e_r, e_x, rhs_e_term)
@@ -819,7 +823,7 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
     # print("plotting no slip")
     # plot_imshow(pp, uu, tt, qq, ee)
 
-    return pp, qq, tt, uxx, urr, uu, ee, rho_r
+    return pp, qq, tt, uxx, urr, uu, ee, rho_r, rho_x, rhs_rho_term
 
 
 # adaptive timestep
