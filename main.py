@@ -59,22 +59,10 @@ T_in = out_cons[5]
 print("p_in: ", p_in, "u_in: ", u_in, "v_in: ", v_in,
       "rho_in: ", rho_in, "e_in: ", e_in, "T_in: ", T_in)
 
-# PREPPING AREA - smoothing
-p1, rho1, T1, u1, Ut1, e1 = smoothing_inlet(
-    p1, rho1, T1, e1,  u1, v1, u_in, Ut1, p_in, p_0, rho_in, rho_0, n_trans)
-
-# negative temp check
-if np.any(T1 < 0):
-    print("Temp smoothing has at least one negative value")
-    exit()
 
 # BC SURFACES- check deep copy
 Ts1[:] = T1[:, Nr]
 Ts2[:] = Ts1
-
-# PARABOLIC VELOCITY PROFILE - inlet prepping area
-
-u1, Ut1 = parabolic_velocity(T1, u1, u_in, Ut1)
 
 print("Applying No-slip BC")
 # NO SLIP BC
@@ -96,10 +84,21 @@ if np.any(T1 < 0):
 
 p1, rho1, T1, u1, Ut1, e1 = outlet_BC(p1, e1, rho1, u1, v1, Ut1, rho_0)
 
+
+# PARABOLIC VELOCITY PROFILE - inlet prepping area
+
+u1, Ut1, e1 = parabolic_velocity(rho1, T1, u1, u_in, Ut1, e1)
+
+# PREPPING AREA - smoothing
+p1, rho1, T1, u1, Ut1, e1 = smoothing_inlet(
+    p1, rho1, T1, e1,  u1, v1, u_in, Ut1, p_in, p_0, rho_in, rho_0, n_trans)
+
+
 # negative temp check
 if np.any(T1 < 0):
-    print("Temp no slip after smoothing has at least one negative value")
+    print("Temp smoothing has at least one negative value")
     exit()
+
 
 # Calculating Peclet number in the grid points to determine differencing scheme
 # Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
@@ -147,8 +146,8 @@ print("Main loop started")
 def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, de1, p3, rho3, T3, u3, v3, Ut3, e3, Tw1, Ts1, Tc1, p_in, rho_in, T_in, e_in, u_in, v_in, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term):
 
     N = n_matrix()
-
-    for i in np.arange(np.int64(0), np.int64(ss)):
+    # NOTE: use ss for plotting terms
+    for i in np.arange(np.int64(0), np.int64(Nt+1)):
         print("Iteration: #", i)
 
         # variable inl et
@@ -278,58 +277,58 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, 
         print("i: ", i)
 
 # point to plot terms with time
-        aa = 3
-        bb = 30
+        # aa = 3
+        # bb = 30
 
-        if i == ss-1:
-            x = np.linspace(0, 7, ss)
-            fig, axs = plt.subplots(5)
-            plt.suptitle("Momentum R terms")
+        # if i == ss-1:
+        #     x = np.linspace(0, 7, ss)
+        #     fig, axs = plt.subplots(5)
+        #     plt.suptitle("Momentum R terms")
 
-            # y1 = rho_x[:, aa, bb]
-            # y2 = rho_r[:, aa, bb]
-            # y3 = rhs_rho_term[:, aa, bb]
-            # axs[0].plot(x, y1)
-            # axs[1].plot(x, y2)
-            # axs[2].plot(x, y3)
+        # y1 = rho_x[:, aa, bb]
+        # y2 = rho_r[:, aa, bb]
+        # y3 = rhs_rho_term[:, aa, bb]
+        # axs[0].plot(x, y1)
+        # axs[1].plot(x, y2)
+        # axs[2].plot(x, y3)
 
-            # y1 = pressure_x[:, aa, bb]
-            # y2 = visc_x[:, aa, bb]
-            # y3 = ux_x[:, aa, bb]
-            # y4 = ur_x[:, aa, bb]
-            # y5 = rhs_ux_term[:, aa, bb]
-            # axs[0].plot(x, y1)
-            # axs[1].plot(x, y2)
-            # axs[2].plot(x, y3)
-            # axs[3].plot(x, y4)
-            # # axs[4].plot(x, y5)
+        # y1 = pressure_x[:, aa, bb]
+        # y2 = visc_x[:, aa, bb]
+        # y3 = ux_x[:, aa, bb]
+        # y4 = ur_x[:, aa, bb]
+        # y5 = rhs_ux_term[:, aa, bb]
+        # axs[0].plot(x, y1)
+        # axs[1].plot(x, y2)
+        # axs[2].plot(x, y3)
+        # axs[3].plot(x, y4)
+        # # axs[4].plot(x, y5)
 
-            y1 = pressure_r[:, aa, bb]
-            y2 = visc_r[:, aa, bb]
-            y3 = ux_r[:, aa, bb]
-            y4 = ur_r[:, aa, bb]
-            y5 = rhs_ur_term[:, aa, bb]
-            axs[0].plot(x, y1)
-            axs[1].plot(x, y2)
-            axs[2].plot(x, y3)
-            axs[3].plot(x, y4)
-            axs[4].plot(x, y5)
+        # y1 = pressure_r[:, aa, bb]
+        # y2 = visc_r[:, aa, bb]
+        # y3 = ux_r[:, aa, bb]
+        # y4 = ur_r[:, aa, bb]
+        # y5 = rhs_ur_term[:, aa, bb]
+        # axs[0].plot(x, y1)
+        # axs[1].plot(x, y2)
+        # axs[2].plot(x, y3)
+        # axs[3].plot(x, y4)
+        # axs[4].plot(x, y5)
 
-            # y1 = e_r[:, aa, bb]
-            # y2 = e_x[:, aa, bb]
-            # y3 = rhs_e_term[:, aa, bb]
-            # axs[0].plot(x, y1)
-            # axs[1].plot(x, y2)
-            # axs[2].plot(x, y3)
+        # y1 = e_r[:, aa, bb]
+        # y2 = e_x[:, aa, bb]
+        # y3 = rhs_e_term[:, aa, bb]
+        # axs[0].plot(x, y1)
+        # axs[1].plot(x, y2)
+        # axs[2].plot(x, y3)
 
-            # plt.title("rhs_e_term term")
-            # plt.plot(x, y, color="red")
-            plt.show()
+        # plt.title("rhs_e_term term")
+        # plt.plot(x, y, color="red")
+        # plt.show()
 
 
 # PLOTTING FIELDS
         # if i == 200:
-        plot_imshow(p3, u3, T3, rho3, e3)
+        # plot_imshow(p3, u3, T3, rho3, e3)
 # First set up the figure, the axis, and the plot element we want to animate
         # im = plt.imshow((p3, u3, T3, rho3, e3),
         #                 interpolation='none', aspect='auto', vmin=0, vmax=1)

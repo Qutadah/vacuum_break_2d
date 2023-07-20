@@ -279,7 +279,7 @@ def rhs_ma(i, dp_dx, rho, dt2r_ux, N, ux_dr, dt2x_ux, ux, ux_dx, ur, dp_dr, dt2r
     A = -dp_dx/rho
     B = visc_matrix/rho * (
         dt2r_ux + 1/N/dr*ux_dr + dt2x_ux)
-    C = ux * ux_dx
+    C = -ux * ux_dx
     D = - ur*ux_dr
 
     rhs_ux = -dp_dx/rho + visc_matrix/rho * (
@@ -449,6 +449,8 @@ def rk4(ux, ur, u, p, q, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, R
     # plot_imshow(p, u, tg, q, e)
     p, q, tg, ux, u, e = outlet_BC(p, e, q, ux, ur, u, rho_0)
     # plot_imshow(p, u, tg, q, e)
+    ux, u, e = parabolic_velocity(rho, tg, u, u_in, Ut, e)
+
 
 # Calculating gradients (first and second)
     print("Calculating gradients for RK3 loop #", n)
@@ -782,7 +784,9 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
     #     exit()
     # plot_imshow(p, u, tg, q, e)
     p, q, tg, u, Ut, e = outlet_BC(p, e, q, u, v, Ut, rho_0)
+    u, Ut, e = parabolic_velocity(q, tg, u, u_in, Ut, e)
     l = [p, q, tg, u, v, Ut, e]
+
     # negative temp check
     # if np.any(tg < 0):
     #     print("Temp outlet_BC has at least one negative value")
@@ -838,6 +842,7 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
     pp, tt, uxx, urr, uu, ee = no_slip_no_mdot(pp, qq, tt, uxx, urr, uu, ee)
     # print("plotting no slip")
     # plot_imshow(pp, uu, tt, qq, ee)
+    uxx, uu, ee = parabolic_velocity(qq, tg, uxx, u_in, Ut, ee)
 
     return pp, qq, tt, uxx, urr, uu, ee, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term
 
@@ -1834,21 +1839,20 @@ def surface_BC(ux):
     return ux
 
 
-def parabolic_velocity(tg, u, u_in, Ut):
-    for i in np.arange(n_trans):
+def parabolic_velocity(rho, tg, u, u_in, Ut, e):
+    # for i in np.arange(n_trans):
         # diatomic gas gamma = 7/5   WE USED ANY POINT, since this preparation area is constant along R direction.
         # any temperature works, they are equl in the radial direction
-        v_max = np.sqrt(7./5.*R*tg[i, 4]/M_n)
-        for y in np.arange(Nr+1):
-            # a = v_max
-            # a = u_in
-            a = v_max*(1.0 - ((y*dr)/R_cyl)**2)
-            # print("parabolic y", y)
-            u[i, y] = a
-            Ut[i, y] = u[i, y]
+    v_max = np.sqrt(7./5.*R*tg[0, 4]/M_n)
+    for y in np.arange(Nr+1):
+        # a = v_max
+        # a = u_in
+        u[0, y] = v_max*(1.0 - ((y*dr)/R_cyl)**2)
+        # print("parabolic y", y)
+        Ut[0, y] = u[0, y]
+    e = 5./2.*rho*R*tg + 1./2. * rho*Ut**2.
 
-    # print("parabolic ux at center: ", ux1[i, 0])
-    out = u, Ut
+    out = u, Ut, e
     return out
 
 # @jit(nopython=True)
