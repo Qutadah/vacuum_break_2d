@@ -10,8 +10,8 @@ print("Removing old timestepping folder")
 remove_timestepping()
 
 # Continuity terms
-rho_term_r = np.zeros((Nx+1), dtype=(np.float64))
-rho_term_x = np.zeros((Nx+1), dtype=(np.float64))
+rho_r = np.zeros((8, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+rho_x = np.zeros((Nx+1), dtype=(np.float64))
 rhs_rho_term = np.zeros((Nx+1), dtype=(np.float64))
 
 # Momentum X terms
@@ -29,8 +29,8 @@ rhs_ur_term = np.zeros((Nx+1), dtype=(np.float64))
 
 # energy terms
 
-e_term1 = np.zeros((Nx+1), dtype=(np.float64))
-e_term2 = np.zeros((Nx+1), dtype=(np.float64))
+e_r = np.zeros((Nx+1), dtype=(np.float64))
+e_x = np.zeros((Nx+1), dtype=(np.float64))
 rhs_e_term = np.zeros((Nx+1), dtype=(np.float64))
 
 # Calculate initial values
@@ -144,11 +144,11 @@ save_gradients(d_dr, m_dx, dp_dx, ux_dx, ux_dr,
 print("Main loop started")
 
 
-def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, de1, p3, rho3, T3, u3, v3, Ut3, e3, Tw1, Ts1, Tc1, p_in, rho_in, T_in, e_in, u_in, v_in):
+def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, de1, p3, rho3, T3, u3, v3, Ut3, e3, Tw1, Ts1, Tc1, p_in, rho_in, T_in, e_in, u_in, v_in, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term):
 
     N = n_matrix()
 
-    for i in np.arange(np.int64(1), np.int64(Nt+1)):
+    for i in np.arange(np.int64(0), np.int64(8)):
         print("Iteration: #", i)
 
         # variable inl et
@@ -182,8 +182,8 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, 
 
 
 # simple time integration
-        p2, rho2, T2, u2, v2, Ut2, e2 = simple_time(
-            p1, rho1, T1, u1, v1, Ut1, e1, p_in, rho_in, T_in, e_in, u_in, v_in, rho_0)
+        p2, rho2, T2, u2, v2, Ut2, e2, rho_r = simple_time(
+            p1, rho1, T1, u1, v1, Ut1, e1, p_in, rho_in, T_in, e_in, u_in, v_in, rho_0, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term, i)
 
         out = [p2, rho2, T2, u2, v2, Ut2]
 
@@ -275,6 +275,16 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, 
 # SAVING DATA
         save_data(i, dt, rho3, u3, v3, Ut3, e3,
                   T3, Tw2, Ts2, de0, p3)
+        print("i: ", i)
+
+        if i == 7:
+            x = np.linspace(0, 7, 8)
+            y = rho_r[:, 100, 20]
+
+            plt.title("rho_r term")
+            plt.plot(x, y, color="red")
+            plt.show()
+
 
 # PLOTTING FIELDS
         if i == 200:
@@ -296,7 +306,8 @@ if __name__ == "__main__":
     # main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2,
     #          ur2, T2, e2, Tw2, Ts2, Tc2, de1, T3)
     main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2,
-             Ut2, e2, de0, de1, p3, rho3, T3, u3, v3, Ut3, e3, Tw1, Ts1, Tc1, p_in, rho_in, T_in, e_in, u_in, v_in)
+             Ut2, e2, de0, de1, p3, rho3, T3, u3, v3, Ut3, e3, Tw1, Ts1, Tc1, p_in, rho_in, T_in, e_in, u_in, v_in, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term
+             )
 
 # END OF PROGRAM
 

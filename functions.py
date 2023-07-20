@@ -244,20 +244,34 @@ def source_mass_depo_matrix(rho_0, T, P, Ts1, rho, ux, ur, de, N):  # -4/D* mdot
 
 
 # returns continuity RHS matrix, including source term S
-def rhs_rho(d_dr, m_dx, N):
+def rhs_rho(i, d_dr, m_dx, N, rho_r, rho_x, rhs_rho_term):
     # calculate source term
     rhs_rho = - 1/N/dr*d_dr - m_dx
-    A = - 1/N/dr*d_dr 
+    A = - 1/N/dr*d_dr
     B = -m_dx
 
-    np.concatenate(([rho_term_r],[A]),axis=0)
-    np.concatenate(([rho_term_x],[B]),axis=0)
-    np.concatenate(([rhs_rho_term],[rhs_rho]),axis=0)
-    return rhs_rho
+    # np.concatenate(([rho_r], [A]), axis=0)
+    # np.concatenate(([rho_x], [B]), axis=0)
+    # np.concatenate(([rhs_rho_term], [rhs_rho]), axis=0)
+
+    rho_r[i, :, :] = A
+    # np.append(rho_r, A, axis=0)
+    # save_stack(rho_r)
+
+    return rhs_rho, rho_r
+
+
+def save_stack(x):
+    pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/stack/'
+    newpath = pathname
+    if not os.path.exists(newpath):
+        os.makedirs(newpath)
+    os.chdir(pathname)
+    np.savetxt("rho_r.csv", x, delimiter=",")
 
 
 # returns MOMENTUM RHS matrix
-def rhs_ma(dp_dx, rho, dt2r_ux, N, ux_dr, dt2x_ux, ux, ux_dx, ur, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix):
+def rhs_ma(dp_dx, rho, dt2r_ux, N, ux_dr, dt2x_ux, ux, ux_dx, ur, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term):
 
     A = -dp_dx/rho
     B = visc_matrix/rho * (
@@ -280,18 +294,17 @@ def rhs_ma(dp_dx, rho, dt2r_ux, N, ux_dr, dt2x_ux, ux, ux_dx, ur, dp_dr, dt2r_ur
          dt2r_ur + dt2x_ur) - ux * ur_dx - ur*ur_dr
     # surface equations
     # no momentum equations radial velocity 0 will be applied in the BCs after solving
-    np.concatenate(([a],[b]),axis=0)
-    np.concatenate(([a],[b]),axis=0)
-    np.concatenate(([a],[b]),axis=0)
-    np.concatenate(([a],[b]),axis=0)
-    np.concatenate(([a],[b]),axis=0)
+    # np.concatenate(([pressure_x], [A]), axis=0)
+    # np.concatenate(([visc_x], [B]), axis=0)
+    # np.concatenate(([ux_x], [C]), axis=0)
+    # np.concatenate(([ur_x], [D]), axis=0)
+    # np.concatenate(([rhs_ux_term], [rhs_ux]), axis=0)
 
-    np.concatenate(([a],[b]),axis=0)
-    np.concatenate(([a],[b]),axis=0)
-    np.concatenate(([a],[b]),axis=0)
-    np.concatenate(([a],[b]),axis=0)
-    np.concatenate(([a],[b]),axis=0)
-
+    # np.concatenate(([pressure_r], [E]), axis=0)
+    # np.concatenate(([visc_r], [F]), axis=0)
+    # np.concatenate(([ux_r], [G]), axis=0)
+    # np.concatenate(([ur_r], [H]), axis=0)
+    # np.concatenate(([rhs_ur_term], [rhs_ur]), axis=0)
 
     return rhs_ux, rhs_ur
 
@@ -309,14 +322,16 @@ def no_division_zero(array):
 # returns ENERGY RHS matrix including source terms
 
 
-def rhs_energy(grad_r, grad_x, N, p, rho, u):
+def rhs_energy(grad_r, grad_x, N, e_r, e_x, rhs_e_term):
     # S_e = np.zeros((Nx+1), dtype=(np.float64))
     rhs_e = - 1/N/dr*grad_r - grad_x
+    A = -  1/N/dr*grad_r
+    B = -grad_x
     # S_e[:] = S[:]*(5./2.*p[:, Nr]/rho[:, Nr] + 1./2.*u[:, Nr]**2)
     # rhs_e[:, Nr] = - 1/N[:, Nr]/dr*grad_r[:, Nr]
-    np.concatenate(([a],[b]),axis=0)
-    np.concatenate(([a],[b]),axis=0)
-    np.concatenate(([a],[b]),axis=0)
+    # np.concatenate(([e_r], [A]), axis=0)
+    # np.concatenate(([e_x], [B]), axis=0)
+    # np.concatenate(([rhs_e_term], [rhs_e]), axis=0)
 
     return rhs_e
     # ri = rhsInv(nx,ny,nz,dx,dy,dz,q,iflx)
@@ -721,7 +736,7 @@ def tvdrk3(ux, ur, u, p, q, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in
 # def RK3():
 
 
-def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho_0):
+def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho_0, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term, i):
     N = n_matrix()
 
     qq = copy.deepcopy(q)  # density
@@ -779,10 +794,10 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
 
     assert np.isfinite(visc_matrix).all()
 
-    r = rhs_rho(d_dr, m_dx, N)
+    r, rho_r = rhs_rho(i, d_dr, m_dx, N, rho_r, rho_x, rhs_rho_term)
     r_ux, r_ur = rhs_ma(dp_dx, q, dt2r_ux, N, ux_dr, dt2x_ux, u,
-                        ux_dx, v, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix)
-    r_e = rhs_energy(grad_r, grad_x, N, p, q, u)
+                        ux_dx, v, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term)
+    r_e = rhs_energy(grad_r, grad_x, N, e_r, e_x, rhs_e_term)
 
 # first LHS calculations
     qq = q + dt*r
@@ -804,7 +819,7 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
     # print("plotting no slip")
     # plot_imshow(pp, uu, tt, qq, ee)
 
-    return pp, qq, tt, uxx, urr, uu, ee
+    return pp, qq, tt, uxx, urr, uu, ee, rho_r
 
 
 # adaptive timestep
@@ -1988,9 +2003,10 @@ def val_in(n):
     #     "val_in from function [q_in, ux_in, ur_in, rho_in, p_in, e_in]: ", out)
     return out
 
-
 # @numba.jit('f8(f8,f8,f8,f8)')
 # @jit(nopython=True)
+
+
 def DN(T, P, u, T_w, rho):
     #   Calculate dimensionless numbers
     rho = P*M_n/R/T
