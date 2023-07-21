@@ -147,29 +147,6 @@ def initialize_grid(p_0, rho_0, e_0, T_0, T_s):
 
 # def rhs_rho(m, n, dr, dx, ur, ux, rho, a, ux_in, rho_in):
 
-
-def rhs_matrix_initialization():
-    # nonconservative form
-
-    rhs_rho = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    rhs_ux = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    rhs_ur = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    rhs_e = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-
-    return rhs_rho, rhs_ux, rhs_ur, rhs_e
-
-
-def rhs_conservative_matrix_initialization():
-    # conservative form
-
-    rhs_rho = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    rhs_max = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    rhs_mar = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    rhs_e = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-
-    return rhs_rho, rhs_max, rhs_mar, rhs_e
-
-
 def n_matrix():
     # Initialized once when starting main
     n = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
@@ -201,7 +178,7 @@ def viscous_matrix(T, P):
 
 # perform NAN value matrix checks:
     print("performing finite check on visc_matrix")
-
+    # print(visc_matrix)
     for x in np.arange(len(visc_matrix)):
         assert np.isfinite(visc_matrix).all()
 
@@ -209,7 +186,7 @@ def viscous_matrix(T, P):
     if np.any(visc_matrix < 0):
         print("The viscous matrix has at least one negative value")
         exit()
-
+    visc_matrix[:, :] = 0.
     return visc_matrix
 
 
@@ -255,9 +232,9 @@ def rhs_rho(i, d_dr, m_dx, N, rho_r, rho_x, rhs_rho_term):
     # np.concatenate(([rho_x], [B]), axis=0)
     # np.concatenate(([rhs_rho_term], [rhs_rho]), axis=0)
 
-    rho_r[i, :, :] = A
-    rho_x[i, :, :] = B
-    rhs_rho_term[i, :, :] = rhs_rho
+    # rho_r[i, :, :] = A
+    # rho_x[i, :, :] = B
+    # rhs_rho_term[i, :, :] = rhs_rho
     # np.append(rho_r, A, axis=0)
     # save_stack(rho_r)
 
@@ -276,21 +253,21 @@ def save_stack(x):
 # returns MOMENTUM RHS matrix
 def rhs_ma(i, dp_dx, rho, dt2r_ux, N, ux_dr, dt2x_ux, ux, ux_dx, ur, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term):
 
-    A = -dp_dx/rho
-    B = visc_matrix/rho * (
-        dt2r_ux + 1/N/dr*ux_dr + dt2x_ux)
-    C = -ux * ux_dx
-    D = - ur*ux_dr
+    # A = -dp_dx/rho
+    # B = visc_matrix/rho * (
+    #     dt2r_ux + 1/N/dr*ux_dr + dt2x_ux)
+    # C = -ux * ux_dx
+    # D = - ur*ux_dr
 
     rhs_ux = -dp_dx/rho + visc_matrix/rho * (
         dt2r_ux + 1/N/dr*ux_dr + dt2x_ux) - ux * ux_dx - ur*ux_dr
 
-    E = - dp_dr/rho
-    F = visc_matrix/rho * \
-        (- ur/(dr**2*N**2) + 1/N/dr*ur_dr +
-         dt2r_ur + dt2x_ur)
-    G = - ux * ur_dx
-    H = - ur*ur_dr
+    # E = - dp_dr/rho
+    # F = visc_matrix/rho * \
+    #     (- ur/(dr**2*N**2) + 1/N/dr*ur_dr +
+    #      dt2r_ur + dt2x_ur)
+    # G = - ux * ur_dx
+    # H = - ur*ur_dr
 
     rhs_ur = - dp_dr/rho + visc_matrix/rho * \
         (- ur/(dr**2*N**2) + 1/N/dr*ur_dr +
@@ -309,17 +286,17 @@ def rhs_ma(i, dp_dx, rho, dt2r_ux, N, ux_dr, dt2x_ux, ux, ux_dx, ur, dp_dr, dt2r
     # np.concatenate(([ur_r], [H]), axis=0)
     # np.concatenate(([rhs_ur_term], [rhs_ur]), axis=0)
 
-    pressure_x[i, :, :] = A
-    visc_x[i, :, :] = B
-    ux_x[i, :, :] = C
-    ur_x[i, :, :] = D
-    rhs_ux_term[i, :, :] = rhs_ux
+    # pressure_x[i, :, :] = A
+    # visc_x[i, :, :] = B
+    # ux_x[i, :, :] = C
+    # ur_x[i, :, :] = D
+    # rhs_ux_term[i, :, :] = rhs_ux
 
-    pressure_r[i, :, :] = E
-    visc_r[i, :, :] = F
-    ux_r[i, :, :] = G
-    ur_r[i, :, :] = H
-    rhs_ur_term[i, :, :] = rhs_ur
+    # pressure_r[i, :, :] = E
+    # visc_r[i, :, :] = F
+    # ux_r[i, :, :] = G
+    # ur_r[i, :, :] = H
+    # rhs_ur_term[i, :, :] = rhs_ur
 
     return rhs_ux, rhs_ur, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term
 
@@ -340,17 +317,17 @@ def no_division_zero(array):
 def rhs_energy(i, grad_r, grad_x, N, e_r, e_x, rhs_e_term):
     # S_e = np.zeros((Nx+1), dtype=(np.float64))
     rhs_e = - 1/N/dr*grad_r - grad_x
-    A = -  1/N/dr*grad_r
-    B = -grad_x
+    # A = -  1/N/dr*grad_r
+    # B = -grad_x
     # S_e[:] = S[:]*(5./2.*p[:, Nr]/rho[:, Nr] + 1./2.*u[:, Nr]**2)
     # rhs_e[:, Nr] = - 1/N[:, Nr]/dr*grad_r[:, Nr]
     # np.concatenate(([e_r], [A]), axis=0)
     # np.concatenate(([e_x], [B]), axis=0)
     # np.concatenate(([rhs_e_term], [rhs_e]), axis=0)
 
-    e_r[i, :, :] = A
-    e_x[i, :, :] = B
-    rhs_e_term[i, :, :] = rhs_e
+    # e_r[i, :, :] = A
+    # e_x[i, :, :] = B
+    # rhs_e_term[i, :, :] = rhs_e
     return rhs_e, e_r, e_x, rhs_e_term
     # ri = rhsInv(nx,ny,nz,dx,dy,dz,q,iflx)
     # if (ivis==1)
@@ -512,9 +489,6 @@ def rk4(ux, ur, u, p, q, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, R
 # viscosity calculations
     print("Calculating viscosity for RK3 loop #", n)
     visc_matrix = viscous_matrix(l[2], l[0])
-    # if n == 2:
-    # print(visc_matrix)
-    # print("Checking viscosity matrix")
     assert np.isfinite(visc_matrix).all()
 
     # de_variable (de1) matrix input.
@@ -835,7 +809,7 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
 # Velocity
     uu = np.sqrt(uxx**2. + urr**2.)
 # pressure defining
-    tt = (ee - 1./2.*qq*uu**2) * 2./5.
+    tt = (ee - 1./2.*qq*uu**2.) * 2./5.
     pp = qq*R/M_n*T_in
 
 # no slip condition - pressure and temp recalculated within
@@ -942,44 +916,6 @@ def animate_func(p, ux, T, rho, e):
     line.imshow(p, ux, T, rho, e)
     return line
 
-# @jit(nopython=True)
-
-
-def grad_rho2(m, n, ux_in, rho_in, ur, ux, rho):
-    # if m == 0:
-    #     a = rho_in
-    #     m_dx = (rho[m, n]*ux[m, n]-rho_in*ux_in)/dx
-
-    if m == 1:
-        m_dx = (rho[m, n]*ux[m, n]-rho_in*ux_in)/dx
-
-    elif m == Nx:
-        m_dx = (rho[m, n]*ux[m, n]-rho[m-1, n]*ux[m-1, n])/dx
-
-    # elif (m <= n_trans+2 and m >= n_trans+2):
-    #     # NOTE Use four point CD at transition point.
-    #     a = rho1[m, n]
-    #     m_dx = (rho1[m-2, n] - 8*rho1[m-1, n] + 8 *
-    #             rho1[m+1, n] - rho1[m+2, n])/(12*dx)
-
-    else:
-        m_dx = (rho[m, n]*ux[m, n]-rho[m-1, n]*ux[m-1, n])/(dx)
-
-    if n == 1:
-        # NOTE: SYMMETRY BC
-        d_dr = (rho[m, n+2]*(n+2)*dr*ur[m, n+2] -
-                rho[m, n] * n*dr*ur[m, n]) / (4*dr)
-
-    elif n == Nr-1:
-        d_dr = (rho[m, n]*n*dr*ur[m, n] -
-                rho[m, n-1] * (n-1)*dr*ur[m, n-1])/dr
-
-    else:
-        d_dr = (rho[m, n+1]*(n+1)*dr*ur[m, n+1] -
-                rho[m, n-1] * (n-1)*dr*ur[m, n-1])/(2*dr)
-
-    return d_dr, m_dx
-
 
 def grad_rho_matrix(ux_in, rho_in, ur, ux, rho):
     # create gradients arrays.
@@ -987,27 +923,32 @@ def grad_rho_matrix(ux_in, rho_in, ur, ux, rho):
     d_dr = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     for i in np.arange(Nx+1):
         for j in np.arange(Nr+1):
-            if i == 1:
-                m_dx[i, j] = (rho[i, j]*ux[i, j]-rho_in*ux_in)/dx
-
-            elif i == Nx:
-                m_dx[i, j] = (rho[i, j]*ux[i, j]-rho[i-1, j]*ux[i-1, j])/dx
+            # if i == 0:
+            #     # m_dx[i, j] = (rho[i, j]*ux[i, j]-rho_in*ux_in)/dx
+            #     m_dx[i, j] = (rho[i+1, j]*ux[i+1, j]-rho[i, j]*ux[i, j])/dx
+            # axial
+            if i == Nx:
+                m_dx[i, j] = (rho[i, j]*ux[i, j]-rho[i-1, j]
+                              * ux[i-1, j])/dx  # BWD
 
             else:
-                m_dx[i, j] = (rho[i, j]*ux[i, j]-rho[i-1, j]*ux[i-1, j])/(dx)
+                m_dx[i, j] = (rho[i+1, j]*ux[i+1, j]-rho[i, j]*ux[i, j])/dx
 
+# radial
             if j == 1:
                 # NOTE: SYMMETRY BC
                 d_dr[i, j] = (rho[i, j+2]*(j+2)*dr*ur[i, j+2] +
                               rho[i, j] * j*dr*ur[i, j]) / (4*dr)
 
-            elif j == Nr-1 or j == Nr:
+            elif j == Nr:
                 d_dr[i, j] = (rho[i, j]*j*dr*ur[i, j] -
                               rho[i, j-1] * (j-1)*dr*ur[i, j-1])/dr
 
             else:
                 d_dr[i, j] = (rho[i, j+1]*(i+1)*dr*ur[i, j+1] -
-                              rho[i, j-1] * (j-1)*dr*ur[i, j-1])/(2*dr)
+                              rho[i, j] * j*dr*ur[i, j])/dr  # upwind
+    # d_dr[:, :] = 0.
+    # m_dx[:, :] = 0.
     return d_dr, m_dx
 
 
@@ -1076,34 +1017,210 @@ def grad_ux2_matrix(p_in, p, ux_in, ux):  # bulk
     ux_dx = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
 
     for m in np.arange(Nx+1):
-        for n in np.arange(Nr+1):
+        for n in np.arange(Nr):
+            # axial
+            if m == Nx:
+                dp_dx[m, n] = (p[m, n] - p[m-1, n])/dx
+                ux_dx[m, n] = (ux[m, n] - ux[m-1, n])/dx
+
+            # elif m == Nx:
+            #     dp_dx[m, n] = (p[m, n] - p[m-1, n])/dx  # BWD
+            #     ux_dx[m, n] = (ux[m, n] - ux[m-1, n])/dx  # BWD
+
+            else:
+                # upwind 1st order  - positive flow - advection
+                dp_dx[m, n] = (p[m+1, n] - p[m, n])/dx  # upwind
+                ux_dx[m, n] = (ux[m+1, n] - ux[m, n])/dx  # upwind
+
+# radial
             if n == 1:
                 # NOTE: SYMMETRY CONDITION
                 ux_dr[m, n] = (ux[m, n+2] - ux[m, n])/(4*dr)
 
-            elif n == Nr-1 or n == Nr:
+            elif n == Nr-1:
                 ux_dr[m, n] = (ux[m, n] - ux[m, n-1])/dr  # BWD
-
             else:
                 # upwind 1st order  - positive flow - advection
-                ux_dr[m, n] = (ux[m, n] - ux[m, n-1])/(dr)  # CD
-
-            if m == 1:
-                dp_dx[m, n] = (p[m, n] - p_in)/dx  # BWD
-                ux_dx[m, n] = (ux[m, n] - ux_in)/dx  # BWD
-
-            elif m == Nx:
-                dp_dx[m, n] = (p[m, n] - p[m-1, n])/dx  # BWD
-                ux_dx[m, n] = (ux[m, n] - ux[m-1, n])/dx  # BWD
-
-            else:
-                # upwind 1st order  - positive flow - advection
-                dp_dx[m, n] = (p[m, n] - p[m-1, n])/dx
-                ux_dx[m, n] = (ux[m, n] - ux[m-1, n])/dx
-
+                ux_dr[m, n] = (ux[m, n+1] - ux[m, n])/(dr)  # upwind
+    # ux_dr[:, :] = 0.
+    # ux_dx[:, :] = 0.
+    # dp_dx[:, :] = 0.
     return dp_dx, ux_dx, ux_dr
 
 # @numba.jit('f8(f8,f8,f8,f8,f8)')
+
+
+def grad_ur2_matrix(p, ur, ur_in):  # first derivatives BULK
+    dp_dr = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    ur_dr = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    ur_dx = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+
+    for m in np.arange(Nx+1):
+        for n in np.arange(Nr):
+
+            # radial
+            if n == 1:
+                # NOTE: Symmetry BC
+                dp_dr[m, n] = (p[m, n+2] - p[m, n])/(4*dr)
+                ur_dr[m, n] = (ur[m, n+2] + ur[m, n])/(4*dr)
+
+            else:
+                dp_dr[m, n] = (p[m, n+1] - p[m, n])/dr  # upwind
+                ur_dr[m, n] = (ur[m, n+1] - ur[m, n])/dr  # upwind
+
+            # elif (n != 1 and n != Nr-1):
+            #     dp_dr = (p[m, n+1] - p[m, n-1])/(2*dr)  # CD
+            #     ur_dr = (ur[m, n+1] - ur[m, n-1])/(2*dr)
+
+            # if m == 0:
+            #     ur_dx = (ur[m+1, n] - ur_in)/(dx)  # upwind 1st order
+
+# axial
+            if m == Nx:
+                ur_dx[m, n] = (ur[m, n] - ur[m-1, n])/dx  # BWD
+
+            else:
+                ur_dx[m, n] = (ur[m+1, n] - ur[m, n])/(dx)  # upwind
+
+            # elif (m <= n_trans+2 and m >= n_trans-2):
+            #     ur_dx = (ur1[m-2, n] - 8*ur1[m-1, n] + 8 *
+            #              ur1[m+1, n] - ur1[m+2, n])/(12*dx)  # 4 point CD
+
+            # elif (m > 1 and m <= Nx - 2):
+            #     # upwind 1st order  - positive flow - advection
+            #     ur_dx[m, n] = (ur[m, n] - ur[m-1, n])/dx
+
+            # else:
+            #     # upwind 1st order  - positive flow - advection
+            #     ur_dx[m, n] = (ur[m, n] - ur[m-1, n])/(dx)  # CD
+            # dp_dr[:, :] = 0.
+            # ur_dx[:, :] = 0.
+            # ur_dr[:, :] = 0.
+            return dp_dr, ur_dx, ur_dr
+
+
+def grad_e2_matrix(v, u, u_in, e_in, e):     # use upwind for Pe > 2
+    grad_r = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    grad_x = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    for m in np.arange(Nx+1):
+        for n in np.arange(Nr+1):
+            if n == 1:
+                # NOTE: Symmetry BC
+                grad_r[m, n] = ((n+2)*dr*v[m, n+2]*e[m, n+2] +
+                                n * dr*v[m, n]*e[m, n])/(4*dr)
+
+# surface case
+            if n == Nr:
+                grad_r[m, n] = (n*dr*v[m, n]*e[m, n] -
+                                (n-1)*dr*v[m, n-1]*e[m, n-1])/dr  # BWD
+
+# n == Nr-1:
+            else:
+                grad_r[m, n] = ((n+1)*dr*v[m, n+1]*e[m, n+1] - n
+                                * dr*v[m, n]*e[m, n])/dr  # upwind
+
+            # if m == 0:
+            #     grad_x = (e1[m+1, n]*ux1[m+1, n]-e_in*ux_in)/(dx)
+
+            if m == Nx:
+                # print("e1[m, n]*ux1[m, n]: ", e1[m, n]*ux1[m, n],
+                #       "-e1[m-1, n]*ux1[m-1, n]: ", -e1[m-1, n]*ux1[m-1, n])
+                grad_x[m, n] = (e[m, n]*u[m, n]-e[m-1, n]
+                                * u[m-1, n])/dx  # BWD
+
+            # elif (m <= n_trans+2 and m >= n_trans-2):
+            #     grad_x = (e1[m-2, n]*ux1[m-2, n] - 8*e1[m-1, n]*ux1[m-1, n] + 8 *
+            #               e1[m+1, n]*ux1[m+1, n] - e1[m+2, n]*ux1[m+2, n])/(12*dx)
+            # elif (m >= 1 and m <= Nx - 2):
+            #     # upwind 1st order  - positive flow - advection
+            #     grad_x[m, n] = (e[m, n]*u[m, n]-e[m-1, n]*u[m-1, n])/dx
+                # grad_x = 3*(e1[m, n]*ux1[m, n]) - 4*(e1[m-1, n]
+                #                                      * ux1[m-1, n]) + (e1[m-2, n]
+                #                                                        * ux1[m-2, n]) / dx  # upwind, captures shocks
+            else:  # 0 < m < Nx,  1 < n < Nr
+                grad_x[m, n] = (e[m+1, n]*u[m+1, n]-e[m, n]
+                                * u[m, n])/dx  # upwind
+    # grad_x[:, :] = 0.
+    # grad_r[:, :] = 0.
+    # print(grad_r)
+    return grad_x, grad_r
+
+
+def dt2x_matrix(u_in, v_in, u, v):
+    dt2x_ux = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    dt2x_ur = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    for m in np.arange(Nx+1):
+        for n in np.arange(Nr+1):
+            if m == 0:
+                # dt2nd axial ux1
+                dt2x_ux[m, n] = (u[m-1, n] - 2*u[m, n] + u[m+1, n]) / (dx**2)
+
+# dt2nd axial ur1
+                dt2x_ur[m, n] = (-v_in + v_in - 30 *
+                                 v[m, n] + 16*v[m+1, n] - v[m+2, n])/(12*dx**2)
+
+            elif m == Nx:
+                # dt2nd axial ux1
+
+                dt2x_ux[m, n] = (u[m-2, n] - 2*u[m-1, n] +
+                                 u[m, n])/(dx**2)  # BWD
+# dt2nd axial ur1
+# Three-point BWD
+                dt2x_ur[m, n] = (
+                    v[m-2, n] - 2*v[m-1, n] + v[m, n])/(dx**2)
+
+            else:
+                # dt2nd axial ux1
+                dt2x_ux[m, n] = (u[m+1, n] + u[m-1, n] -
+                                 2*u[m, n])/(dx**2)  # CD
+
+# dt2nd axial ur1
+                dt2x_ur[m, n] = (v[m+1, n] + v[m-1, n] -
+                                 2*v[m, n])/(dx**2)  # CD
+    # dt2x_ux[:, :] = 0.
+    # dt2x_ur[:, :] = 0.
+    save_dt2x_matrix(dt2x_ux, dt2x_ur)
+    return dt2x_ux, dt2x_ur
+
+
+def dt2r_matrix(u, v):
+    dt2r_ux = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    dt2r_ur = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    for m in np.arange(Nx+1):
+        for n in np.arange(Nr+1):
+
+            if n == 1:
+                # NOTE: Symmetry Boundary Condition
+                # dt2nd radial ux1
+                dt2r_ux[m, n] = (u[m, n+2] - u[m, n]) / (4*dr**2)
+
+# dt2nd radial ur1
+                dt2r_ur[m, n] = (v[m, n+2] - 3*v[m, n]) / (4*dr**2)
+
+                # print("dt2nd_radial_ux1_n1:", dt2nd_radial_ux1)
+                # print("dt2nd_radial_ur1_n1:", dt2nd_radial_ur1)
+
+            elif n == Nr:
+                # dt2nd radial u1
+                # NOTE: CHECK
+                dt2r_ux[m, n] = (2*u[m, n] - 5*u[m, n-1] +
+                                 4*u[m, n-2] - u[m, n-3]) / (dr**2)
+
+# dt2nd radial ur1
+                dt2r_ur[m, n] = (2*v[m, n] - 5*v[m, n-1] +
+                                 4*v[m, n-2] - v[m, n-3]) / (dr**2)
+            else:  # (n is between 1 and Nr)
+
+                # dt2nd radial ux1
+                dt2r_ux[m, n] = (u[m, n+1] + u[m, n-1] -
+                                 2*u[m, n])/(dr**2)  # CD
+            # --------------------------- dt2nd radial ur1 ---------------------------------#
+                dt2r_ur[m, n] = (v[m, n+1] + v[m, n-1] -
+                                 2*v[m, n])/(dr**2)  # CD
+    # dt2r_ux[:, :] = 0.
+    # dt2r_ur[:, :] = 0.
+    save_dt2r_matrix(dt2r_ux, dt2r_ur)
+    return dt2r_ux, dt2r_ur
 
 
 # @jit(nopython=True)
@@ -1147,57 +1264,48 @@ def grad_ur2(m, n, p, ur, ur_in):  # first derivatives BULK
 
     return dp_dr, ur_dx, ur_dr
 
-
 # @jit(nopython=True)
-def grad_ur2_matrix(p, ur, ur_in):  # first derivatives BULK
-    dp_dr = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    ur_dr = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    ur_dx = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
 
-    for m in np.arange(Nx+1):
-        for n in np.arange(Nr+1):
 
-            if n == 1:
-                # NOTE: Symmetry BC
-                dp_dr[m, n] = (p[m, n+2] - p[m, n])/(4*dr)
-                ur_dr[m, n] = (ur[m, n+2] + ur[m, n])/(4*dr)
+def grad_rho2(m, n, ux_in, rho_in, ur, ux, rho):
+    # if m == 0:
+    #     a = rho_in
+    #     m_dx = (rho[m, n]*ux[m, n]-rho_in*ux_in)/dx
 
-        # n == Nr-1
+    if m == 1:
+        m_dx = (rho[m, n]*ux[m, n]-rho_in*ux_in)/dx
 
-            else:
-                dp_dr[m, n] = (p[m, n] - p[m, n-1])/dr  # BWD
-                ur_dr[m, n] = (ur[m, n] - ur[m, n-1])/dr
+    elif m == Nx:
+        m_dx = (rho[m, n]*ux[m, n]-rho[m-1, n]*ux[m-1, n])/dx
 
-            # elif (n != 1 and n != Nr-1):
-            #     dp_dr = (p[m, n+1] - p[m, n-1])/(2*dr)  # CD
-            #     ur_dr = (ur[m, n+1] - ur[m, n-1])/(2*dr)
+    # elif (m <= n_trans+2 and m >= n_trans+2):
+    #     # NOTE Use four point CD at transition point.
+    #     a = rho1[m, n]
+    #     m_dx = (rho1[m-2, n] - 8*rho1[m-1, n] + 8 *
+    #             rho1[m+1, n] - rho1[m+2, n])/(12*dx)
 
-            # if m == 0:
-            #     ur_dx = (ur[m+1, n] - ur_in)/(dx)  # upwind 1st order
+    else:
+        m_dx = (rho[m, n]*ux[m, n]-rho[m-1, n]*ux[m-1, n])/(dx)
 
-            if m == 1:
-                ur_dx[m, n] = (ur[m+1, n] - ur_in)/(dx)  # upwind 1st order
+    if n == 1:
+        # NOTE: SYMMETRY BC
+        d_dr = (rho[m, n+2]*(n+2)*dr*ur[m, n+2] -
+                rho[m, n] * n*dr*ur[m, n]) / (4*dr)
 
-            # elif (m <= n_trans+2 and m >= n_trans-2):
-            #     ur_dx = (ur1[m-2, n] - 8*ur1[m-1, n] + 8 *
-            #              ur1[m+1, n] - ur1[m+2, n])/(12*dx)  # 4 point CD
+    elif n == Nr-1:
+        d_dr = (rho[m, n]*n*dr*ur[m, n] -
+                rho[m, n-1] * (n-1)*dr*ur[m, n-1])/dr
 
-            elif m == Nx:
-                ur_dx[m, n] = (ur[m, n] - ur[m-1, n])/dx
+    else:
+        d_dr = (rho[m, n+1]*(n+1)*dr*ur[m, n+1] -
+                rho[m, n-1] * (n-1)*dr*ur[m, n-1])/(2*dr)
 
-            elif (m > 1 and m <= Nx - 2):
-                # upwind 1st order  - positive flow - advection
-                ur_dx[m, n] = (ur[m, n] - ur[m-1, n])/dx
-
-            else:
-                # upwind 1st order  - positive flow - advection
-                ur_dx[m, n] = (ur[m, n] - ur[m-1, n])/(dx)  # CD
-
-            return dp_dr, ur_dx, ur_dr
-
+    return d_dr, m_dx
 
 # @numba.jit('f8(f8,f8,f8,f8,f8,f8,f8)')
 # @jit(nopython=True)
+
+
 def grad_e2(m, n, ur1, ux1, ux_in, e_in, e1):     # use upwind for Pe > 2
 
     if n == Nr:
@@ -1241,60 +1349,15 @@ def grad_e2(m, n, ur1, ux1, ux_in, e_in, e1):     # use upwind for Pe > 2
 
 
 # @jit(nopython=True)
-def grad_e2_matrix(v, u, u_in, e_in, e):     # use upwind for Pe > 2
-    grad_r = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    grad_x = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    for m in np.arange(Nx+1):
-        for n in np.arange(Nr+1):
-            if n == 1:
-                # NOTE: Symmetry BC
-                grad_r[m, n] = ((n+2)*dr*v[m, n+2]*e[m, n+2] +
-                                n * dr*v[m, n]*e[m, n])/(4*dr)  # ur=0 @ r=0 #CD
-
-# surface case
-            if n == Nr:
-                grad_r[m, n] = (n*dr*v[m, n]*e[m, n] -
-                                (n-1)*dr*v[m, n-1]*e[m, n-1])/dr  # BWD
-
-# n == Nr-1:
-            else:
-                grad_r[m, n] = (n*dr*v[m, n]*e[m, n] - (n-1)
-                                * dr*v[m, n-1]*e[m, n-1])/(dr)  # BWD
-
-            # if m == 0:
-            #     grad_x = (e1[m+1, n]*ux1[m+1, n]-e_in*ux_in)/(dx)
-
-            if m == Nx:
-                # print("e1[m, n]*ux1[m, n]: ", e1[m, n]*ux1[m, n],
-                #       "-e1[m-1, n]*ux1[m-1, n]: ", -e1[m-1, n]*ux1[m-1, n])
-                grad_x[m, n] = (e[m, n]*u[m, n]-e[m-1, n]
-                                * u[m-1, n])/dx  # BWD
-
-            # elif (m <= n_trans+2 and m >= n_trans-2):
-            #     grad_x = (e1[m-2, n]*ux1[m-2, n] - 8*e1[m-1, n]*ux1[m-1, n] + 8 *
-            #               e1[m+1, n]*ux1[m+1, n] - e1[m+2, n]*ux1[m+2, n])/(12*dx)
-            elif (m >= 1 and m <= Nx - 2):
-                # upwind 1st order  - positive flow - advection
-                grad_x[m, n] = (e[m, n]*u[m, n]-e[m-1, n]*u[m-1, n])/dx
-                # grad_x = 3*(e1[m, n]*ux1[m, n]) - 4*(e1[m-1, n]
-                #                                      * ux1[m-1, n]) + (e1[m-2, n]
-                #                                                        * ux1[m-2, n]) / dx  # upwind, captures shocks
-            else:  # 0 < m < Nx,  1 < n < Nr
-                grad_x[m, n] = (e[m, n]*u[m, n]-e[m-1, n]
-                                * u[m-1, n])/dx  # upwind
-    return grad_x, grad_r
-
-
-# @jit(nopython=True)
 def dt2nd_radial(ux1, ur1, m, n):
     if n == 1:
         # NOTE: Symmetry Boundary Condition
 
         # dt2nd radial ux1
-        dt2nd_radial_ux1 = (ux1[m, n+2] - 3*ux1[m, n]) / (4*dr**2)
+        dt2nd_radial_ux1 = (ux1[m, n+2] - ux1[m, n]) / (4*dr**2)
 
 # dt2nd radial ur1
-        dt2nd_radial_ur1 = (ur1[m, n+2] - ur1[m, n]) / (4*dr**2)
+        dt2nd_radial_ur1 = (ur1[m, n+2] - 3 * ur1[m, n]) / (4*dr**2)
 
 # print("dt2nd_radial_ux1_n1:", dt2nd_radial_ux1)
 # print("dt2nd_radial_ur1_n1:", dt2nd_radial_ur1)
@@ -1308,6 +1371,8 @@ def dt2nd_radial(ux1, ur1, m, n):
         dt2nd_radial_ur1 = (ur1[m, n+1] + ur1[m, n-1] -
                             2*ur1[m, n])/(dr**2)  # CD
 # print("dt2nd_radial_ur1:", dt2nd_radial_ur1)
+    dt2nd_radial_ux1[:, :] = 0.
+    dt2nd_radial_ur1[:, :] = 0.
     return dt2nd_radial_ux1, dt2nd_radial_ur1
 
 
@@ -1353,44 +1418,6 @@ def save_gradients(array2, array3, array4, array5, array6, array7, array8, array
 
 # @jit(nopython=True)
 
-
-def dt2r_matrix(u, v):
-    dt2r_ux1 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    dt2r_ur1 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    for m in np.arange(Nx+1):
-        for n in np.arange(Nr+1):
-
-            if n == 1:
-                # NOTE: Symmetry Boundary Condition
-                # dt2nd radial ux1
-                dt2r_ux1[m, n] = (u[m, n+2] - u[m, n]) / (4*dr**2)
-
-# dt2nd radial ur1
-                dt2r_ur1[m, n] = (v[m, n+2] - 3*v[m, n]) / (4*dr**2)
-
-                # print("dt2nd_radial_ux1_n1:", dt2nd_radial_ux1)
-                # print("dt2nd_radial_ur1_n1:", dt2nd_radial_ur1)
-
-            elif n == Nr:
-                # dt2nd radial u1
-                # NOTE: CHECK
-                dt2r_ux1[m, n] = (2*u[m, n] - 5*u[m, n-1] +
-                                  4*u[m, n-2] - u[m, n-3]) / (dr**2)
-
-# dt2nd radial ur1
-                dt2r_ur1[m, n] = (2*v[m, n] - 5*v[m, n-1] +
-                                  4*v[m, n-2] - v[m, n-3]) / (dr**2)
-            else:  # (n is between 1 and Nr)
-
-                # --------------------------- dt2nd radial ux1 ---------------------------------#
-                dt2r_ux1[m, n] = (u[m, n+1] + u[m, n-1] -
-                                  2*u[m, n])/(dr**2)  # CD
-            # --------------------------- dt2nd radial ur1 ---------------------------------#
-                dt2r_ur1[m, n] = (v[m, n+1] + v[m, n-1] -
-                                  2*v[m, n])/(dr**2)  # CD
-    save_dt2r_matrix(dt2r_ux1, dt2r_ur1)
-    return dt2r_ux1, dt2r_ur1
-
 # @jit(nopython=True)
 
 
@@ -1433,41 +1460,6 @@ def dt2nd_axial(ux_in, ur_in, ux1, ur1, m, n):
 
 #
 # @jit(nopython=True)
-
-
-def dt2x_matrix(u_in, v_in, u, v):
-    dt2x_ux1 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    dt2x_ur1 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    for m in np.arange(Nx+1):
-        for n in np.arange(Nr+1):
-            if m == 0:
-                # dt2nd axial ux1
-                dt2x_ux1[m, n] = (u_in - 2*u[m, n] + u[m+1, n]) / (dx**2)
-
-# dt2nd axial ur1
-                dt2x_ur1[m, n] = (-v_in + v_in - 30 *
-                                  v[m, n] + 16*v[m+1, n] - v[m+2, n])/(12*dx**2)
-
-            elif m == Nx:
-                # dt2nd axial ux1
-
-                dt2x_ux1[m, n] = (u[m-2, n] - 2*u[m-1, n] +
-                                  u[m, n])/(dx**2)  # BWD
-# dt2nd axial ur1
-# Three-point BWD
-                dt2x_ur1[m, n] = (
-                    v[m-2, n] - 2*v[m-1, n] + v[m, n])/(dx**2)
-
-            else:
-                # dt2nd axial ux1
-                dt2x_ux1[m, n] = (u[m+1, n] + u[m-1, n] -
-                                  2*u[m, n])/(dx**2)  # CD
-
-# dt2nd axial ur1
-                dt2x_ur1[m, n] = (v[m+1, n] + v[m-1, n] -
-                                  2*v[m, n])/(dx**2)  # CD
-    save_dt2x_matrix(dt2x_ux1, dt2x_ur1)
-    return dt2x_ux1, dt2x_ur1
 
 
 # @jit(nopython=True)
@@ -1644,8 +1636,8 @@ def mu_n(T, P):
         7.402*tao**0.9*delta**2*np.exp(-1*delta**2) +\
         4.620*tao**0.3*delta**1*np.exp(-1*delta**3)
 #    print("viscosity from function:", (mu_n_1+mu_n_2)/1e6)
-    mu_n_2 = 0
-    mu_n_1 = 0
+    # mu_n_2 = 0
+    # mu_n_1 = 0
     # print("viscosity from function:", (mu_n_1+mu_n_2)/1e6)
 
     return (mu_n_1+mu_n_2)/1e6
@@ -1833,16 +1825,10 @@ def Cu_Wall_function(urx, Tx, Twx, Tcx, Tsx, T_in, delSN, de1, ex, ux, rhox, px,
     return w_out
 
 
-@jit(nopython=True)
-def surface_BC(ux):
-    ux[:, Nr] = 0
-    return ux
-
-
 def parabolic_velocity(rho, tg, u, u_in, Ut, e):
     # for i in np.arange(n_trans):
-        # diatomic gas gamma = 7/5   WE USED ANY POINT, since this preparation area is constant along R direction.
-        # any temperature works, they are equl in the radial direction
+    # diatomic gas gamma = 7/5   WE USED ANY POINT, since this preparation area is constant along R direction.
+    # any temperature works, they are equl in the radial direction
     v_max = np.sqrt(7./5.*R*tg[0, 4]/M_n)
     for y in np.arange(Nr+1):
         # a = v_max
@@ -1850,7 +1836,10 @@ def parabolic_velocity(rho, tg, u, u_in, Ut, e):
         u[0, y] = v_max*(1.0 - ((y*dr)/R_cyl)**2)
         # print("parabolic y", y)
         Ut[0, y] = u[0, y]
-    e = 5./2.*rho*R*tg + 1./2. * rho*Ut**2.
+    u[:, Nr] = 0
+    Ut[:, Nr] = 0
+
+    e = 5./2.*rho*R/M_n*tg + 1./2. * rho*Ut**2.
 
     out = u, Ut, e
     return out
@@ -1953,7 +1942,11 @@ def inlet_BC(u, v, Ut, p, rho, T, e, p_inl, u_inl, rho_inl, T_inl, e_inl):
     T[0, :] = T_inl
     e[0, :] = e_inl
     u[0, :] = u_inl
-    u[0, Nr] = 0  # no slip
+
+# no slip
+    u[:, Nr] = 0
+    v[:, Nr] = 0
+    Ut[:, Nr] = 0
     Ut = np.sqrt(u**2. + v**2.)
     e = 5./2. * p + 1./2 * rho*Ut**2
     return [u, v, Ut, p, rho, T, e]
@@ -1971,7 +1964,10 @@ def outlet_BC(p, e, rho, u, v, Ut, rho_0):
         u[Nx, n] = max(2*rho[Nx-1, n]*u[Nx-1, n] -
                        rho[Nx-2, n]*u[Nx-2, n], 0) / rho[Nx, n]
         u = np.sqrt(u**2. + v**2.)
-        # e[Nx, n] = 2*e[Nx-1, n]-e[Nx-2, n]
+    u[:, Nr] = 0  # no slip
+    v[:, Nr] = 0
+    Ut = np.sqrt(u**2. + v**2.)
+    # e[Nx, n] = 2*e[Nx-1, n]-e[Nx-2, n]
     e = 5./2. * p + 1./2 * rho*Ut**2
     tg = p/rho/R*M_n
     bc = [p, rho, tg,  u, Ut, e]

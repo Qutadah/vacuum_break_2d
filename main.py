@@ -184,7 +184,7 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, 
         p2, rho2, T2, u2, v2, Ut2, e2, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term = simple_time(
             p1, rho1, T1, u1, v1, Ut1, e1, p_in, rho_in, T_in, e_in, u_in, v_in, rho_0, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term, i)
 
-        out = [p2, rho2, T2, u2, v2, Ut2]
+        # out = [p2, rho2, T2, u2, v2, Ut2]
 
 # RK4
 
@@ -194,8 +194,8 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, 
         print("NAN check next")
 
 # perform NAN value matrix checks:
-        for x in np.arange(len(out)):
-            assert np.isfinite(out[x]).all()
+        # for x in np.arange(len(out)):
+        #     assert np.isfinite(out[x]).all()
 
         # negative density check
         if np.any(rho2 < 0):
@@ -206,6 +206,11 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, 
         if np.any(e2 < 0):
             print("The energy has at least one negative value")
             exit()
+
+# Temp check
+        # if np.any(T2 < 0):
+        #     print("Temp returned has at least one negative value")
+        #     exit()
 
 #         print("Calculating frost layer thickness")
 # # calculate frost layer thickness
@@ -246,6 +251,7 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, 
         # T2, Ts2, ur2, e2, u2, rho2)
         # print("plotting returning")
         # plot_imshow(p2, u2, T2, rho2, e2)
+
 
 # Returning result
         print("Returning results for the next time iteration")
@@ -328,7 +334,7 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, 
 
 # PLOTTING FIELDS
         # if i == 200:
-        # plot_imshow(p3, u3, T3, rho3, e3)
+        plot_imshow(p3, u3, T3, rho3, e3)
 # First set up the figure, the axis, and the plot element we want to animate
         # im = plt.imshow((p3, u3, T3, rho3, e3),
         #                 interpolation='none', aspect='auto', vmin=0, vmax=1)
