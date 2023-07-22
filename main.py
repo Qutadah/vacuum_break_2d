@@ -333,8 +333,8 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, 
 
 
 # PLOTTING FIELDS
-        # if i == 200:
-        plot_imshow(p3, u3, T3, rho3, e3)
+        if i == 9:
+            plot_imshow(p3, u3, T3, rho3, e3)
 # First set up the figure, the axis, and the plot element we want to animate
         # im = plt.imshow((p3, u3, T3, rho3, e3),
         #                 interpolation='none', aspect='auto', vmin=0, vmax=1)
