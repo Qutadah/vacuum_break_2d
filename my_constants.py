@@ -15,11 +15,11 @@ Pr_n = 0.72
 #   Time and spatial step
 L = 6.45  # With prepping region.
 # L = 6.45
-Nx = 550  # Total length & spatial step - x direction 6.45
+Nx = 20  # Total length & spatial step - x direction 6.45
 R_cyl = 1.27e-2
-Nr = 12  # Total length & spatial step - r direction
-T_sim = 3.
-Nt = 1000000.  # Total time & time step
+Nr = 3  # Total length & spatial step - r direction
+T_sim = 2.
+Nt = 3000000.  # Total time & time step
 dt = T_sim/Nt
 dx = L/Nx
 dr = R_cyl/Nr
@@ -32,7 +32,7 @@ Sc_PP = 0.95  # Condensation\boiling coeffcient
 
 #   Parameters
 sample = 100  # Sample coeffcient
-n_trans = 50  # Smoothing control for initial condition
+n_trans = 300  # Smoothing control for initial condition
 T_s = 4.2  # Temperature boundaries
 
 #   Constants

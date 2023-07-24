@@ -115,7 +115,7 @@ save_initial_conditions(rho1, u1, v1, Ut1, e1, T1, de0, p1, de1)
 
 # i1 = 0
 print("Plotting initial fields")
-plot_imshow(p1, u1, T1, rho1, e1)
+# plot_imshow(p1, u1, T1, rho1, e1)
 # save_plots(i1, p1, u1, T1, rho1, e1)
 
 # Gradient starting matrices
@@ -331,9 +331,8 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, 
         # plt.plot(x, y, color="red")
         # plt.show()
 
-
 # PLOTTING FIELDS
-        if i == 9:
+        if i >= 3550:
             plot_imshow(p3, u3, T3, rho3, e3)
 # First set up the figure, the axis, and the plot element we want to animate
         # im = plt.imshow((p3, u3, T3, rho3, e3),
