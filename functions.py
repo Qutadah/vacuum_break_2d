@@ -396,13 +396,13 @@ def rk4(ux, ur, u, p, q, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, R
     print("Calculating gradients for RK3 loop #", n)
 
 # def grad_rho_matrix(ux_in, rho_in, ur, ux, rho):
-    d_dr, m_dx = grad_rho_matrix(ux_in, rho_in, ur, ux, q)
+    d_dr, m_dx = grad_rho_matrix(ur, ux, q)
 # def grad_ux2_matrix(p_in, p, ux_in, ux):  # bulk
     dp_dx, ux_dx, ux_dr = grad_ux2_matrix(p_in, p, ux_in, ux)
 # def grad_ur2_matrix(p, ur, ur_in):  # first derivatives
     dp_dr, ur_dx, ur_dr = grad_ur2_matrix(p, ur, ur_in)
 # def grad_e2_matrix(ur1, ux1, ux_in, e_in, e1):     # use
-    grad_x, grad_r = grad_e2_matrix(ur, ux, ux_in, e_in, e)
+    grad_x, grad_r = grad_e2_matrix(ur, ux, e)
 
 # def dt2x_matrix(ux_in, ur_in, ux1, ur1):
     dt2x_ux, dt2x_ur = dt2x_matrix(ux_in, ur_in, ux, ur)
@@ -484,21 +484,15 @@ def rk4(ux, ur, u, p, q, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, R
 
 def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho_0, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term, i):
     N = n_matrix()
-
-    qq = copy.deepcopy(q)  # density
-    uxx = copy.deepcopy(q)  # velocity axial
-    urr = copy.deepcopy(q)  # velocity radial
-    uu = copy.deepcopy(q)  # total velocity
-    ee = copy.deepcopy(q)  # energy
-    tt = copy.deepcopy(q)  # temperature
+    q_0 = np.zeros((Nx+1, Nr+1), dtype=(np.float64))
+    qq = copy.deepcopy(q_0)  # density
+    uxx = copy.deepcopy(q_0)  # velocity axial
+    urr = copy.deepcopy(q_0)  # velocity radial
+    uu = copy.deepcopy(q_0)  # total velocity
+    ee = copy.deepcopy(q_0)  # energy
+    tt = copy.deepcopy(q_0)  # temperature
     # if np.any(tg < 0):
     #     print("Temp before no slip simple_time has at least one negative value")
-    #     exit()
-
-    p, tg, u, v, Ut, e = no_slip_no_mdot(p, q, tg, u, v, Ut, e)
-    # negative temp check
-    # if np.any(tg < 0):
-    #     print("Temp no slip has at least one negative value")
     #     exit()
 
     # plot_imshow(p, u, tg, q, e)
@@ -510,13 +504,24 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
     #     exit()
     # plot_imshow(p, u, tg, q, e)
     p, q, tg, u, Ut, e = outlet_BC(p, e, q, u, v, Ut, rho_0)
-    u, Ut, e = parabolic_velocity(q, tg, u, u_in, Ut, e)
-    l = [p, q, tg, u, v, Ut, e]
-
-    # negative temp check
+# negative temp check
     # if np.any(tg < 0):
     #     print("Temp outlet_BC has at least one negative value")
     #     exit()
+
+    u, v, Ut, e = parabolic_velocity(q, tg, u, v, Ut, e)
+
+# energy balance
+    tg = (e - 1./2.*q*Ut**2) * 2./5. / q/R*M_n
+    p = q*R/M_n*tg
+
+    p, tg, u, v, Ut, e = no_slip_no_mdot(p, q, tg, u, v, Ut, e)
+
+# negative temp check
+    # if np.any(tg < 0):
+    #     print("Temp no slip has at least one negative value")
+    #     exit()
+
     # print(tg)
     # print("plotting")
     # plot_imshow(p, Ut, tg, q, e)
@@ -524,16 +529,16 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
 # Calculating gradients (first and second)
 
 # def grad_rho_matrix(ux_in, rho_in, ur, ux, rho):
-    d_dr, m_dx = grad_rho_matrix(u_in, rho_in, v, u, q)
+    d_dr, m_dx = grad_rho_matrix(v, u, q)
 # def grad_ux2_matrix(p_in, p, ux_in, ux):  # bulk
-    dp_dx, ux_dx, ux_dr = grad_ux2_matrix(p_in, p, u_in, u)
+    dp_dx, ux_dx, ux_dr = grad_ux2_matrix(p, u)
 # def grad_ur2_matrix(p, ur, ur_in):  # first derivatives
-    dp_dr, ur_dx, ur_dr = grad_ur2_matrix(p, v, v_in)
+    dp_dr, ur_dx, ur_dr = grad_ur2_matrix(p, v)
 # def grad_e2_matrix(ur1, ux1, ux_in, e_in, e1):     # use
-    grad_x, grad_r = grad_e2_matrix(v, u, u_in, e_in, e)
+    grad_x, grad_r = grad_e2_matrix(v, u, e)
 
 # def dt2x_matrix(ux_in, ur_in, ux1, ur1):
-    dt2x_ux, dt2x_ur = dt2x_matrix(u_in, v_in, u, v)
+    dt2x_ux, dt2x_ur = dt2x_matrix(v_in, u, v)
 # def dt2r_matrix(ux1, ur1):
     dt2r_ux, dt2r_ur = dt2r_matrix(u, v)
 
@@ -564,19 +569,25 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
     tt = (ee - 1./2.*qq*uu**2.) * 2./5. / qq/R*M_n
     pp = qq*R/M_n*T_in
 
-# no slip condition - pressure and temp recalculated within
-    pp, tt, uxx, urr, uu, ee = no_slip_no_mdot(pp, qq, tt, uxx, urr, uu, ee)
-    # print("plotting no slip")
-    # plot_imshow(pp, uu, tt, qq, ee)
-    uxx, uu, ee = parabolic_velocity(qq, tg, uxx, u_in, Ut, ee)
     uxx, urr, uu, pp, qq, tt, ee = inlet_BC(
         uxx, urr, uu, pp, qq, tt, ee, p_in, u_in, rho_in, T_in, e_in)
-    # negative temp check
+# negative temp check
     # if np.any(tg < 0):
     #     print("Temp inlet_BC has at least one negative value")
     #     exit()
     # plot_imshow(p, u, tg, q, e)
     pp, qq, tt, uxx, uu, ee = outlet_BC(pp, ee, qq, uxx, urr, uu, rho_0)
+
+    uxx, urr, uu, ee = parabolic_velocity(qq, tg, uxx, urr, Ut, ee)
+
+# energy balance
+    tt = (ee - 1./2.*qq*uu**2) * 2./5. / qq/R*M_n
+    pp = qq*R/M_n*tt
+
+# no slip condition - pressure and temp recalculated within
+    pp, tt, uxx, urr, uu, ee = no_slip_no_mdot(pp, qq, tt, uxx, urr, uu, ee)
+    # print("plotting no slip")
+    # plot_imshow(pp, uu, tt, qq, ee)
 
     return pp, qq, tt, uxx, urr, uu, ee, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term
 
@@ -637,31 +648,31 @@ def plot_imshow(p, ux, T, rho, e):
     axs[0].set(ylabel='Pressure [Pa]')
     # plt.title("Pressure smoothing")
 
-    # VELOCITY DISTRIBUTION
-    # axs[1].imshow()
-    im = axs[1].imshow(ux.transpose())
-    plt.colorbar(im, ax=axs[1])
-    # axs[1].colorbars(location="bottom")
-    axs[1].set(ylabel='Ux [m/s]')
-    # plt.title("velocity parabolic smoothing")
-
     # Temperature DISTRIBUTION
-    im = axs[2].imshow(T.transpose())
-    plt.colorbar(im, ax=axs[2])
-    axs[2].set(ylabel='Tg [K]')
+    im = axs[1].imshow(T.transpose())
+    plt.colorbar(im, ax=axs[1])
+    axs[1].set(ylabel='Tg [K]')
 
     # axs[1].colorbars(location="bottom")
     # axs[2].set(ylabel='temperature [K]')
 
-    im = axs[3].imshow(rho.transpose())
+    im = axs[2].imshow(rho.transpose())
+    plt.colorbar(im, ax=axs[2])
+    axs[2].set(ylabel='Density [kg/m3]')
+
+    # VELOCITY DISTRIBUTION
+    # axs[1].imshow()
+    im = axs[3].imshow(ux.transpose())
     plt.colorbar(im, ax=axs[3])
-    axs[3].set(ylabel='Density [kg/m3]')
+    # axs[1].colorbars(location="bottom")
+    axs[3].set(ylabel='Ux [m/s]')
+    # plt.title("velocity parabolic smoothing")
 
     im = axs[4].imshow(e.transpose())
     plt.colorbar(im, ax=axs[4])
-    axs[4].set(ylabel='energy [kg/m3]')
+    axs[4].set(ylabel='energy density [kJ/m3]')
 
-    plt.xlabel("L(x)")
+    plt.xlabel("Grid points - x direction")
     plt.show()
     # x = str(i) + '.png'
     # plt.savefig(x)
@@ -677,7 +688,7 @@ def animate_func(p, ux, T, rho, e):
     return line
 
 
-def grad_rho_matrix(ux_in, rho_in, ur, ux, rho):
+def grad_rho_matrix(ur, ux, rho):
     # create gradients arrays.
     m_dx = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     d_dr = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
@@ -716,7 +727,7 @@ def grad_rho_matrix(ux_in, rho_in, ur, ux, rho):
 
 
 # @jit(nopython=True)
-def grad_ux2_matrix(p_in, p, ux_in, ux):  # bulk
+def grad_ux2_matrix(p, ux):  # bulk
     ux_dr = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     dp_dx = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     ux_dx = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
@@ -756,7 +767,7 @@ def grad_ux2_matrix(p_in, p, ux_in, ux):  # bulk
 # @numba.jit('f8(f8,f8,f8,f8,f8)')
 
 
-def grad_ur2_matrix(p, ur, ur_in):  # first derivatives BULK
+def grad_ur2_matrix(p, ur):  # first derivatives BULK
     dp_dr = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     ur_dr = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     ur_dx = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
@@ -786,8 +797,6 @@ def grad_ur2_matrix(p, ur, ur_in):  # first derivatives BULK
             #     ur_dx = (ur[m+1, n] - ur_in)/(dx)  # upwind 1st order
 
 # axial
-            if m == 0:
-                ur_dx[m, n] = (ur[m+1, n] - ur[m, n])/dx  # Upwind
             if m == Nx:
                 ur_dx[m, n] = (ur[m, n] - ur[m-1, n])/dx  # BWD
             else:
@@ -810,7 +819,7 @@ def grad_ur2_matrix(p, ur, ur_in):  # first derivatives BULK
             return dp_dr, ur_dx, ur_dr
 
 
-def grad_e2_matrix(v, u, u_in, e_in, e):     # use upwind for Pe > 2
+def grad_e2_matrix(v, u, e):     # use upwind for Pe > 2
     grad_r = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     grad_x = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     for m in np.arange(Nx+1):
@@ -832,17 +841,15 @@ def grad_e2_matrix(v, u, u_in, e_in, e):     # use upwind for Pe > 2
 
             # if m == 0:
             #     grad_x = (e1[m+1, n]*ux1[m+1, n]-e_in*ux_in)/(dx)
-
-            if m == 0:
-                # print("e1[m, n]*ux1[m, n]: ", e1[m, n]*ux1[m, n],
-                #       "-e1[m-1, n]*ux1[m-1, n]: ", -e1[m-1, n]*ux1[m-1, n])
-                grad_x[m, n] = (e[m+1, n]*u[m+1, n]-e[m, n]
-                                * u[m, n])/dx  # BWD
             if m == Nx:
                 # print("e1[m, n]*ux1[m, n]: ", e1[m, n]*ux1[m, n],
                 #       "-e1[m-1, n]*ux1[m-1, n]: ", -e1[m-1, n]*ux1[m-1, n])
                 grad_x[m, n] = (e[m, n]*u[m, n]-e[m-1, n]
                                 * u[m-1, n])/dx  # BWD
+
+            else:  # 0 < m < Nx,  1 < n < Nr
+                grad_x[m, n] = (e[m+1, n]*u[m+1, n]-e[m, n]
+                                * u[m, n])/dx  # upwind
 
             # elif (m <= n_trans+2 and m >= n_trans-2):
             #     grad_x = (e1[m-2, n]*ux1[m-2, n] - 8*e1[m-1, n]*ux1[m-1, n] + 8 *
@@ -853,46 +860,42 @@ def grad_e2_matrix(v, u, u_in, e_in, e):     # use upwind for Pe > 2
                 # grad_x = 3*(e1[m, n]*ux1[m, n]) - 4*(e1[m-1, n]
                 #                                      * ux1[m-1, n]) + (e1[m-2, n]
                 #                                                        * ux1[m-2, n]) / dx  # upwind, captures shocks
-            else:  # 0 < m < Nx,  1 < n < Nr
-                grad_x[m, n] = (e[m+1, n]*u[m+1, n]-e[m, n]
-                                * u[m, n])/dx  # upwind
     # grad_x[:, :] = 0.
     # grad_r[:, :] = 0.
     # print(grad_r)
     return grad_x, grad_r
 
 
-def dt2x_matrix(u_in, v_in, u, v):
+def dt2x_matrix(v_in, u, v):
     dt2x_ux = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     dt2x_ur = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     for m in np.arange(Nx+1):
         for n in np.arange(Nr+1):
             if m == 0:
                 # dt2nd axial ux1
-                dt2x_ux[m, n] = (u[m-1, n] - 2*u[m, n] + u[m+1, n]) / (dx**2)
+                dt2x_ux[m, n] = (u[m+2, n] - 2.*u[m+1, n] + u[m, n]) / dx**2.
 
 # dt2nd axial ur1
-                dt2x_ur[m, n] = (-v_in + v_in - 30 *
-                                 v[m, n] + 16*v[m+1, n] - v[m+2, n])/(12*dx**2)
+                dt2x_ur[m, n] = (v[m+2, n] - 2.*v[m+1, n] + v[m, n])/dx**2.
 
             elif m == Nx:
                 # dt2nd axial ux1
 
-                dt2x_ux[m, n] = (u[m-2, n] - 2*u[m-1, n] +
-                                 u[m, n])/(dx**2)  # BWD
+                dt2x_ux[m, n] = (u[m-2, n] - 2.*u[m-1, n] +
+                                 u[m, n])/(dx**2.)  # BWD
 # dt2nd axial ur1
 # Three-point BWD
                 dt2x_ur[m, n] = (
-                    v[m-2, n] - 2*v[m-1, n] + v[m, n])/(dx**2)
+                    v[m-2, n] - 2.*v[m-1, n] + v[m, n])/(dx**2.)
 
             else:
                 # dt2nd axial ux1
                 dt2x_ux[m, n] = (u[m+1, n] + u[m-1, n] -
-                                 2*u[m, n])/(dx**2)  # CD
+                                 2.*u[m, n])/(dx**2.)  # CD
 
 # dt2nd axial ur1
                 dt2x_ur[m, n] = (v[m+1, n] + v[m-1, n] -
-                                 2*v[m, n])/(dx**2)  # CD
+                                 2.*v[m, n])/(dx**2.)  # CD
     # dt2x_ux[:, :] = 0.
     # dt2x_ur[:, :] = 0.
     save_dt2x_matrix(dt2x_ux, dt2x_ur)
@@ -908,10 +911,10 @@ def dt2r_matrix(u, v):
             if n == 1:
                 # NOTE: Symmetry Boundary Condition
                 # dt2nd radial ux1
-                dt2r_ux[m, n] = (u[m, n+2] - u[m, n]) / (4*dr**2)
+                dt2r_ux[m, n] = (u[m, n+2] - u[m, n]) / (4.*dr**2.)
 
 # dt2nd radial ur1
-                dt2r_ur[m, n] = (v[m, n+2] - 3*v[m, n]) / (4*dr**2)
+                dt2r_ur[m, n] = (v[m, n+2] - 3.*v[m, n]) / (4.*dr**2.)
 
                 # print("dt2nd_radial_ux1_n1:", dt2nd_radial_ux1)
                 # print("dt2nd_radial_ur1_n1:", dt2nd_radial_ur1)
@@ -919,20 +922,19 @@ def dt2r_matrix(u, v):
             elif n == Nr:
                 # dt2nd radial u1
                 # NOTE: CHECK
-                dt2r_ux[m, n] = (2*u[m, n] - 5*u[m, n-1] +
-                                 4*u[m, n-2] - u[m, n-3]) / (dr**2)
+                dt2r_ux[m, n] = (u[m, n] - 2*u[m, n-1] + u[m, n-2]) / dr**2.
 
-# dt2nd radial ur1
-                dt2r_ur[m, n] = (2*v[m, n] - 5*v[m, n-1] +
-                                 4*v[m, n-2] - v[m, n-3]) / (dr**2)
+                # dt2nd radial ur1
+                dt2r_ur[m, n] = (v[m, n] - 2*v[m, n-1] + v[m, n-2]) / dr**2.
+
             else:  # (n is between 1 and Nr)
 
                 # dt2nd radial ux1
                 dt2r_ux[m, n] = (u[m, n+1] + u[m, n-1] -
-                                 2*u[m, n])/(dr**2)  # CD
-            # --------------------------- dt2nd radial ur1 ---------------------------------#
+                                 2.*u[m, n])/(dr**2.)  # CD
+            # dt2nd radial ur1
                 dt2r_ur[m, n] = (v[m, n+1] + v[m, n-1] -
-                                 2*v[m, n])/(dr**2)  # CD
+                                 2.*v[m, n])/(dr**2.)  # CD
     # dt2r_ux[:, :] = 0.
     # dt2r_ur[:, :] = 0.
     save_dt2r_matrix(dt2r_ux, dt2r_ur)
@@ -1263,7 +1265,7 @@ def exp_smooth(grid, hv, lv, order, tran):  # Q: from where did we get this?
 
 
 def bulk_values(T_s):
-    T_0 = T_s
+    T_0 = 4.2
     rho_0 = 1e-5  # An arbitrary small initial density in pipe, kg/m3
     p_0 = rho_0/M_n*R*T_0  # Initial pressure, Pa
     e_0 = 5./2.*p_0  # Initial internal energy
@@ -1416,29 +1418,50 @@ def Cu_Wall_function(urx, Tx, Twx, Tcx, Tsx, T_in, delSN, de1, ex, ux, rhox, px,
     return w_out
 
 
-def parabolic_velocity(rho, tg, u, u_in, Ut, e):
+def parabolic_velocity(rho, tg, u, v, Ut, e):
     # for i in np.arange(n_trans):
     # diatomic gas gamma = 7/5   WE USED ANY POINT, since this preparation area is constant along R direction.
     # any temperature works, they are equl in the radial direction
     v_max = np.sqrt(7./5.*R*tg[0, 1]/M_n)
-    for y in np.arange(Nr+1):
-        # a = v_max
-        # a = u_in
-        u[0, y] = v_max*(1.0 - ((y*dr)/R_cyl)**2)
-        # print("parabolic y", y)
-        Ut[0, y] = u[0, y]
+    for i in np.arange(n_trans+1):
+        for y in np.arange(Nr+1):
+
+            # a = v_max
+            # a = u_in
+            u[i, y] = v_max*(1.0 - ((y*dr)/R_cyl)**2)
+            # print("parabolic y", y)
+            Ut[i, y] = u[i, y]
     u[:, Nr] = 0
     Ut[:, Nr] = 0
 
+    u = smooth_parabolic(u, n_trans)
+
     e = 5./2.*rho*R/M_n*tg + 1./2. * rho*Ut**2.
 
-    out = u, Ut, e
+    out = u, v, Ut, e
     return out
 
 # @jit(nopython=True)
 
 
-def smoothing_inlet(p, rho, T, e, u, v, u_in, Ut, p_in, p_0, rho_in, rho_0, n_trans):
+def smooth_parabolic(ux, n_trans):
+    for j in range(0, Nx+1):
+        ux[j, :] = exp_smooth(j + n_trans, ux[j, :]*2, 0, 0.4, n_trans)
+        # v_max = np.sqrt(7./5.*R*T/M_n)  # diatomic gas gamma = 7/5
+
+        # if i < n_trans+1:
+        #     e1[i, :] = 5./2.*p1[i, :]+1./2.*rho1[i, :]*u1[i, :]**2
+
+    #        rho1[i, :] = p1[i, :]*M_n/R/T1[i, :]  # IDEAL GAS LAW
+
+        # print("p1 matrix after smoothing", p1)
+        # else:
+        #     e1[i, :] = 5/2*rho1[i, :]/M_n*R*T_in+1/2**rho1[i, :]*u1[i, :]**2
+    # for i in range(0, Nx+1):
+    return ux
+
+
+def smoothing_inlet(p, rho, T, p_in, p_0, rho_in, rho_0, n_trans):
     for i in range(0, Nx+1):
         p[i, :] = exp_smooth(i+n_trans, p_in*2.-p_0, p_0, 0.4, n_trans)
     # print("P1 smoothing values", p1[i,:])
@@ -1447,8 +1470,6 @@ def smoothing_inlet(p, rho, T, e, u, v, u_in, Ut, p_in, p_0, rho_in, rho_0, n_tr
     #    T1[i, :] = T_neck(i)
         # if i<51: T1[i]=T_in
         T[i, :] = p[i, :]/rho[i, :]/R*M_n
-        u[i, :] = exp_smooth(i + n_trans, u_in*2, 0, 0.4, n_trans)
-        Ut[i, :] = np.sqrt(u[i, :]**2. + v[i, :]**2.)
         # v_max = np.sqrt(7./5.*R*T/M_n)  # diatomic gas gamma = 7/5
     #    u1[i, :] = exp_smooth(i + n_trans, ux_in*2, 0, 0.4, n_trans)
 
@@ -1460,9 +1481,8 @@ def smoothing_inlet(p, rho, T, e, u, v, u_in, Ut, p_in, p_0, rho_in, rho_0, n_tr
         # print("p1 matrix after smoothing", p1)
         # else:
         #     e1[i, :] = 5/2*rho1[i, :]/M_n*R*T_in+1/2**rho1[i, :]*u1[i, :]**2
-        e[i, :] = 5./2. * p[i, :] + 1./2 * rho[i, :]*Ut[i, :]**2
     # for i in range(0, Nx+1):
-    out = p, rho, T, u, Ut, e
+    out = p, rho, T
     return out
 
 # remove timestepping folder
@@ -1570,12 +1590,15 @@ def outlet_BC(p, e, rho, u, v, Ut, rho_0):
 # @jit(nopython=True)
 def val_in_constant():
     #   Calculate instant flow rate (kg/s)
-    p_in = 600.
+    p_in = 6000.
     T_in = 298.
     rho_in = p_in / T_in/R*M_n
     u_in = np.sqrt(gamma_n2*R/M_n*T_in)
+    # u_in = 50.
     v_in = 0.
-    Ut_in = np.sqrt(u_in**2 + v_in**2)
+    Ut_in = np.sqrt(u_in**2. + v_in**2.)
+    # Ut_in = 50.
+    # Ut_in = np.sqrt(u_in**2 + v_in**2)
     e_in = 5./2.*rho_in/M_n*R*T_in + 1./2.*rho_in*Ut_in**2
     out = np.array([p_in, u_in, v_in, rho_in, e_in, T_in])
     return out
@@ -1901,17 +1924,17 @@ def save_RK3(x, tx, dt, rho1, ux1, ur1, u1, e1, T1, p1):
     np.savetxt("p.csv", p1, delimiter=",")
 
 
-def delete_r0_point(rho2, ux2, ur2, u2, e2, T2, p1):
-    rho3 = np.delete(rho2, 0, axis=1)
-    ux3 = np.delete(ux2, 0, axis=1)
-    ur3 = np.delete(ur2, 0, axis=1)
-    u3 = np.delete(u2, 0, axis=1)
-    e3 = np.delete(e2, 0, axis=1)
-    T3 = np.delete(T2, 0, axis=1)
-    p3 = np.delete(p1, 0, axis=1)
+def delete_r0_point(rho, u, v, Ut, e, T, p):
+    rho = np.delete(rho, 0, axis=1)
+    u = np.delete(u, 0, axis=1)
+    v = np.delete(v, 0, axis=1)
+    Ut = np.delete(Ut, 0, axis=1)
+    e = np.delete(e, 0, axis=1)
+    T = np.delete(T, 0, axis=1)
+    p = np.delete(p, 0, axis=1)
     # pe3 = np.delete(pe, 0, axis=1)
     # visc3 = np.delete(visc, 0, axis=1)
-    return [rho3, ux3, ur3, u3, e3, T3, p3]
+    return [rho, u, v, Ut, e, T, p]
 
 
 if __name__ == '__main__':

@@ -64,39 +64,55 @@ print("p_in: ", p_in, "u_in: ", u_in, "v_in: ", v_in,
 Ts1[:] = T1[:, Nr]
 Ts2[:] = Ts1
 
-print("Applying No-slip BC")
-# NO SLIP BC
-p1, T1, u1, v1, Ut1, e1 = no_slip_no_mdot(p1, rho1, T1, u1, v1, Ut1, e1)
-
-# negative temp check
-if np.any(T1 < 0):
-    print("Temp no slip after smoothing has at least one negative value")
-    exit()
-
 # inlet BCs
 print("Applying inlet BCs")
 u1, v1, Ut1, p1, rho1, T1, e1 = inlet_BC(
     u1, v1, Ut1, p1, rho1, T1, e1, p_in, u_in, rho_in, T_in, e_in)
 # negative temp check
 if np.any(T1 < 0):
-    print("Temp inlet_BC after smoothing has at least one negative value")
+    print("Temp inlet_BC has at least one negative value")
     exit()
 
 p1, rho1, T1, u1, Ut1, e1 = outlet_BC(p1, e1, rho1, u1, v1, Ut1, rho_0)
 
+# negative temp check
+if np.any(T1 < 0):
+    print("Temp outlet BC has at least one negative value")
+    exit()
 
-# PARABOLIC VELOCITY PROFILE - inlet prepping area
+# PARABOLIC VELOCITY PROFILE - smoothing of parabolic velocity inlet
 
-u1, Ut1, e1 = parabolic_velocity(rho1, T1, u1, u_in, Ut1, e1)
+u1, v1, Ut1, e1 = parabolic_velocity(rho1, T1, u1, v1, Ut1, e1)
 
-# PREPPING AREA - smoothing
-p1, rho1, T1, u1, Ut1, e1 = smoothing_inlet(
-    p1, rho1, T1, e1,  u1, v1, u_in, Ut1, p_in, p_0, rho_in, rho_0, n_trans)
+T1 = (e1 - 1./2.*rho1*Ut1**2) * 2./5. / rho1/R*M_n
 
+p1 = rho1*R/M_n*T1
+
+# negative temp check
+if np.any(T1 < 0):
+    print("Temp parabolic after smoothing has at least one negative value")
+    exit()
+
+# PREPPING AREA - smoothing of internal properties
+p1, rho1, T1 = smoothing_inlet(
+    p1, rho1, T1, p_in, p_0, rho_in, rho_0, n_trans)
+
+# recalculate energy
+
+e1 = 5./2. * p1 + 1./2 * rho1*Ut1**2.
 
 # negative temp check
 if np.any(T1 < 0):
     print("Temp smoothing has at least one negative value")
+    exit()
+
+print("Applying No-slip BC")
+# NO SLIP BC
+p1, T1, u1, v1, Ut1, e1 = no_slip_no_mdot(p1, rho1, T1, u1, v1, Ut1, e1)
+
+# negative temp check
+if np.any(T1 < 0):
+    print("Temp no slip has at least one negative value")
     exit()
 
 
@@ -115,21 +131,20 @@ save_initial_conditions(rho1, u1, v1, Ut1, e1, T1, de0, p1, de1)
 
 # i1 = 0
 print("Plotting initial fields")
-# plot_imshow(p1, u1, T1, rho1, e1)
+plot_imshow(p1, u1, T1, rho1, e1)
 # save_plots(i1, p1, u1, T1, rho1, e1)
 
 # Gradient starting matrices
 # calculate initial gradients matrix:
 print("Calculating initial gradients")
-d_dr, m_dx = grad_rho_matrix(u_in, rho_in, v1, u1, rho1)
-dp_dx, ux_dx, ux_dr = grad_ux2_matrix(p_in, p1, u_in, u1)
-dp_dr, ur_dx, ur_dr = grad_ur2_matrix(p1, v1, v_in)
-grad_x, grad_r = grad_e2_matrix(v1, u1, u_in, e_in, e1)
+d_dr, m_dx = grad_rho_matrix(v1, u1, rho1)
+dp_dx, ux_dx, ux_dr = grad_ux2_matrix(p1, u1)
+dp_dr, ur_dx, ur_dr = grad_ur2_matrix(p1, v1)
+grad_x, grad_r = grad_e2_matrix(v1, u1, e1)
 
 print("Saving gradients to file")
 save_gradients(d_dr, m_dx, dp_dx, ux_dx, ux_dr,
                dp_dr, ur_dx, ur_dr, grad_x, grad_r)
-
 
 # NOTE: This means at m=0 no mass deposition and no helium...We dont want the surface to freeze.
 # Tw1[0] = 298.
@@ -143,7 +158,7 @@ save_gradients(d_dr, m_dx, dp_dx, ux_dx, ux_dr,
 print("Main loop started")
 
 
-def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, de1, p3, rho3, T3, u3, v3, Ut3, e3, Tw1, Ts1, Tc1, p_in, rho_in, T_in, e_in, u_in, v_in, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term):
+def main_calc(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, de1, p3, rho3, T3, u3, v3, Ut3, e3, Tw1, Ts1, Tc1, p_in, rho_in, T_in, e_in, u_in, v_in, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term):
 
     N = n_matrix()
     # NOTE: use ss for plotting terms
@@ -278,9 +293,8 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, 
             rho1, u1, v1, Ut1, e1, T1, p1)
 
 # SAVING DATA
-        save_data(i, dt, rho3, u3, v3, Ut3, e3,
-                  T3, Tw2, Ts2, de0, p3)
-        print("i: ", i)
+        print("Saving data")
+        save_data(i, dt, rho3, u3, v3, Ut3, e3, T3, Tw2, Ts2, de0, p3)
 
 # point to plot terms with time
         # aa = 3
@@ -332,7 +346,8 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, 
         # plt.show()
 
 # PLOTTING FIELDS
-        if i >= 3550:
+        if i % 20 == 0:
+            print("plotting current iteration", i)
             plot_imshow(p3, u3, T3, rho3, e3)
 # First set up the figure, the axis, and the plot element we want to animate
         # im = plt.imshow((p3, u3, T3, rho3, e3),
@@ -350,9 +365,9 @@ def main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, 
 if __name__ == "__main__":
     # main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2,
     #          ur2, T2, e2, Tw2, Ts2, Tc2, de1, T3)
-    main_cal(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2,
-             Ut2, e2, de0, de1, p3, rho3, T3, u3, v3, Ut3, e3, Tw1, Ts1, Tc1, p_in, rho_in, T_in, e_in, u_in, v_in, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term
-             )
+    main_calc(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2,
+              Ut2, e2, de0, de1, p3, rho3, T3, u3, v3, Ut3, e3, Tw1, Ts1, Tc1, p_in, rho_in, T_in, e_in, u_in, v_in, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term
+              )
 
 # END OF PROGRAM
 
