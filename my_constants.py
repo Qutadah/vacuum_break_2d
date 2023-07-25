@@ -15,9 +15,9 @@ Pr_n = 0.72
 #   Time and spatial step
 L = 6.45  # With prepping region.
 # L = 6.45
-Nx = 250  # Total length & spatial step - x direction 6.45
+Nx = 550  # Total length & spatial step - x direction 6.45
 R_cyl = 1.27e-2
-Nr = 12  # Total length & spatial step - r direction
+Nr = 10  # Total length & spatial step - r direction
 T_sim = 2.
 Nt = 150000.  # Total time & time step
 dt = T_sim/Nt

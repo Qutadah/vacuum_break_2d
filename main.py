@@ -134,13 +134,15 @@ print("Plotting initial fields")
 plot_imshow(p1, u1, T1, rho1, e1)
 # save_plots(i1, p1, u1, T1, rho1, e1)
 
+N = n_matrix()
+
 # Gradient starting matrices
 # calculate initial gradients matrix:
 print("Calculating initial gradients")
-d_dr, m_dx = grad_rho_matrix(v1, u1, rho1)
+d_dr, m_dx = grad_rho_matrix(v1, u1, rho1, N)
 dp_dx, ux_dx, ux_dr = grad_ux2_matrix(p1, u1)
 dp_dr, ur_dx, ur_dr = grad_ur2_matrix(p1, v1)
-grad_x, grad_r = grad_e2_matrix(v1, u1, e1)
+grad_x, grad_r = grad_e2_matrix(v1, u1, e1, N)
 
 print("Saving gradients to file")
 save_gradients(d_dr, m_dx, dp_dx, ux_dx, ux_dr,
@@ -346,7 +348,7 @@ def main_calc(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0,
         # plt.show()
 
 # PLOTTING FIELDS
-        if i % 20 == 0:
+        if i % 50 == 0:
             print("plotting current iteration", i)
             plot_imshow(p3, u3, T3, rho3, e3)
 # First set up the figure, the axis, and the plot element we want to animate

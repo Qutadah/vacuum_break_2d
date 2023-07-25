@@ -529,16 +529,16 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
 # Calculating gradients (first and second)
 
 # def grad_rho_matrix(ux_in, rho_in, ur, ux, rho):
-    d_dr, m_dx = grad_rho_matrix(v, u, q)
+    d_dr, m_dx = grad_rho_matrix(v, u, q, N)
 # def grad_ux2_matrix(p_in, p, ux_in, ux):  # bulk
     dp_dx, ux_dx, ux_dr = grad_ux2_matrix(p, u)
 # def grad_ur2_matrix(p, ur, ur_in):  # first derivatives
     dp_dr, ur_dx, ur_dr = grad_ur2_matrix(p, v)
 # def grad_e2_matrix(ur1, ux1, ux_in, e_in, e1):     # use
-    grad_x, grad_r = grad_e2_matrix(v, u, e)
+    grad_x, grad_r = grad_e2_matrix(v, u, e,N)
 
 # def dt2x_matrix(ux_in, ur_in, ux1, ur1):
-    dt2x_ux, dt2x_ur = dt2x_matrix(v_in, u, v)
+    dt2x_ux, dt2x_ur = dt2x_matrix(u, v)
 # def dt2r_matrix(ux1, ur1):
     dt2r_ux, dt2r_ur = dt2r_matrix(u, v)
 
@@ -670,7 +670,7 @@ def plot_imshow(p, ux, T, rho, e):
 
     im = axs[4].imshow(e.transpose())
     plt.colorbar(im, ax=axs[4])
-    axs[4].set(ylabel='energy density [kJ/m3]')
+    axs[4].set(ylabel='energy density [J/m3]')
 
     plt.xlabel("Grid points - x direction")
     plt.show()
@@ -688,7 +688,7 @@ def animate_func(p, ux, T, rho, e):
     return line
 
 
-def grad_rho_matrix(ur, ux, rho):
+def grad_rho_matrix(ur, ux, rho, N):
     # create gradients arrays.
     m_dx = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     d_dr = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
@@ -708,16 +708,16 @@ def grad_rho_matrix(ur, ux, rho):
 # radial
             if j == 1:
                 # NOTE: SYMMETRY BC
-                d_dr[i, j] = (rho[i, j+2]*(j+2)*dr*ur[i, j+2] +
-                              rho[i, j] * j*dr*ur[i, j]) / (4*dr)
+                d_dr[i, j] = (rho[i, j+2]*(j+2)*(N[i, j+2]*dr)*ur[i, j+2] +
+                              rho[i, j] * (N[i, j]*dr) * ur[i, j]) / (4*dr)
 
             elif j == Nr:
-                d_dr[i, j] = (rho[i, j]*j*dr*ur[i, j] -
-                              rho[i, j-1] * (j-1)*dr*ur[i, j-1])/dr
+                d_dr[i, j] = (rho[i, j]*(N[i, j]*dr)*ur[i, j] -
+                              rho[i, j-1] * (N[i, j-1]*dr)*ur[i, j-1])/dr
 
             else:
-                d_dr[i, j] = (rho[i, j+1]*(j+1)*dr*ur[i, j+1] -
-                              rho[i, j] * j*dr*ur[i, j])/dr  # upwind
+                d_dr[i, j] = (rho[i, j+1]*(N[i, j+1]*dr)*ur[i, j+1] -
+                              rho[i, j] * (N[i, j]*dr) * ur[i, j])/dr  # upwind
     # d_dr[:, :] = 0.
     # m_dx[:, :] = 0.
     return d_dr, m_dx
@@ -819,25 +819,25 @@ def grad_ur2_matrix(p, ur):  # first derivatives BULK
             return dp_dr, ur_dx, ur_dr
 
 
-def grad_e2_matrix(v, u, e):     # use upwind for Pe > 2
+def grad_e2_matrix(v, u, e, N):     # use upwind for Pe > 2
     grad_r = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     grad_x = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     for m in np.arange(Nx+1):
         for n in np.arange(Nr+1):
             if n == 1:
                 # NOTE: Symmetry BC
-                grad_r[m, n] = ((n+2)*dr*v[m, n+2]*e[m, n+2] +
-                                n * dr*v[m, n]*e[m, n])/(4*dr)
+                grad_r[m, n] = ((N[m, n+2]*dr)*v[m, n+2]*e[m, n+2] +
+                                (N[m, n]*dr)*v[m, n]*e[m, n])/(4*dr)
 
 # surface case
             if n == Nr:
-                grad_r[m, n] = (n*dr*v[m, n]*e[m, n] -
-                                (n-1)*dr*v[m, n-1]*e[m, n-1])/dr  # BWD
+                grad_r[m, n] = ((N[m, n]*dr)*v[m, n]*e[m, n] -
+                                (N[m, n-1]*dr)*v[m, n-1]*e[m, n-1])/dr  # BWD
 
 # n == Nr-1:
             else:
-                grad_r[m, n] = ((n+1)*dr*v[m, n+1]*e[m, n+1] - n
-                                * dr*v[m, n]*e[m, n])/dr  # upwind
+                grad_r[m, n] = ((N[m, n+1]*dr)*v[m, n+1]*e[m, n+1] -
+                                (N[m, n]*dr)*v[m, n]*e[m, n])/dr  # upwind
 
             # if m == 0:
             #     grad_x = (e1[m+1, n]*ux1[m+1, n]-e_in*ux_in)/(dx)
@@ -866,7 +866,7 @@ def grad_e2_matrix(v, u, e):     # use upwind for Pe > 2
     return grad_x, grad_r
 
 
-def dt2x_matrix(v_in, u, v):
+def dt2x_matrix(u, v):
     dt2x_ux = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     dt2x_ur = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     for m in np.arange(Nx+1):
