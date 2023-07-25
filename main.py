@@ -82,7 +82,7 @@ if np.any(T1 < 0):
 
 # PARABOLIC VELOCITY PROFILE - smoothing of parabolic velocity inlet
 
-u1, v1, Ut1, e1 = parabolic_velocity(rho1, T1, u1, v1, Ut1, e1)
+u1, v1, Ut1, e1 = parabolic_velocity(rho1, T1, u1, v1, Ut1, e1, u_in, v_in)
 
 T1 = (e1 - 1./2.*rho1*Ut1**2) * 2./5. / rho1/R*M_n
 
@@ -348,9 +348,10 @@ def main_calc(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0,
         # plt.show()
 
 # PLOTTING FIELDS
-        if i % 50 == 0:
-            print("plotting current iteration", i)
-            plot_imshow(p3, u3, T3, rho3, e3)
+        # if i >= 10:
+        # if i % 10 == 0:
+        print("plotting current iteration", i)
+        plot_imshow(p3, u3, T3, rho3, e3)
 # First set up the figure, the axis, and the plot element we want to animate
         # im = plt.imshow((p3, u3, T3, rho3, e3),
         #                 interpolation='none', aspect='auto', vmin=0, vmax=1)

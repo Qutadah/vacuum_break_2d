@@ -233,7 +233,7 @@ def rhs_ma(dp_dx, rho, dt2r_ux, N, ux_dr, dt2x_ux, ux, ux_dx, ur, dp_dr, dt2r_ur
     # H = - ur*ur_dr
 
     rhs_ur = - dp_dr/rho + visc_matrix/rho * \
-        (- ur/(dr**2*N**2) + 1/N/dr*ur_dr +
+        (- ur/(dr**2.*N**2.) + 1/N/dr*ur_dr +
          dt2r_ur + dt2x_ur) - ux * ur_dx - ur*ur_dr
     # surface equations
     # no momentum equations radial velocity 0 will be applied in the BCs after solving
@@ -509,11 +509,11 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
     #     print("Temp outlet_BC has at least one negative value")
     #     exit()
 
-    u, v, Ut, e = parabolic_velocity(q, tg, u, v, Ut, e)
+    # u, v, Ut, e = parabolic_velocity(q, tg, u, v, Ut, e, u_in, v_in)
 
-# energy balance
-    tg = (e - 1./2.*q*Ut**2) * 2./5. / q/R*M_n
-    p = q*R/M_n*tg
+# # energy balance
+#     tg = (e - 1./2.*q*Ut**2) * 2./5. / q/R*M_n
+#     p = q*R/M_n*tg
 
     p, tg, u, v, Ut, e = no_slip_no_mdot(p, q, tg, u, v, Ut, e)
 
@@ -535,7 +535,7 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
 # def grad_ur2_matrix(p, ur, ur_in):  # first derivatives
     dp_dr, ur_dx, ur_dr = grad_ur2_matrix(p, v)
 # def grad_e2_matrix(ur1, ux1, ux_in, e_in, e1):     # use
-    grad_x, grad_r = grad_e2_matrix(v, u, e,N)
+    grad_x, grad_r = grad_e2_matrix(v, u, e, N)
 
 # def dt2x_matrix(ux_in, ur_in, ux1, ur1):
     dt2x_ux, dt2x_ur = dt2x_matrix(u, v)
@@ -554,7 +554,17 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
     r_e, e_r, e_x, rhs_e_term = rhs_energy(
         grad_r, grad_x, N, e_r, e_x, rhs_e_term)
 
+    # print("r_ux", r_ux)
 # first LHS calculations
+
+# calculating ratios
+
+    # print("ratio conti", dt*r/q)
+    # print("ratio momentum X, iteration #", i)
+    # print(dt*r_ux/u)
+    # print("ratio momentum R", dt*r_ur/v)
+    # print("ratio energy", dt*r_e/e)
+
     qq = q + dt*r
     uxx = u + dt*r_ux
     urr = v + dt*r_ur
@@ -567,7 +577,7 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
     uu = np.sqrt(uxx**2. + urr**2.)
 # pressure defining
     tt = (ee - 1./2.*qq*uu**2.) * 2./5. / qq/R*M_n
-    pp = qq*R/M_n*T_in
+    pp = qq*R/M_n*tt
 
     uxx, urr, uu, pp, qq, tt, ee = inlet_BC(
         uxx, urr, uu, pp, qq, tt, ee, p_in, u_in, rho_in, T_in, e_in)
@@ -578,11 +588,11 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
     # plot_imshow(p, u, tg, q, e)
     pp, qq, tt, uxx, uu, ee = outlet_BC(pp, ee, qq, uxx, urr, uu, rho_0)
 
-    uxx, urr, uu, ee = parabolic_velocity(qq, tg, uxx, urr, Ut, ee)
+    # uxx, urr, uu, ee = parabolic_velocity(qq, tg, uxx, urr, Ut, ee, u_in, v_in)
 
-# energy balance
-    tt = (ee - 1./2.*qq*uu**2) * 2./5. / qq/R*M_n
-    pp = qq*R/M_n*tt
+# # energy balance
+#     tt = (ee - 1./2.*qq*uu**2) * 2./5. / qq/R*M_n
+#     pp = qq*R/M_n*tt
 
 # no slip condition - pressure and temp recalculated within
     pp, tt, uxx, urr, uu, ee = no_slip_no_mdot(pp, qq, tt, uxx, urr, uu, ee)
@@ -708,7 +718,7 @@ def grad_rho_matrix(ur, ux, rho, N):
 # radial
             if j == 1:
                 # NOTE: SYMMETRY BC
-                d_dr[i, j] = (rho[i, j+2]*(j+2)*(N[i, j+2]*dr)*ur[i, j+2] +
+                d_dr[i, j] = (rho[i, j+2]*(N[i, j+2]*dr)*ur[i, j+2] +
                               rho[i, j] * (N[i, j]*dr) * ur[i, j]) / (4*dr)
 
             elif j == Nr:
@@ -1418,11 +1428,12 @@ def Cu_Wall_function(urx, Tx, Twx, Tcx, Tsx, T_in, delSN, de1, ex, ux, rhox, px,
     return w_out
 
 
-def parabolic_velocity(rho, tg, u, v, Ut, e):
+def parabolic_velocity(rho, tg, u, v, Ut, e, u_in, v_in):
     # for i in np.arange(n_trans):
     # diatomic gas gamma = 7/5   WE USED ANY POINT, since this preparation area is constant along R direction.
     # any temperature works, they are equl in the radial direction
-    v_max = np.sqrt(7./5.*R*tg[0, 1]/M_n)
+    # v_max = np.sqrt(7./5.*R*tg[0, 1]/M_n)
+    v_max = np.sqrt(u_in**2. + v_in**2.)
     for i in np.arange(n_trans+1):
         for y in np.arange(Nr+1):
 
@@ -1554,6 +1565,12 @@ def inlet_BC(u, v, Ut, p, rho, T, e, p_inl, u_inl, rho_inl, T_inl, e_inl):
     e[0, :] = e_inl
     u[0, :] = u_inl
 
+    for y in np.arange(Nr+1):
+        u[0, y] = u_inl*(1.0 - ((y*dr)/R_cyl)**2)
+        # print("parabolic y", y)
+        Ut[0, y] = u[0, y]
+
+
 # no slip
     u[:, Nr] = 0
     v[:, Nr] = 0
@@ -1567,7 +1584,7 @@ def inlet_BC(u, v, Ut, p, rho, T, e, p_inl, u_inl, rho_inl, T_inl, e_inl):
 
 def outlet_BC(p, e, rho, u, v, Ut, rho_0):
 
-    for n in np.arange(Nr):
+    for n in np.arange(Nr+1):
         p[Nx, n] = 2/5*(e[Nx, n]-1/2*rho[Nx, n]
                         * Ut[Nx, n]**2)  # Pressure
 
@@ -1594,7 +1611,7 @@ def val_in_constant():
     T_in = 298.
     rho_in = p_in / T_in/R*M_n
     u_in = np.sqrt(gamma_n2*R/M_n*T_in)
-    # u_in = 50.
+    # u_in = 20.
     v_in = 0.
     Ut_in = np.sqrt(u_in**2. + v_in**2.)
     # Ut_in = 50.
