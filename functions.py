@@ -123,7 +123,7 @@ def n_matrix():
     for i in np.arange(np.int64(0), np.int64(Nx+1)):
         for j in np.arange(np.int64(1), np.int64(Nr+1)):
             n[i, j] = j
-    print("Removing N=0 in matrix")
+    # print("Removing N=0 in matrix")
     n[:, 0] = 1
     n[0, :] = 1
     return n
@@ -137,6 +137,11 @@ def n_matrix():
 #             mm[i, j] = j
 #     return mm
 
+def viscous_matrix_water():
+    visc_matrix = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    visc_matrix[:, :] = 8.90e-4
+    return visc_matrix
+
 
 # returns viscosity matrix
 def viscous_matrix(T, P):
@@ -147,7 +152,7 @@ def viscous_matrix(T, P):
     # save_visc(i, dt, visc_matrix)
 
 # perform NAN value matrix checks:
-    print("performing finite check on visc_matrix")
+    # print("performing finite check on visc_matrix")
     # print(visc_matrix)
     for x in np.arange(len(visc_matrix)):
         assert np.isfinite(visc_matrix).all()
@@ -192,7 +197,7 @@ def source_mass_depo_matrix(rho_0, T, P, Ts1, rho, ux, ur, de, N):  # -4/D* mdot
 # returns continuity RHS matrix, including source term S
 
 
-def rhs_rho(d_dr, m_dx, N, rho_r, rho_x, rhs_rho_term):  # include i to calculate terms
+def rhs_rho(i, d_dr, m_dx, N, rho_r, rho_x, rhs_rho_term):  # include i to calculate terms
 
     # calculate source term
     rhs_rho = - 1/N/dr*d_dr - m_dx
@@ -203,9 +208,9 @@ def rhs_rho(d_dr, m_dx, N, rho_r, rho_x, rhs_rho_term):  # include i to calculat
     # np.concatenate(([rho_x], [B]), axis=0)
     # np.concatenate(([rhs_rho_term], [rhs_rho]), axis=0)
 
-    # rho_r[i, :, :] = A
-    # rho_x[i, :, :] = B
-    # rhs_rho_term[i, :, :] = rhs_rho
+    rho_r[i, :, :] = A
+    rho_x[i, :, :] = B
+    rhs_rho_term[i, :, :] = rhs_rho
     # np.append(rho_r, A, axis=0)
     # save_stack(rho_r)
 
@@ -214,23 +219,25 @@ def rhs_rho(d_dr, m_dx, N, rho_r, rho_x, rhs_rho_term):  # include i to calculat
 # returns MOMENTUM RHS matrix
 
 
-def rhs_ma(dp_dx, rho, dt2r_ux, N, ux_dr, dt2x_ux, ux, ux_dx, ur, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term):
+def rhs_ma(i, dp_dx, rho, dt2r_ux, N, ux_dr, dt2x_ux, ux, ux_dx, ur, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term):
 
-    # A = -dp_dx/rho
-    # B = visc_matrix/rho * (
-    #     dt2r_ux + 1/N/dr*ux_dr + dt2x_ux)
-    # C = -ux * ux_dx
-    # D = - ur*ux_dr
+    # plotting constants
+    A = -dp_dx/rho
+    B = visc_matrix/rho * (
+        dt2r_ux + 1/N/dr*ux_dr + dt2x_ux)
+    C = -ux * ux_dx
+    D = - ur*ux_dr
 
     rhs_ux = -dp_dx/rho + visc_matrix/rho * (
         dt2r_ux + 1/N/dr*ux_dr + dt2x_ux) - ux * ux_dx - ur*ux_dr
 
-    # E = - dp_dr/rho
-    # F = visc_matrix/rho * \
-    #     (- ur/(dr**2*N**2) + 1/N/dr*ur_dr +
-    #      dt2r_ur + dt2x_ur)
-    # G = - ux * ur_dx
-    # H = - ur*ur_dr
+# plotting constants
+    E = - dp_dr/rho
+    F = visc_matrix/rho * \
+        (- ur/(dr**2*N**2) + 1/N/dr*ur_dr +
+         dt2r_ur + dt2x_ur)
+    G = - ux * ur_dx
+    H = - ur*ur_dr
 
     rhs_ur = - dp_dr/rho + visc_matrix/rho * \
         (- ur/(dr**2.*N**2.) + 1/N/dr*ur_dr +
@@ -249,17 +256,19 @@ def rhs_ma(dp_dx, rho, dt2r_ux, N, ux_dr, dt2x_ux, ux, ux_dx, ur, dp_dr, dt2r_ur
     # np.concatenate(([ur_r], [H]), axis=0)
     # np.concatenate(([rhs_ur_term], [rhs_ur]), axis=0)
 
-    # pressure_x[i, :, :] = A
-    # visc_x[i, :, :] = B
-    # ux_x[i, :, :] = C
-    # ur_x[i, :, :] = D
-    # rhs_ux_term[i, :, :] = rhs_ux
 
-    # pressure_r[i, :, :] = E
-    # visc_r[i, :, :] = F
-    # ux_r[i, :, :] = G
-    # ur_r[i, :, :] = H
-    # rhs_ur_term[i, :, :] = rhs_ur
+# Concatenation into global matrix
+    pressure_x[i, :, :] = A
+    visc_x[i, :, :] = B
+    ux_x[i, :, :] = C
+    ur_x[i, :, :] = D
+    rhs_ux_term[i, :, :] = rhs_ux
+
+    pressure_r[i, :, :] = E
+    visc_r[i, :, :] = F
+    ux_r[i, :, :] = G
+    ur_r[i, :, :] = H
+    rhs_ur_term[i, :, :] = rhs_ur
 
     return rhs_ux, rhs_ur, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term
 
@@ -277,20 +286,20 @@ def no_division_zero(array):
 # returns ENERGY RHS matrix including source terms
 
 
-def rhs_energy(grad_r, grad_x, N, e_r, e_x, rhs_e_term):
+def rhs_energy(i, grad_r, grad_x, N, e_r, e_x, rhs_e_term):
     # S_e = np.zeros((Nx+1), dtype=(np.float64))
     rhs_e = - 1/N/dr*grad_r - grad_x
-    # A = -  1/N/dr*grad_r
-    # B = -grad_x
+    A = -  1/N/dr*grad_r
+    B = -grad_x
     # S_e[:] = S[:]*(5./2.*p[:, Nr]/rho[:, Nr] + 1./2.*u[:, Nr]**2)
     # rhs_e[:, Nr] = - 1/N[:, Nr]/dr*grad_r[:, Nr]
     # np.concatenate(([e_r], [A]), axis=0)
     # np.concatenate(([e_x], [B]), axis=0)
     # np.concatenate(([rhs_e_term], [rhs_e]), axis=0)
 
-    # e_r[i, :, :] = A
-    # e_x[i, :, :] = B
-    # rhs_e_term[i, :, :] = rhs_e
+    e_r[i, :, :] = A
+    e_x[i, :, :] = B
+    rhs_e_term[i, :, :] = rhs_e
     return rhs_e, e_r, e_x, rhs_e_term
     # ri = rhsInv(nx,ny,nz,dx,dy,dz,q,iflx)
     # if (ivis==1)
@@ -515,7 +524,7 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
 #     tg = (e - 1./2.*q*Ut**2) * 2./5. / q/R*M_n
 #     p = q*R/M_n*tg
 
-    p, tg, u, v, Ut, e = no_slip_no_mdot(p, q, tg, u, v, Ut, e)
+    # p, tg, u, v, Ut, e = no_slip_no_mdot(p, q, tg, u, v, Ut, e)
 
 # negative temp check
     # if np.any(tg < 0):
@@ -542,19 +551,27 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
 # def dt2r_matrix(ux1, ur1):
     dt2r_ux, dt2r_ur = dt2r_matrix(u, v)
 
-    print("Calculating viscosity")
+    # print("Calculating viscosity")
     visc_matrix = viscous_matrix(tg, p)
+    print("zero viscosity assumed")
+    visc_matrix[:, :] = 0.
 
     assert np.isfinite(visc_matrix).all()
 
-    r, rho_r, rho_x, rhs_rho_term = rhs_rho(
-        d_dr, m_dx, N, rho_r, rho_x, rhs_rho_term)
+    r, rho_r, rho_x, rhs_rho_term = rhs_rho(i,
+                                            d_dr, m_dx, N, rho_r, rho_x, rhs_rho_term)
     r_ux, r_ur, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term = rhs_ma(
-        dp_dx, q, dt2r_ux, N, ux_dr, dt2x_ux, u, ux_dx, v, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term)
-    r_e, e_r, e_x, rhs_e_term = rhs_energy(
-        grad_r, grad_x, N, e_r, e_x, rhs_e_term)
+        i, dp_dx, q, dt2r_ux, N, ux_dr, dt2x_ux, u, ux_dx, v, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term)
 
-    # print("r_ux", r_ux)
+    # p, tg, u, v, Ut, e = no_slip_no_mdot(p, q, tg, u, v, Ut, e)
+    # grad_x, grad_r = grad_e2_matrix(v, u, e, N)
+
+    r_e, e_r, e_x, rhs_e_term = rhs_energy(i,
+                                           grad_r, grad_x, N, e_r, e_x, rhs_e_term)
+
+    # apply inlet BCs
+
+    # print("r", r, "r_ux", r_ux, "r_ur", r_ur, "r_e", r_e)
 # first LHS calculations
 
 # calculating ratios
@@ -566,9 +583,13 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
     # print("ratio energy", dt*r_e/e)
 
     qq = q + dt*r
+    qq[0, :] = q[0, :]
     uxx = u + dt*r_ux
+    uxx[0, :] = u[0, :]
     urr = v + dt*r_ur
+    urr[0, :] = v[0, :]
     ee = e + dt*r_e
+    ee[0, :] = e[0, :]
 
 # ensure no division by zero
     qq = no_division_zero(qq)
@@ -595,7 +616,7 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
 #     pp = qq*R/M_n*tt
 
 # no slip condition - pressure and temp recalculated within
-    pp, tt, uxx, urr, uu, ee = no_slip_no_mdot(pp, qq, tt, uxx, urr, uu, ee)
+    # pp, tt, uxx, urr, uu, ee = no_slip_no_mdot(pp, qq, tt, uxx, urr, uu, ee)
     # print("plotting no slip")
     # plot_imshow(pp, uu, tt, qq, ee)
 
@@ -703,7 +724,7 @@ def grad_rho_matrix(ur, ux, rho, N):
     m_dx = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     d_dr = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     for i in np.arange(Nx+1):
-        for j in np.arange(Nr+1):
+        for j in np.arange(1, Nr+1):
             # if i == 0:
             #     # m_dx[i, j] = (rho[i, j]*ux[i, j]-rho_in*ux_in)/dx
             #     m_dx[i, j] = (rho[i+1, j]*ux[i+1, j]-rho[i, j]*ux[i, j])/dx
@@ -743,7 +764,7 @@ def grad_ux2_matrix(p, ux):  # bulk
     ux_dx = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
 
     for m in np.arange(Nx+1):
-        for n in np.arange(Nr+1):
+        for n in np.arange(1, Nr+1):
             # axial
             if m == Nx:
                 dp_dx[m, n] = (p[m, n] - p[m-1, n])/dx
@@ -753,8 +774,14 @@ def grad_ux2_matrix(p, ux):  # bulk
             #     dp_dx[m, n] = (p[m, n] - p[m-1, n])/dx  # BWD
             #     ux_dx[m, n] = (ux[m, n] - ux[m-1, n])/dx  # BWD
 
-            else:
+            # else:
                 # upwind 1st order  - positive flow - advection
+                # dp_dx[m, n] = (p[m+1, n] - p[m, n])/dx  # upwind
+                # ux_dx[m, n] = (ux[m+1, n] - ux[m, n])/dx  # upwind
+            # elif m >= 1:
+            #     dp_dx[m, n] = (p[m+1, n] - p[m-1, n])/(2*dx)  # upwind
+            #     ux_dx[m, n] = (ux[m+1, n] - ux[m-1, n])/(2*dx)  # upwind
+            else:
                 dp_dx[m, n] = (p[m+1, n] - p[m, n])/dx  # upwind
                 ux_dx[m, n] = (ux[m+1, n] - ux[m, n])/dx  # upwind
 
@@ -783,7 +810,7 @@ def grad_ur2_matrix(p, ur):  # first derivatives BULK
     ur_dx = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
 
     for m in np.arange(Nx+1):
-        for n in np.arange(Nr+1):
+        for n in np.arange(1, Nr+1):
 
             # radial
             if n == 1:
@@ -833,7 +860,7 @@ def grad_e2_matrix(v, u, e, N):     # use upwind for Pe > 2
     grad_r = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     grad_x = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     for m in np.arange(Nx+1):
-        for n in np.arange(Nr+1):
+        for n in np.arange(1, Nr+1):
             if n == 1:
                 # NOTE: Symmetry BC
                 grad_r[m, n] = ((N[m, n+2]*dr)*v[m, n+2]*e[m, n+2] +
@@ -880,7 +907,7 @@ def dt2x_matrix(u, v):
     dt2x_ux = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     dt2x_ur = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     for m in np.arange(Nx+1):
-        for n in np.arange(Nr+1):
+        for n in np.arange(1, Nr+1):
             if m == 0:
                 # dt2nd axial ux1
                 dt2x_ux[m, n] = (u[m+2, n] - 2.*u[m+1, n] + u[m, n]) / dx**2.
@@ -916,7 +943,7 @@ def dt2r_matrix(u, v):
     dt2r_ux = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     dt2r_ur = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     for m in np.arange(Nx+1):
-        for n in np.arange(Nr+1):
+        for n in np.arange(1, Nr+1):
 
             if n == 1:
                 # NOTE: Symmetry Boundary Condition
@@ -1275,7 +1302,7 @@ def exp_smooth(grid, hv, lv, order, tran):  # Q: from where did we get this?
 
 
 def bulk_values(T_s):
-    T_0 = 4.2
+    T_0 = 100.
     rho_0 = 1e-5  # An arbitrary small initial density in pipe, kg/m3
     p_0 = rho_0/M_n*R*T_0  # Initial pressure, Pa
     e_0 = 5./2.*p_0  # Initial internal energy
@@ -1442,8 +1469,10 @@ def parabolic_velocity(rho, tg, u, v, Ut, e, u_in, v_in):
             u[i, y] = v_max*(1.0 - ((y*dr)/R_cyl)**2)
             # print("parabolic y", y)
             Ut[i, y] = u[i, y]
-    u[:, Nr] = 0
-    Ut[:, Nr] = 0
+
+# No slip
+    # u[:, Nr] = 0
+    # Ut[:, Nr] = 0
 
     u = smooth_parabolic(u, n_trans)
 
@@ -1565,16 +1594,17 @@ def inlet_BC(u, v, Ut, p, rho, T, e, p_inl, u_inl, rho_inl, T_inl, e_inl):
     e[0, :] = e_inl
     u[0, :] = u_inl
 
-    for y in np.arange(Nr+1):
-        u[0, y] = u_inl*(1.0 - ((y*dr)/R_cyl)**2)
-        # print("parabolic y", y)
-        Ut[0, y] = u[0, y]
+# parabolic velocity profile
+    # for y in np.arange(Nr+1):
+    #     u[0, y] = u_inl*(1.0 - ((y*dr)/R_cyl)**2)
+    #     # print("parabolic y", y)
+    #     Ut[0, y] = u[0, y]
 
 
 # no slip
-    u[:, Nr] = 0
-    v[:, Nr] = 0
-    Ut[:, Nr] = 0
+    # u[:, Nr] = 0
+    # v[:, Nr] = 0
+    # Ut[:, Nr] = 0
     Ut = np.sqrt(u**2. + v**2.)
     e = 5./2. * p + 1./2 * rho*Ut**2
     return [u, v, Ut, p, rho, T, e]
@@ -1592,8 +1622,8 @@ def outlet_BC(p, e, rho, u, v, Ut, rho_0):
         u[Nx, n] = max(2*rho[Nx-1, n]*u[Nx-1, n] -
                        rho[Nx-2, n]*u[Nx-2, n], 0) / rho[Nx, n]
         u = np.sqrt(u**2. + v**2.)
-    u[:, Nr] = 0  # no slip
-    v[:, Nr] = 0
+    # u[:, Nr] = 0  # no slip
+    # v[:, Nr] = 0
     Ut = np.sqrt(u**2. + v**2.)
     # e[Nx, n] = 2*e[Nx-1, n]-e[Nx-2, n]
     e = 5./2. * p + 1./2 * rho*Ut**2
@@ -1605,13 +1635,13 @@ def outlet_BC(p, e, rho, u, v, Ut, rho_0):
 
 
 # @jit(nopython=True)
-def val_in_constant():
+def val_in_constant(p_0, T_0, u_0):
     #   Calculate instant flow rate (kg/s)
-    p_in = 6000.
-    T_in = 298.
+    p_in = p_0+5.  # Pa
+    T_in = T_0+10.  # K
     rho_in = p_in / T_in/R*M_n
-    u_in = np.sqrt(gamma_n2*R/M_n*T_in)
-    # u_in = 20.
+    # u_in = np.sqrt(gamma_n2*R/M_n*T_in)
+    u_in = u_0+5.
     v_in = 0.
     Ut_in = np.sqrt(u_in**2. + v_in**2.)
     # Ut_in = 50.

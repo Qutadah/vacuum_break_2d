@@ -9,7 +9,7 @@ print("Removing old timestepping folder")
 # remove timestepping folder
 remove_timestepping()
 
-ss = 10
+ss = 1000
 # Continuity terms
 rho_r = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
 rho_x = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
@@ -33,6 +33,15 @@ e_r = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
 e_x = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
 rhs_e_term = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
 
+
+# actual terms
+
+q_rho = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+q_momx = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+q_momr = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+q_energy = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
+
+
 # Calculate initial values
 T_0, rho_0, p_0, e_0, Ut_0, u_0, v_0 = bulk_values(T_s)
 
@@ -44,7 +53,7 @@ p1, rho1, u1, v1, Ut1, e1, T1, rho2, u2, v2, Ut2, e2, T2, p2, Tw1, Tw2, Ts1, Ts2
 #  Smoothing inlet
 
 # constant inlet
-out_cons = val_in_constant()
+out_cons = val_in_constant(p_0, T_0, u_0)
 
 
 p_in = out_cons[0]
@@ -54,6 +63,18 @@ rho_in = out_cons[3]
 e_in = out_cons[4]
 T_in = out_cons[5]
 
+
+# normal conditions
+# p_in = 300.
+# u_in = 10.
+# v_in = 0.
+# rho_in = 0.2
+# T_in = p_in/rho_in/R*M_n
+
+# Ut_in = np.sqrt(u_in**2. + v_in**2.)
+# e_in = 5./2. * p_in + 1./2. * rho_in * u_in**2.
+
+
 # setting wall and frost layer initial conditions
 # p_in, q_in, ux_in, ur_in, rho_in, e_in, T_in = val_in(0)
 print("p_in: ", p_in, "u_in: ", u_in, "v_in: ", v_in,
@@ -61,11 +82,11 @@ print("p_in: ", p_in, "u_in: ", u_in, "v_in: ", v_in,
 
 
 # BC SURFACES- check deep copy
-Ts1[:] = T1[:, Nr]
-Ts2[:] = Ts1
+# Ts1[:] = T1[:, Nr]
+# Ts2[:] = Ts1
 
 # inlet BCs
-print("Applying inlet BCs")
+print("Applying BCs")
 u1, v1, Ut1, p1, rho1, T1, e1 = inlet_BC(
     u1, v1, Ut1, p1, rho1, T1, e1, p_in, u_in, rho_in, T_in, e_in)
 # negative temp check
@@ -77,16 +98,16 @@ p1, rho1, T1, u1, Ut1, e1 = outlet_BC(p1, e1, rho1, u1, v1, Ut1, rho_0)
 
 # negative temp check
 if np.any(T1 < 0):
-    print("Temp outlet BC has at least one negative value")
+    # print("Temp outlet BC has at least one negative value")
     exit()
 
 # PARABOLIC VELOCITY PROFILE - smoothing of parabolic velocity inlet
 
-u1, v1, Ut1, e1 = parabolic_velocity(rho1, T1, u1, v1, Ut1, e1, u_in, v_in)
+# u1, v1, Ut1, e1 = parabolic_velocity(rho1, T1, u1, v1, Ut1, e1, u_in, v_in)
 
-T1 = (e1 - 1./2.*rho1*Ut1**2) * 2./5. / rho1/R*M_n
-
-p1 = rho1*R/M_n*T1
+# T1 = (e1 - 1./2.*rho1*Ut1**2) * 2./5. / rho1/R*M_n
+# # print(T1)
+# p1 = rho1*R/M_n*T1
 
 # negative temp check
 if np.any(T1 < 0):
@@ -98,7 +119,11 @@ p1, rho1, T1 = smoothing_inlet(
     p1, rho1, T1, p_in, p_0, rho_in, rho_0, n_trans)
 
 # recalculate energy
+for j in range(0, Nx+1):
+    u1[j, :] = exp_smooth(j + n_trans, u1[j, :]*2, 0, 0.4, n_trans)
 
+
+Ut1 = np.sqrt(u1**2. + v1**2.)
 e1 = 5./2. * p1 + 1./2 * rho1*Ut1**2.
 
 # negative temp check
@@ -106,9 +131,9 @@ if np.any(T1 < 0):
     print("Temp smoothing has at least one negative value")
     exit()
 
-print("Applying No-slip BC")
+# print("Applying No-slip BC")
 # NO SLIP BC
-p1, T1, u1, v1, Ut1, e1 = no_slip_no_mdot(p1, rho1, T1, u1, v1, Ut1, e1)
+# p1, T1, u1, v1, Ut1, e1 = no_slip_no_mdot(p1, rho1, T1, u1, v1, Ut1, e1)
 
 # negative temp check
 if np.any(T1 < 0):
@@ -125,7 +150,7 @@ if np.any(T1 < 0):
 
 
 # SAVING INITIAL MATRICES
-print("Saving initial fields")
+# print("Saving initial fields")
 # save initial fields
 save_initial_conditions(rho1, u1, v1, Ut1, e1, T1, de0, p1, de1)
 
@@ -138,13 +163,13 @@ N = n_matrix()
 
 # Gradient starting matrices
 # calculate initial gradients matrix:
-print("Calculating initial gradients")
+# print("Calculating initial gradients")
 d_dr, m_dx = grad_rho_matrix(v1, u1, rho1, N)
 dp_dx, ux_dx, ux_dr = grad_ux2_matrix(p1, u1)
 dp_dr, ur_dx, ur_dr = grad_ur2_matrix(p1, v1)
 grad_x, grad_r = grad_e2_matrix(v1, u1, e1, N)
 
-print("Saving gradients to file")
+# print("Saving gradients to file")
 save_gradients(d_dr, m_dx, dp_dx, ux_dx, ux_dr,
                dp_dr, ur_dx, ur_dr, grad_x, grad_r)
 
@@ -157,8 +182,7 @@ save_gradients(d_dr, m_dx, dp_dx, ux_dx, ux_dr,
 
 
 # def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2, Tw2, Ts2, Tc2, de1, T3):
-print("Main loop started")
-
+# print("Main loop started")
 
 def main_calc(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, de1, p3, rho3, T3, u3, v3, Ut3, e3, Tw1, Ts1, Tc1, p_in, rho_in, T_in, e_in, u_in, v_in, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term):
 
@@ -174,8 +198,8 @@ def main_calc(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0,
         # p_in, q_in, ux_in, ur_in, rho_in, e_in, T_in = val_in(i)
 
         # constant inlet
-        print("Assigning inlet values")
-        p_in, u_in, v_in, rho_in, e_in, T_in = val_in_constant()
+        # print("Assigning inlet values")
+        p_in, u_in, v_in, rho_in, e_in, T_in = val_in_constant(p_0, T_0, u_0)
 
         # print("Creating empty de1 matrix to save variable mass deposition")
         # de1 matrix this is the de_variable in RK3 function
@@ -208,7 +232,6 @@ def main_calc(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0,
 # calculating Peclet for field, helps later for differencing scheme used
         # Pe1 = Peclet_grid(Pe, u1, D_hyd, p1, T1)
 
-        print("NAN check next")
 
 # perform NAN value matrix checks:
         # for x in np.arange(len(out)):
@@ -271,7 +294,12 @@ def main_calc(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0,
 
 
 # Returning result
-        print("Returning results for the next time iteration")
+        print("Returning results")
+
+        q_rho[i, :, :] = rho1
+        q_momx[i, :, :] = u1
+        q_momr[i, :, :] = v1
+        q_energy[i, :, :] = e1
 
         rho1[:, :] = rho2
         Ut1[:, :] = Ut2
@@ -290,69 +318,88 @@ def main_calc(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0,
 
 # DELETE R=0 Point/Column
 # The 3 index indicates matrices with no r=0, deleted column..
-        print("Deleting the r=0")
+        # print("Deleting the r=0")
         rho3, u3, v3, Ut3, e3, T3, p3 = delete_r0_point(
             rho1, u1, v1, Ut1, e1, T1, p1)
 
 # SAVING DATA
-        print("Saving data")
+        # print("Saving data")
         save_data(i, dt, rho3, u3, v3, Ut3, e3, T3, Tw2, Ts2, de0, p3)
 
 # point to plot terms with time
-        # aa = 3
-        # bb = 30
+        aa = 15
+        bb = 3
 
-        # if i == ss-1:
-        #     x = np.linspace(0, 7, ss)
-        #     fig, axs = plt.subplots(5)
-        #     plt.suptitle("Momentum R terms")
+        if i == ss-1:
+            x = np.linspace(0, 7, ss)
+            fig, axs = plt.subplots(5)
+            plt.suptitle("Mom-ux terms")
+            # y4 = dt*rhs_rho_term[:, aa, bb]
 
-        # y1 = rho_x[:, aa, bb]
-        # y2 = rho_r[:, aa, bb]
-        # y3 = rhs_rho_term[:, aa, bb]
-        # axs[0].plot(x, y1)
-        # axs[1].plot(x, y2)
-        # axs[2].plot(x, y3)
+            # y1 = rho_x[:, aa, bb]
+            # y2 = rho_r[:, aa, bb]
+            # y3 = rhs_rho_term[:, aa, bb]
+            # y4 = dt*rhs_rho_term[:, aa, bb]
+            # y5 = q_rho[:, aa, bb]
 
-        # y1 = pressure_x[:, aa, bb]
-        # y2 = visc_x[:, aa, bb]
-        # y3 = ux_x[:, aa, bb]
-        # y4 = ur_x[:, aa, bb]
-        # y5 = rhs_ux_term[:, aa, bb]
-        # axs[0].plot(x, y1)
-        # axs[1].plot(x, y2)
-        # axs[2].plot(x, y3)
-        # axs[3].plot(x, y4)
-        # # axs[4].plot(x, y5)
+            # axs[0].plot(x, y1)
+            # axs[1].plot(x, y2)
+            # axs[2].plot(x, y3)
+            # axs[3].plot(x, y4)
+            # axs[4].plot(x, y5)
 
-        # y1 = pressure_r[:, aa, bb]
-        # y2 = visc_r[:, aa, bb]
-        # y3 = ux_r[:, aa, bb]
-        # y4 = ur_r[:, aa, bb]
-        # y5 = rhs_ur_term[:, aa, bb]
-        # axs[0].plot(x, y1)
-        # axs[1].plot(x, y2)
-        # axs[2].plot(x, y3)
-        # axs[3].plot(x, y4)
-        # axs[4].plot(x, y5)
+            # y1 = pressure_x[:, aa, bb]
+            # y2 = visc_x[:, aa, bb]
+            # y3 = ux_x[:, aa, bb]
+            # y4 = ur_x[:, aa, bb]
+            # y5 = rhs_ux_term[:, aa, bb]
+            # y6 = dt*rhs_ux_term[:, aa, bb]
+            # y7 = q_momx[:, aa, bb]
+            # axs[0].plot(x, y1)
+            # axs[1].plot(x, y2)
+            # axs[2].plot(x, y3)
+            # axs[3].plot(x, y4)
+            # axs[4].plot(x, y5)
+            # axs[5].plot(x, y6)
+            # axs[6].plot(x, y7)
 
-        # y1 = e_r[:, aa, bb]
-        # y2 = e_x[:, aa, bb]
-        # y3 = rhs_e_term[:, aa, bb]
-        # axs[0].plot(x, y1)
-        # axs[1].plot(x, y2)
-        # axs[2].plot(x, y3)
+            # y1 = pressure_r[:, aa, bb]
+            # y2 = visc_r[:, aa, bb]
+            # y3 = ux_r[:, aa, bb]
+            # y4 = ur_r[:, aa, bb]
+            # y5 = rhs_ur_term[:, aa, bb]
+            # y6 = dt*rhs_ur_term[:, aa, bb]
+            # y7 = q_momr[:, aa, bb]
+            # axs[0].plot(x, y1)
+            # axs[1].plot(x, y2)
+            # axs[2].plot(x, y3)
+            # axs[3].plot(x, y4)
+            # axs[4].plot(x, y5)
+            # axs[5].plot(x, y6)
+            # axs[6].plot(x, y7)
 
-        # plt.title("rhs_e_term term")
-        # plt.plot(x, y, color="red")
-        # plt.show()
+            y1 = e_r[:, aa, bb]
+            y2 = e_x[:, aa, bb]
+            y3 = rhs_e_term[:, aa, bb]
+            y4 = dt*rhs_e_term[:, aa, bb]
+            y5 = q_energy[:, aa, bb]
+            axs[0].plot(x, y1)
+            axs[1].plot(x, y2)
+            axs[2].plot(x, y3)
+            axs[3].plot(x, y4)
+            axs[4].plot(x, y5)
+            # plt.title("rhs_rho term")
+            # plt.plot(x, y, color="red")
+            plt.show()
 
 # PLOTTING FIELDS
-        # if i >= 10:
-        # if i % 10 == 0:
-        print("plotting current iteration", i)
-        plot_imshow(p3, u3, T3, rho3, e3)
-# First set up the figure, the axis, and the plot element we want to animate
+        # if i >= 0:
+        # if i == 2:
+        if i % 2 == 0:
+            # if i >= 0:
+            # print("plotting current iteration", i)
+            plot_imshow(p3, u3, T3, rho3, e3)
+    # First set up the figure, the axis, and the plot element we want to animate
         # im = plt.imshow((p3, u3, T3, rho3, e3),
         #                 interpolation='none', aspect='auto', vmin=0, vmax=1)
 
