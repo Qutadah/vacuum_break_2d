@@ -60,50 +60,54 @@ def dt2nd_w_matrix(Tw, T_in):
 def initialize_grid(p_0, rho_0, e_0, T_0, T_s):
 
     # rho12 = np.full((Nx+1, Nr+1), rho_0, dtype=(np.float64, np.float64))  # Density
-    p1 = np.full((Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # Pressure
+    p1 = np.full((Nx+1, Nr+1), p_0,
+                 dtype=(np.longdouble, np.longdouble))  # Pressure
     rho1 = np.full((Nx+1, Nr+1), rho_0,
-                   dtype=(np.float64, np.float64))  # Density
-    ux1 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))  # velocity -x
-    ur1 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))  # velocity -r
+                   dtype=(np.longdouble, np.longdouble))  # Density
+    ux1 = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble,
+                   np.longdouble))  # velocity -x
+    ur1 = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble,
+                   np.longdouble))  # velocity -r
     u1 = np.sqrt(np.square(ux1) + np.square(ur1))  # total velocity
     # Internal energy
-    e1 = np.full((Nx+1, Nr+1), e_0, dtype=(np.float64, np.float64))
+    e1 = np.full((Nx+1, Nr+1), e_0, dtype=(np.longdouble, np.longdouble))
     # CHECK TODO: calculate using equation velocity.
     # TODO: calculate using equation velocity.
 
     T1 = np.full((Nx+1, Nr+1), T_0,
-                 dtype=(np.float64, np.float64))  # Temperature
+                 dtype=(np.longdouble, np.longdouble))  # Temperature
 
-    rho2 = np.full((Nx+1, Nr+1), rho_0, dtype=(np.float64, np.float64))
-    ux2 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    ur2 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    rho2 = np.full((Nx+1, Nr+1), rho_0, dtype=(np.longdouble, np.longdouble))
+    ux2 = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
+    ur2 = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
     u2 = np.sqrt(np.square(ux2) + np.square(ur2))  # total velocity
-    e2 = np.full((Nx+1, Nr+1), e_0, dtype=(np.float64, np.float64))
-    T2 = np.full((Nx+1, Nr+1), T_0, dtype=(np.float64, np.float64))
-    p2 = np.full((Nx+1, Nr+1), p_0, dtype=(np.float64, np.float64))  # Pressure
+    e2 = np.full((Nx+1, Nr+1), e_0, dtype=(np.longdouble, np.longdouble))
+    T2 = np.full((Nx+1, Nr+1), T_0, dtype=(np.longdouble, np.longdouble))
+    p2 = np.full((Nx+1, Nr+1), p_0,
+                 dtype=(np.longdouble, np.longdouble))  # Pressure
 
-    Tw1 = np.full((Nx+1), T_s, dtype=(np.float64))  # Wall temperature
-    Tw2 = np.full((Nx+1), T_s, dtype=(np.float64))
+    Tw1 = np.full((Nx+1), T_s, dtype=(np.longdouble))  # Wall temperature
+    Tw2 = np.full((Nx+1), T_s, dtype=(np.longdouble))
     # Temperature of SN2 surface
-    Ts1 = np.full((Nx+1), T_0, dtype=(np.float64))
-    Ts2 = np.full((Nx+1), T_0, dtype=(np.float64))
+    Ts1 = np.full((Nx+1), T_0, dtype=(np.longdouble))
+    Ts2 = np.full((Nx+1), T_0, dtype=(np.longdouble))
 
     # Average temperature of SN2 layer
-    Tc1 = np.full((Nx+1), T_s, dtype=(np.float64))
-    Tc2 = np.full((Nx+1), T_s, dtype=(np.float64))
-    de0 = np.zeros((Nx+1), dtype=(np.float64))  # Deposition mass, kg/m
-    de1 = np.full((Nx+1), 0., dtype=(np.float64))  # Deposition rate
+    Tc1 = np.full((Nx+1), T_s, dtype=(np.longdouble))
+    Tc2 = np.full((Nx+1), T_s, dtype=(np.longdouble))
+    de0 = np.zeros((Nx+1), dtype=(np.longdouble))  # Deposition mass, kg/m
+    de1 = np.full((Nx+1), 0., dtype=(np.longdouble))  # Deposition rate
     # de2 = np.full((Nx+1), 0., dtype=(np.float64))  # Deposition rate
-    qhe = np.zeros_like(de0, dtype=np.float64)  # heat transfer
+    qhe = np.zeros_like(de0, dtype=np.longdouble)  # heat transfer
 
     # These matrices are just place holder. These will be overwritten and saved. (remove r=0)
-    rho3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
-    ux3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
-    ur3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
-    u3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
-    e3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
-    T3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
-    p3 = np.full((Nx+1, Nr), T_s, dtype=(np.float64, np.float64))
+    rho3 = np.full((Nx+1, Nr), T_s, dtype=(np.longdouble, np.longdouble))
+    ux3 = np.full((Nx+1, Nr), T_s, dtype=(np.longdouble, np.longdouble))
+    ur3 = np.full((Nx+1, Nr), T_s, dtype=(np.longdouble, np.longdouble))
+    u3 = np.full((Nx+1, Nr), T_s, dtype=(np.longdouble, np.longdouble))
+    e3 = np.full((Nx+1, Nr), T_s, dtype=(np.longdouble, np.longdouble))
+    T3 = np.full((Nx+1, Nr), T_s, dtype=(np.longdouble, np.longdouble))
+    p3 = np.full((Nx+1, Nr), T_s, dtype=(np.longdouble, np.longdouble))
 
     # Dimensionless number in grid:
     Pe = np.zeros((Nx+1, Nr+1), dtype=(np.float64,
@@ -208,9 +212,11 @@ def rhs_rho(i, d_dr, m_dx, N, rho_r, rho_x, rhs_rho_term):  # include i to calcu
     # np.concatenate(([rho_x], [B]), axis=0)
     # np.concatenate(([rhs_rho_term], [rhs_rho]), axis=0)
 
-    rho_r[i, :, :] = A
-    rho_x[i, :, :] = B
-    rhs_rho_term[i, :, :] = rhs_rho
+    # rho_r[i, :, :] = A
+
+    rho_r[1, :, :] = A
+    rho_x[1, :, :] = B
+    rhs_rho_term[1, :, :] = rhs_rho
     # np.append(rho_r, A, axis=0)
     # save_stack(rho_r)
 
@@ -258,17 +264,17 @@ def rhs_ma(i, dp_dx, rho, dt2r_ux, N, ux_dr, dt2x_ux, ux, ux_dx, ur, dp_dr, dt2r
 
 
 # Concatenation into global matrix
-    pressure_x[i, :, :] = A
-    visc_x[i, :, :] = B
-    ux_x[i, :, :] = C
-    ur_x[i, :, :] = D
-    rhs_ux_term[i, :, :] = rhs_ux
+    pressure_x[1, :, :] = A
+    visc_x[1, :, :] = B
+    ux_x[1, :, :] = C
+    ur_x[1, :, :] = D
+    rhs_ux_term[1, :, :] = rhs_ux
 
-    pressure_r[i, :, :] = E
-    visc_r[i, :, :] = F
-    ux_r[i, :, :] = G
-    ur_r[i, :, :] = H
-    rhs_ur_term[i, :, :] = rhs_ur
+    pressure_r[1, :, :] = E
+    visc_r[1, :, :] = F
+    ux_r[1, :, :] = G
+    ur_r[1, :, :] = H
+    rhs_ur_term[1, :, :] = rhs_ur
 
     return rhs_ux, rhs_ur, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term
 
@@ -297,9 +303,9 @@ def rhs_energy(i, grad_r, grad_x, N, e_r, e_x, rhs_e_term):
     # np.concatenate(([e_x], [B]), axis=0)
     # np.concatenate(([rhs_e_term], [rhs_e]), axis=0)
 
-    e_r[i, :, :] = A
-    e_x[i, :, :] = B
-    rhs_e_term[i, :, :] = rhs_e
+    e_r[1, :, :] = A
+    e_x[1, :, :] = B
+    rhs_e_term[1, :, :] = rhs_e
     return rhs_e, e_r, e_x, rhs_e_term
     # ri = rhsInv(nx,ny,nz,dx,dy,dz,q,iflx)
     # if (ivis==1)
@@ -524,7 +530,7 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
 #     tg = (e - 1./2.*q*Ut**2) * 2./5. / q/R*M_n
 #     p = q*R/M_n*tg
 
-    # p, tg, u, v, Ut, e = no_slip_no_mdot(p, q, tg, u, v, Ut, e)
+    p, tg, u, v, Ut, e = no_slip_no_mdot(p, q, tg, u, v, Ut, e)
 
 # negative temp check
     # if np.any(tg < 0):
@@ -553,8 +559,8 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
 
     # print("Calculating viscosity")
     visc_matrix = viscous_matrix(tg, p)
-    print("zero viscosity assumed")
-    visc_matrix[:, :] = 0.
+    # print("zero viscosity assumed")
+    # visc_matrix[:, :] = 0.
 
     assert np.isfinite(visc_matrix).all()
 
@@ -616,7 +622,7 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
 #     pp = qq*R/M_n*tt
 
 # no slip condition - pressure and temp recalculated within
-    # pp, tt, uxx, urr, uu, ee = no_slip_no_mdot(pp, qq, tt, uxx, urr, uu, ee)
+    pp, tt, uxx, urr, uu, ee = no_slip_no_mdot(pp, qq, tt, uxx, urr, uu, ee)
     # print("plotting no slip")
     # plot_imshow(pp, uu, tt, qq, ee)
 
@@ -721,8 +727,8 @@ def animate_func(p, ux, T, rho, e):
 
 def grad_rho_matrix(ur, ux, rho, N):
     # create gradients arrays.
-    m_dx = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    d_dr = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    m_dx = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
+    d_dr = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
     for i in np.arange(Nx+1):
         for j in np.arange(1, Nr+1):
             # if i == 0:
@@ -759,9 +765,9 @@ def grad_rho_matrix(ur, ux, rho, N):
 
 # @jit(nopython=True)
 def grad_ux2_matrix(p, ux):  # bulk
-    ux_dr = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    dp_dx = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    ux_dx = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    ux_dr = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
+    dp_dx = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
+    ux_dx = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
 
     for m in np.arange(Nx+1):
         for n in np.arange(1, Nr+1):
@@ -778,9 +784,9 @@ def grad_ux2_matrix(p, ux):  # bulk
                 # upwind 1st order  - positive flow - advection
                 # dp_dx[m, n] = (p[m+1, n] - p[m, n])/dx  # upwind
                 # ux_dx[m, n] = (ux[m+1, n] - ux[m, n])/dx  # upwind
-            # elif m >= 1:
-            #     dp_dx[m, n] = (p[m+1, n] - p[m-1, n])/(2*dx)  # upwind
-            #     ux_dx[m, n] = (ux[m+1, n] - ux[m-1, n])/(2*dx)  # upwind
+            elif m >= 1:
+                dp_dx[m, n] = (p[m+1, n] - p[m-1, n])/(2*dx)  # upwind
+                ux_dx[m, n] = (ux[m+1, n] - ux[m-1, n])/(2*dx)  # upwind
             else:
                 dp_dx[m, n] = (p[m+1, n] - p[m, n])/dx  # upwind
                 ux_dx[m, n] = (ux[m+1, n] - ux[m, n])/dx  # upwind
@@ -805,9 +811,9 @@ def grad_ux2_matrix(p, ux):  # bulk
 
 
 def grad_ur2_matrix(p, ur):  # first derivatives BULK
-    dp_dr = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    ur_dr = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    ur_dx = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    dp_dr = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
+    ur_dr = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
+    ur_dx = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
 
     for m in np.arange(Nx+1):
         for n in np.arange(1, Nr+1):
@@ -857,8 +863,8 @@ def grad_ur2_matrix(p, ur):  # first derivatives BULK
 
 
 def grad_e2_matrix(v, u, e, N):     # use upwind for Pe > 2
-    grad_r = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    grad_x = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    grad_r = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
+    grad_x = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
     for m in np.arange(Nx+1):
         for n in np.arange(1, Nr+1):
             if n == 1:
@@ -904,8 +910,8 @@ def grad_e2_matrix(v, u, e, N):     # use upwind for Pe > 2
 
 
 def dt2x_matrix(u, v):
-    dt2x_ux = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    dt2x_ur = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    dt2x_ux = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
+    dt2x_ur = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
     for m in np.arange(Nx+1):
         for n in np.arange(1, Nr+1):
             if m == 0:
@@ -940,8 +946,8 @@ def dt2x_matrix(u, v):
 
 
 def dt2r_matrix(u, v):
-    dt2r_ux = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
-    dt2r_ur = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    dt2r_ux = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
+    dt2r_ur = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
     for m in np.arange(Nx+1):
         for n in np.arange(1, Nr+1):
 
@@ -1300,15 +1306,52 @@ def exp_smooth(grid, hv, lv, order, tran):  # Q: from where did we get this?
 
 # @jit(nopython=True)
 
+# This is Nr, delete R =0 point done
+
+
+def continue_simulation():
+    # if "path" exists
+    pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/last_timestep/'
+    if os.path.exists(pathname):
+        # change Working directory
+        rho = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
+        p = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
+        tg = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
+        u = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
+        v = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
+        Ut = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
+        e = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
+
+# define field variables
+        rho = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\rho.csv",
+                         delimiter=",", dtype=np.longdouble)
+        p = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\p.csv",
+                       delimiter=",", dtype=np.longdouble)
+        tg = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\Tg.csv",
+                        delimiter=",", dtype=np.longdouble)
+        u = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\ux.csv",
+                       delimiter=",", dtype=np.longdouble)
+        v = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\ur.csv",
+                       delimiter=",", dtype=np.longdouble)
+        Ut[:, :] = np.sqrt(u[:, :]**2. + v[:, :]**2.)
+        e = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\e.csv",
+                       delimiter=",", dtype=np.longdouble)
+    return p, rho, tg, u, v, Ut, e
+
 
 def bulk_values(T_s):
-    T_0 = 100.
-    rho_0 = 1e-5  # An arbitrary small initial density in pipe, kg/m3
-    p_0 = rho_0/M_n*R*T_0  # Initial pressure, Pa
-    e_0 = 5./2.*p_0  # Initial internal energy
+    # T_0 = 100.
+    T_0 = 4.2  # K
+    rho_0 = 1e-3  # An arbitrary small initial density in pipe, kg/m3
+    # T_0 = p_0/rho_0/R*M_n
+    p_0 = rho_0*R/M_n*T_0
     u_0 = 0
     v_0 = 0
+
     Ut_0 = np.sqrt(u_0**2. + v_0**2.)
+# energy bulk
+    e_0 = 5./2.*p_0 + np.sqrt(u_0**2. + v_0**2.)  # Initial internal energy
+
     bulk = [T_0, rho_0, p_0, e_0, Ut_0, u_0, v_0]
     print("p_0: ", p_0, "T_0:", T_0, "rho_0: ", rho_0, "e_0: ", e_0)
     return bulk
@@ -1602,9 +1645,9 @@ def inlet_BC(u, v, Ut, p, rho, T, e, p_inl, u_inl, rho_inl, T_inl, e_inl):
 
 
 # no slip
-    # u[:, Nr] = 0
-    # v[:, Nr] = 0
-    # Ut[:, Nr] = 0
+    u[:, Nr] = 0
+    v[:, Nr] = 0
+    Ut[:, Nr] = 0
     Ut = np.sqrt(u**2. + v**2.)
     e = 5./2. * p + 1./2 * rho*Ut**2
     return [u, v, Ut, p, rho, T, e]
@@ -1637,11 +1680,12 @@ def outlet_BC(p, e, rho, u, v, Ut, rho_0):
 # @jit(nopython=True)
 def val_in_constant(p_0, T_0, u_0):
     #   Calculate instant flow rate (kg/s)
-    p_in = p_0+5.  # Pa
-    T_in = T_0+10.  # K
-    rho_in = p_in / T_in/R*M_n
-    # u_in = np.sqrt(gamma_n2*R/M_n*T_in)
-    u_in = u_0+5.
+    p_in = 6000  # Pa
+    # rho_in = 0.5
+    T_in = 298.
+    rho_in = p_in/R*M_n / T_in
+    u_in = np.sqrt(gamma_n2*R/M_n*T_in)
+    # u_in = u_0
     v_in = 0.
     Ut_in = np.sqrt(u_in**2. + v_in**2.)
     # Ut_in = 50.
@@ -1927,10 +1971,21 @@ def save_initial_conditions(rho1, ux1, ur1, u1, e1, T1, de0, p1, de1):
 
 
 def save_data(tx, dt, rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1):
+    # a = a+1
+    # if a >= 10:
+    # increment2 = (tx-10)*dt
+    if tx % 50 == 0 and tx > 1:
+        pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/'
+        if os.path.exists(pathname):
+            location = "C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/"
+            dir = "timestepping"
+            path = os.path.join(location, dir)
+            shutil.rmtree(path)
+
     increment = (tx+1)*dt
 
     pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/timestepping/' + \
-        "{:.4f}".format(increment) + '/'
+        "{:.9f}".format(increment) + '/'
     newpath = pathname
     if not os.path.exists(newpath):
         os.makedirs(newpath)
@@ -1950,6 +2005,39 @@ def save_data(tx, dt, rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1):
     # np.savetxt("qhe.csv", qhe, delimiter=",")
     # np.savetxt("qdep.csv", qdep, delimiter=",")
     # np.savetxt("visc.csv", visc, delimiter=",")
+
+
+def save_last(tx, dt, rho1, ux1, ur1, u1, e1, T1, Tw1, Ts1, de0, p1):
+    # increment = (tx+1)*dt
+    # previous_step = tx*dt
+    pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/last_timestep/'
+    # +  "{:.6f}".format(increment) + '/'
+    newpath = pathname
+    if not os.path.exists(newpath):
+        os.makedirs(newpath)
+    os.chdir(pathname)
+    np.savetxt("rho.csv", rho1, delimiter=",")
+    np.savetxt("Tg.csv", T1, delimiter=",")
+    np.savetxt("u.csv", u1, delimiter=",")
+    np.savetxt("ux.csv", ux1, delimiter=",")
+    np.savetxt("ur.csv", ur1, delimiter=",")
+    np.savetxt("e.csv", e1, delimiter=",")
+    np.savetxt("tw.csv", Tw1, delimiter=",")
+    np.savetxt("ts.csv", Ts1, delimiter=",")
+    np.savetxt("de_mass.csv", de0, delimiter=",")
+    # np.savetxt("de_rate.csv", de2, delimiter=",")
+    np.savetxt("p.csv", p1, delimiter=",")
+    # np.savetxt("peclet.csv", pe, delimiter=",")
+    # np.savetxt("qhe.csv", qhe, delimiter=",")
+    # np.savetxt("qdep.csv", qdep, delimiter=",")
+    # np.savetxt("visc.csv", visc, delimiter=",")
+    # pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/last_timestep/' + \
+    #     "{:.6f}".format(previous_step) + '/'
+    # if os.path.exists(pathname):
+    #     location = "C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/last_timestep"
+    #     dir = str(previous_step)
+    #     path = os.path.join(location, dir)
+    #     shutil.rmtree(path)
 
 
 def save_RK3(x, tx, dt, rho1, ux1, ur1, u1, e1, T1, p1):

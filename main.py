@@ -1,15 +1,28 @@
 from my_constants import *
 from functions import *
 import matplotlib.animation as animation
+# importing the module
+import logging
+
+# now we will Create and configure logger
+logging.basicConfig(filename="std.log",
+                    format='%(asctime)s %(message)s',
+                    filemode='w')
+
+# Let us Create an object
+logger = logging.getLogger()
+
+# Now we are going to Set the threshold of logger to DEBUG
+logger.setLevel(logging.DEBUG)
+
 # u : axial velocity
 # v : radial velocity
-
+# a = 0
 print("Removing old timestepping folder")
-
 # remove timestepping folder
 remove_timestepping()
 
-ss = 1000
+ss = 10
 # Continuity terms
 rho_r = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
 rho_x = np.zeros((ss, Nx+1, Nr+1), dtype=(np.float64, np.float64))
@@ -80,6 +93,7 @@ T_in = out_cons[5]
 print("p_in: ", p_in, "u_in: ", u_in, "v_in: ", v_in,
       "rho_in: ", rho_in, "e_in: ", e_in, "T_in: ", T_in)
 
+# logger.info
 
 # BC SURFACES- check deep copy
 # Ts1[:] = T1[:, Nr]
@@ -133,7 +147,7 @@ if np.any(T1 < 0):
 
 # print("Applying No-slip BC")
 # NO SLIP BC
-# p1, T1, u1, v1, Ut1, e1 = no_slip_no_mdot(p1, rho1, T1, u1, v1, Ut1, e1)
+p1, T1, u1, v1, Ut1, e1 = no_slip_no_mdot(p1, rho1, T1, u1, v1, Ut1, e1)
 
 # negative temp check
 if np.any(T1 < 0):
@@ -153,6 +167,9 @@ if np.any(T1 < 0):
 # print("Saving initial fields")
 # save initial fields
 save_initial_conditions(rho1, u1, v1, Ut1, e1, T1, de0, p1, de1)
+
+# p, rho, tg, u, v, Ut, e = continue_simulation()
+# print("resuming simulation")
 
 # i1 = 0
 print("Plotting initial fields")
@@ -184,12 +201,16 @@ save_gradients(d_dr, m_dx, dp_dx, ux_dx, ux_dr,
 # def main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2, ur2, T2, e2, Tw2, Ts2, Tc2, de1, T3):
 # print("Main loop started")
 
+# a
+
 def main_calc(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, de1, p3, rho3, T3, u3, v3, Ut3, e3, Tw1, Ts1, Tc1, p_in, rho_in, T_in, e_in, u_in, v_in, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term):
+    # i = 0.001 /dt
 
     N = n_matrix()
     # NOTE: use ss for plotting terms
     for i in np.arange(np.int64(0), np.int64(Nt+1)):
-        print("Iteration: #", i)
+        if i % 50 == 0:
+            print("Iteration: #", i)
 
         # variable inl et
         # p_in, q_in, ux_in, ur_in, rho_in, e_in = val_in(
@@ -253,7 +274,7 @@ def main_calc(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0,
         #     exit()
 
 #         print("Calculating frost layer thickness")
-# # calculate frost layer thickness
+# # calculate frost layer thi ckness
 #         de0, del_SN = integral_mass_delSN(de2)
 
 #         print("Performing check on negative frost layer thickness")
@@ -294,12 +315,12 @@ def main_calc(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0,
 
 
 # Returning result
-        print("Returning results")
+        # print("Returning results")
 
-        q_rho[i, :, :] = rho1
-        q_momx[i, :, :] = u1
-        q_momr[i, :, :] = v1
-        q_energy[i, :, :] = e1
+        q_rho[1, :, :] = rho1
+        q_momx[1, :, :] = u1
+        q_momr[1, :, :] = v1
+        q_energy[1, :, :] = e1
 
         rho1[:, :] = rho2
         Ut1[:, :] = Ut2
@@ -324,78 +345,86 @@ def main_calc(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0,
 
 # SAVING DATA
         # print("Saving data")
+        # if not a:
+        #     a = 0
         save_data(i, dt, rho3, u3, v3, Ut3, e3, T3, Tw2, Ts2, de0, p3)
+
+
+# saving last solution
+
+        save_last(i, dt, rho3, u3, v3, Ut3, e3, T3, Tw2, Ts2, de0, p3)
+
 
 # point to plot terms with time
         aa = 15
         bb = 3
 
-        if i == ss-1:
-            x = np.linspace(0, 7, ss)
-            fig, axs = plt.subplots(5)
-            plt.suptitle("Mom-ux terms")
-            # y4 = dt*rhs_rho_term[:, aa, bb]
+        # if i == ss-1:
+        #     x = np.linspace(0, 7, ss)
+        #     fig, axs = plt.subplots(5)
+        #     plt.suptitle("Mom-ux terms")
+        #     # y4 = dt*rhs_rho_term[:, aa, bb]
 
-            # y1 = rho_x[:, aa, bb]
-            # y2 = rho_r[:, aa, bb]
-            # y3 = rhs_rho_term[:, aa, bb]
-            # y4 = dt*rhs_rho_term[:, aa, bb]
-            # y5 = q_rho[:, aa, bb]
+        # y1 = rho_x[:, aa, bb]
+        # y2 = rho_r[:, aa, bb]
+        # y3 = rhs_rho_term[:, aa, bb]
+        # y4 = dt*rhs_rho_term[:, aa, bb]
+        # y5 = q_rho[:, aa, bb]
 
-            # axs[0].plot(x, y1)
-            # axs[1].plot(x, y2)
-            # axs[2].plot(x, y3)
-            # axs[3].plot(x, y4)
-            # axs[4].plot(x, y5)
+        # axs[0].plot(x, y1)
+        # axs[1].plot(x, y2)
+        # axs[2].plot(x, y3)
+        # axs[3].plot(x, y4)
+        # axs[4].plot(x, y5)
 
-            # y1 = pressure_x[:, aa, bb]
-            # y2 = visc_x[:, aa, bb]
-            # y3 = ux_x[:, aa, bb]
-            # y4 = ur_x[:, aa, bb]
-            # y5 = rhs_ux_term[:, aa, bb]
-            # y6 = dt*rhs_ux_term[:, aa, bb]
-            # y7 = q_momx[:, aa, bb]
-            # axs[0].plot(x, y1)
-            # axs[1].plot(x, y2)
-            # axs[2].plot(x, y3)
-            # axs[3].plot(x, y4)
-            # axs[4].plot(x, y5)
-            # axs[5].plot(x, y6)
-            # axs[6].plot(x, y7)
+        # y1 = pressure_x[:, aa, bb]
+        # y2 = visc_x[:, aa, bb]
+        # y3 = ux_x[:, aa, bb]
+        # y4 = ur_x[:, aa, bb]
+        # y5 = rhs_ux_term[:, aa, bb]
+        # y6 = dt*rhs_ux_term[:, aa, bb]
+        # y7 = q_momx[:, aa, bb]
+        # axs[0].plot(x, y1)
+        # axs[1].plot(x, y2)
+        # axs[2].plot(x, y3)
+        # axs[3].plot(x, y4)
+        # axs[4].plot(x, y5)
+        # axs[5].plot(x, y6)
+        # axs[6].plot(x, y7)
 
-            # y1 = pressure_r[:, aa, bb]
-            # y2 = visc_r[:, aa, bb]
-            # y3 = ux_r[:, aa, bb]
-            # y4 = ur_r[:, aa, bb]
-            # y5 = rhs_ur_term[:, aa, bb]
-            # y6 = dt*rhs_ur_term[:, aa, bb]
-            # y7 = q_momr[:, aa, bb]
-            # axs[0].plot(x, y1)
-            # axs[1].plot(x, y2)
-            # axs[2].plot(x, y3)
-            # axs[3].plot(x, y4)
-            # axs[4].plot(x, y5)
-            # axs[5].plot(x, y6)
-            # axs[6].plot(x, y7)
+        # y1 = pressure_r[:, aa, bb]
+        # y2 = visc_r[:, aa, bb]
+        # y3 = ux_r[:, aa, bb]
+        # y4 = ur_r[:, aa, bb]
+        # y5 = rhs_ur_term[:, aa, bb]
+        # y6 = dt*rhs_ur_term[:, aa, bb]
+        # y7 = q_momr[:, aa, bb]
+        # axs[0].plot(x, y1)
+        # axs[1].plot(x, y2)
+        # axs[2].plot(x, y3)
+        # axs[3].plot(x, y4)
+        # axs[4].plot(x, y5)
+        # axs[5].plot(x, y6)
+        # axs[6].plot(x, y7)
 
-            y1 = e_r[:, aa, bb]
-            y2 = e_x[:, aa, bb]
-            y3 = rhs_e_term[:, aa, bb]
-            y4 = dt*rhs_e_term[:, aa, bb]
-            y5 = q_energy[:, aa, bb]
-            axs[0].plot(x, y1)
-            axs[1].plot(x, y2)
-            axs[2].plot(x, y3)
-            axs[3].plot(x, y4)
-            axs[4].plot(x, y5)
-            # plt.title("rhs_rho term")
-            # plt.plot(x, y, color="red")
-            plt.show()
+        # y1 = e_r[:, aa, bb]
+        # y2 = e_x[:, aa, bb]
+        # y3 = rhs_e_term[:, aa, bb]
+        # y4 = dt*rhs_e_term[:, aa, bb]
+        # y5 = q_energy[:, aa, bb]
+        # axs[0].plot(x, y1)
+        # axs[1].plot(x, y2)
+        # axs[2].plot(x, y3)
+        # axs[3].plot(x, y4)
+        # axs[4].plot(x, y5)
+        # # plt.title("rhs_rho term")
+        # # plt.plot(x, y, color="red")
+        # plt.show()
 
 # PLOTTING FIELDS
         # if i >= 0:
         # if i == 2:
-        if i % 2 == 0:
+        if i % 100000 == 0:
             # if i >= 0:
             # print("plotting current iteration", i)
             plot_imshow(p3, u3, T3, rho3, e3)
