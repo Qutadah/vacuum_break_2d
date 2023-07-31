@@ -206,6 +206,7 @@ save_gradients(d_dr, m_dx, dp_dx, ux_dx, ux_dr,
 def main_calc(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, de1, p3, rho3, T3, u3, v3, Ut3, e3, Tw1, Ts1, Tc1, p_in, rho_in, T_in, e_in, u_in, v_in, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term):
     # i = 0.001 /dt
 
+    rho1[:, :] = 1  # kg/m3
     N = n_matrix()
     # NOTE: use ss for plotting terms
     for i in np.arange(np.int64(0), np.int64(Nt+1)):
