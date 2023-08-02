@@ -558,6 +558,7 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
     dt2r_ux, dt2r_ur = dt2r_matrix(u, v)
 
     # print("Calculating viscosity")
+    # print(tg)
     visc_matrix = viscous_matrix(tg, p)
     # print("zero viscosity assumed")
     # visc_matrix[:, :] = 0.
@@ -1246,7 +1247,66 @@ def D_nn(T_g, P_g):
     return D_n_p
 
 
-# @jit(nopython=True)
+def continue_simulation(Nx):
+    # if os.path.exists(pathname):
+    # change Working directory
+    rho = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
+    p = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
+    T = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
+    u = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
+    v = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
+    Ut = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
+    e = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
+
+    rho1 = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
+    p1 = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
+    T1 = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
+    u1 = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
+    v1 = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
+    Ut1 = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
+    e1 = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
+
+# define field variables
+    rho = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\rho.csv",
+                     delimiter=",", dtype=np.longdouble)
+    p = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\p.csv",
+                   delimiter=",", dtype=np.longdouble)
+    T = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\Tg.csv",
+                   delimiter=",", dtype=np.longdouble)
+    u = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\ux.csv",
+                   delimiter=",", dtype=np.longdouble)
+    v = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\ur.csv",
+                   delimiter=",", dtype=np.longdouble)
+    Ut[:, :] = np.sqrt(u[:, :]**2. + v[:, :]**2.)
+    e = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\e.csv",
+                   delimiter=",", dtype=np.longdouble)
+
+    plot_imshow(p, u, T, rho, e)
+
+# append N =0
+    b = np.full((Nx+1, 1), 1000, dtype=np.longdouble)  # Density
+
+    rho1 = np.hstack((b, rho))
+    p1 = np.hstack((b, p))
+    T1 = np.hstack((b, T))
+    u1 = np.hstack((b, u))
+    v1 = np.hstack((b, v))
+    Ut1 = np.hstack((b, Ut))
+    e1 = np.hstack((b, e))
+
+    if np.any(T1 < 0):
+        print("Temp Array has at least one negative value")
+        exit()
+    if np.any(e1 < 0):
+        print("Energy has at least one negative value")
+        exit()
+    if np.any(rho1 < 0):
+        print("Density has at least one negative value")
+        exit()
+
+    return rho1, p1, T1, u1, v1, Ut1, e1
+
+
 def mu_n(T, P):
     #   Calculate viscosity of nitrogen (Pa*s)
     # print("viscosity temp and pressure", T, P)
@@ -1309,34 +1369,34 @@ def exp_smooth(grid, hv, lv, order, tran):  # Q: from where did we get this?
 # This is Nr, delete R =0 point done
 
 
-def continue_simulation():
-    # if "path" exists
-    pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/last_timestep/'
-    if os.path.exists(pathname):
-        # change Working directory
-        rho = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
-        p = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
-        tg = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
-        u = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
-        v = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
-        Ut = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
-        e = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
+# def continue_simulation():
+#     # if "path" exists
+#     pathname = 'C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/last_timestep/'
+#     if os.path.exists(pathname):
+#         # change Working directory
+#         rho = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
+#         p = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
+#         tg = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
+#         u = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
+#         v = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
+#         Ut = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
+#         e = np.zeros((Nx+1, Nr), dtype=(np.longdouble, np.longdouble))
 
-# define field variables
-        rho = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\rho.csv",
-                         delimiter=",", dtype=np.longdouble)
-        p = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\p.csv",
-                       delimiter=",", dtype=np.longdouble)
-        tg = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\Tg.csv",
-                        delimiter=",", dtype=np.longdouble)
-        u = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\ux.csv",
-                       delimiter=",", dtype=np.longdouble)
-        v = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\ur.csv",
-                       delimiter=",", dtype=np.longdouble)
-        Ut[:, :] = np.sqrt(u[:, :]**2. + v[:, :]**2.)
-        e = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\e.csv",
-                       delimiter=",", dtype=np.longdouble)
-    return p, rho, tg, u, v, Ut, e
+# # define field variables
+#         rho = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\rho.csv",
+#                          delimiter=",", dtype=np.longdouble)
+#         p = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\p.csv",
+#                        delimiter=",", dtype=np.longdouble)
+#         tg = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\Tg.csv",
+#                         delimiter=",", dtype=np.longdouble)
+#         u = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\ux.csv",
+#                        delimiter=",", dtype=np.longdouble)
+#         v = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\ur.csv",
+#                        delimiter=",", dtype=np.longdouble)
+#         Ut[:, :] = np.sqrt(u[:, :]**2. + v[:, :]**2.)
+#         e = np.loadtxt("C:\\Users\\rababqjt\\Documents\\programming\\git-repos\\2d-vacuumbreak-explicit-V1-func-calc\\last_timestep\\e.csv",
+#                        delimiter=",", dtype=np.longdouble)
+#     return p, rho, tg, u, v, Ut, e
 
 
 def bulk_values(T_s):
