@@ -129,7 +129,7 @@ def n_matrix():
             n[i, j] = j
     # print("Removing N=0 in matrix")
     n[:, 0] = 1
-    n[0, :] = 1
+    # n[0, :] = 1
     return n
 
 
