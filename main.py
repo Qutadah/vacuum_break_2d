@@ -73,8 +73,6 @@ p_in = out_cons[0]
 u_in = out_cons[1]
 v_in = out_cons[2]
 rho_in = out_cons[3]
-e_in = out_cons[4]
-T_in = out_cons[5]
 
 
 # normal conditions
@@ -90,8 +88,10 @@ T_in = out_cons[5]
 
 # setting wall and frost layer initial conditions
 # p_in, q_in, ux_in, ur_in, rho_in, e_in, T_in = val_in(0)
-print("p_in: ", p_in, "u_in: ", u_in, "v_in: ", v_in,
-      "rho_in: ", rho_in, "e_in: ", e_in, "T_in: ", T_in)
+print("u_in: ", u_in, "v_in: ", v_in,
+      "rho_in: ", rho_in)
+
+p1 = pressure_field()
 
 # logger.info
 
@@ -101,14 +101,15 @@ print("p_in: ", p_in, "u_in: ", u_in, "v_in: ", v_in,
 
 # inlet BCs
 print("Applying BCs")
-u1, v1, Ut1, p1, rho1, T1, e1 = inlet_BC(
-    u1, v1, Ut1, p1, rho1, T1, e1, p_in, u_in, rho_in, T_in, e_in)
+u1, v1, Ut1 = inlet_BC(
+    u1, v1, Ut1, u_in)
 # negative temp check
 if np.any(T1 < 0):
     print("Temp inlet_BC has at least one negative value")
     exit()
 
-p1, rho1, T1, u1, Ut1, e1 = outlet_BC(p1, e1, rho1, u1, v1, Ut1, rho_0)
+
+u1, Ut1 = outlet_BC(u1, v1, Ut1)
 
 # negative temp check
 if np.any(T1 < 0):
@@ -129,16 +130,15 @@ if np.any(T1 < 0):
     exit()
 
 # PREPPING AREA - smoothing of internal properties
-p1, rho1, T1 = smoothing_inlet(
-    p1, rho1, T1, p_in, p_0, rho_in, rho_0, n_trans)
+# p1, rho1, T1 = smoothing_inlet(
+    # p1, rho1, T1, p_in, p_0, rho_in, rho_0, n_trans)
 
 # recalculate energy
-for j in range(0, Nx+1):
-    u1[j, :] = exp_smooth(j + n_trans, u1[j, :]*2, 0, 0.4, n_trans)
+# for j in range(0, Nx+1):
+#     u1[j, :] = exp_smooth(j + n_trans, u1[j, :]*2, 0, 0.4, n_trans)
 
 
 Ut1 = np.sqrt(u1**2. + v1**2.)
-e1 = 5./2. * p1 + 1./2 * rho1*Ut1**2.
 
 # negative temp check
 if np.any(T1 < 0):
@@ -147,7 +147,7 @@ if np.any(T1 < 0):
 
 # print("Applying No-slip BC")
 # NO SLIP BC
-p1, T1, u1, v1, Ut1, e1 = no_slip_no_mdot(p1, rho1, T1, u1, v1, Ut1, e1)
+u1, v1, Ut1 = no_slip_no_mdot(u1, v1, Ut1)
 
 # negative temp check
 if np.any(T1 < 0):
@@ -203,7 +203,7 @@ save_gradients(d_dr, m_dx, dp_dx, ux_dx, ux_dr,
 
 # a
 
-def main_calc(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, de1, p3, rho3, T3, u3, v3, Ut3, e3, Tw1, Ts1, Tc1, p_in, rho_in, T_in, e_in, u_in, v_in, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term):
+def main_calc(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0, de1, p3, rho3, T3, u3, v3, Ut3, e3, Tw1, Ts1, Tc1, u_in, v_in, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term):
     # i = 0.001 /dt
 
     rho1[:, :] = 1  # kg/m3
@@ -221,7 +221,7 @@ def main_calc(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0,
 
         # constant inlet
         # print("Assigning inlet values")
-        p_in, u_in, v_in, rho_in, e_in, T_in = val_in_constant(p_0, T_0, u_0)
+        p_in, u_in, v_in, rho_in = val_in_constant(p_0, T_0, u_0)
 
         # print("Creating empty de1 matrix to save variable mass deposition")
         # de1 matrix this is the de_variable in RK3 function
@@ -244,8 +244,8 @@ def main_calc(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0,
 
 
 # simple time integration
-        p2, rho2, T2, u2, v2, Ut2, e2, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term = simple_time(
-            p1, rho1, T1, u1, v1, Ut1, e1, p_in, rho_in, T_in, e_in, u_in, v_in, rho_0, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term, i)
+        u2, v2, Ut2, p2, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term = simple_time(
+            p1, rho1, u1, v1, Ut1, u_in, rho_0, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term, i)
 
         # out = [p2, rho2, T2, u2, v2, Ut2]
 
@@ -425,7 +425,7 @@ def main_calc(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2, Ut2, e2, de0,
 # PLOTTING FIELDS
         # if i >= 0:
         # if i == 2:
-        if i % 100000 == 0:
+        if i % 500 == 0:
             # if i >= 0:
             # print("plotting current iteration", i)
             plot_imshow(p3, u3, T3, rho3, e3)
@@ -446,7 +446,7 @@ if __name__ == "__main__":
     # main_cal(rho1, ux1, ur1, T1, e1, Tw1, Ts1, Tc1, de0, rho2, ux2,
     #          ur2, T2, e2, Tw2, Ts2, Tc2, de1, T3)
     main_calc(p1, rho1, T1, u1, v1, Ut1, e1, p2, rho2, T2, u2, v2,
-              Ut2, e2, de0, de1, p3, rho3, T3, u3, v3, Ut3, e3, Tw1, Ts1, Tc1, p_in, rho_in, T_in, e_in, u_in, v_in, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term
+              Ut2, e2, de0, de1, p3, rho3, T3, u3, v3, Ut3, e3, Tw1, Ts1, Tc1, u_in, v_in, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term
               )
 
 # END OF PROGRAM

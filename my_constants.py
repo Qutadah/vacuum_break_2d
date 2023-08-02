@@ -18,13 +18,13 @@ L = 6.45  # With prepping region.
 Nx = 350  # Total length & spatial step - x direction 6.45
 R_cyl = 1.27e-2
 Nr = 15  # Total length & spatial step - r direction
-T_sim = 3.
-Nt = 600000000.  # Total time & time step
+T_sim = 1.
+Nt = 200000.  # Total time & time step
 dt = T_sim/Nt
 dx = L/Nx
 dr = R_cyl/Nr
 print("dx", dx, "dr", dr, "dt", dt, "Cou_r",
-      20*dt/dr, "Cou_x_Max", 800*dt/dx)
+      20*dt/dr, "Cou_x_Max", 100*dt/dx)
 gamma_n2 = 1.4
 #   Tuning parameters
 # Coefficient for the film boiling of He I (we need to adjust optimal value)

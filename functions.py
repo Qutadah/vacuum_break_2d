@@ -129,7 +129,8 @@ def n_matrix():
             n[i, j] = j
     # print("Removing N=0 in matrix")
     n[:, 0] = 1
-    n[0, :] = 1
+    # n[0, :] = 1
+    # print(n)
     return n
 
 
@@ -493,32 +494,36 @@ def rk4(ux, ur, u, p, q, tg, e, p_in, ux_in, rho_in, T_in, e_in, rho_0, ur_in, R
     return r, r_u, r_v, r_e
 
 
-# def RK4():
-
+def pressure_field():
+    p = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
+    for i in np.arange(Nx+1):
+        p[i, :] = (200-700)/Nx*i + 700
+    return p
 # simple time integration
 
-def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho_0, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term, i):
+
+def simple_time(p, q, u, v, Ut, u_in, rho_0, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term, i):
     N = n_matrix()
-    q_0 = np.zeros((Nx+1, Nr+1), dtype=(np.float64))
-    qq = copy.deepcopy(q_0)  # density
+    q_0 = np.zeros((Nx+1, Nr+1), dtype=(np.float64, np.float64))
     uxx = copy.deepcopy(q_0)  # velocity axial
     urr = copy.deepcopy(q_0)  # velocity radial
     uu = copy.deepcopy(q_0)  # total velocity
-    ee = copy.deepcopy(q_0)  # energy
-    tt = copy.deepcopy(q_0)  # temperature
+    pp = copy.deepcopy(q_0)  # total velocity
+
     # if np.any(tg < 0):
     #     print("Temp before no slip simple_time has at least one negative value")
     #     exit()
-
+    q[:, :] = 1  # kg/m3
+    p = pressure_field()
     # plot_imshow(p, u, tg, q, e)
-    u, v, Ut, p, q, tg, e = inlet_BC(
-        u, v, Ut, p, q, tg, e, p_in, u_in, rho_in, T_in, e_in)
+    u, v, Ut = inlet_BC(
+        u, v, Ut, u_in)
     # negative temp check
     # if np.any(tg < 0):
     #     print("Temp inlet_BC has at least one negative value")
     #     exit()
     # plot_imshow(p, u, tg, q, e)
-    p, q, tg, u, Ut, e = outlet_BC(p, e, q, u, v, Ut, rho_0)
+    u, Ut = outlet_BC(u, v, Ut)
 # negative temp check
     # if np.any(tg < 0):
     #     print("Temp outlet_BC has at least one negative value")
@@ -530,7 +535,7 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
 #     tg = (e - 1./2.*q*Ut**2) * 2./5. / q/R*M_n
 #     p = q*R/M_n*tg
 
-    p, tg, u, v, Ut, e = no_slip_no_mdot(p, q, tg, u, v, Ut, e)
+    u, v, Ut = no_slip_no_mdot(u, v, Ut)
 
 # negative temp check
     # if np.any(tg < 0):
@@ -541,16 +546,10 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
     # print("plotting")
     # plot_imshow(p, Ut, tg, q, e)
 
-# Calculating gradients (first and second)
-
-# def grad_rho_matrix(ux_in, rho_in, ur, ux, rho):
-    d_dr, m_dx = grad_rho_matrix(v, u, q, N)
 # def grad_ux2_matrix(p_in, p, ux_in, ux):  # bulk
     dp_dx, ux_dx, ux_dr = grad_ux2_matrix(p, u)
 # def grad_ur2_matrix(p, ur, ur_in):  # first derivatives
     dp_dr, ur_dx, ur_dr = grad_ur2_matrix(p, v)
-# def grad_e2_matrix(ur1, ux1, ux_in, e_in, e1):     # use
-    grad_x, grad_r = grad_e2_matrix(v, u, e, N)
 
 # def dt2x_matrix(ux_in, ur_in, ux1, ur1):
     dt2x_ux, dt2x_ur = dt2x_matrix(u, v)
@@ -558,62 +557,33 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
     dt2r_ux, dt2r_ur = dt2r_matrix(u, v)
 
     # print("Calculating viscosity")
-    visc_matrix = viscous_matrix(tg, p)
-    # print("zero viscosity assumed")
-    # visc_matrix[:, :] = 0.
+    visc_matrix = np.zeros((Nx+1, Nr+1), dtype=(np.longdouble, np.longdouble))
+    visc_matrix[:, :] = 15e-6
 
-    assert np.isfinite(visc_matrix).all()
-
-    r, rho_r, rho_x, rhs_rho_term = rhs_rho(i,
-                                            d_dr, m_dx, N, rho_r, rho_x, rhs_rho_term)
     r_ux, r_ur, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term = rhs_ma(
         i, dp_dx, q, dt2r_ux, N, ux_dr, dt2x_ux, u, ux_dx, v, dp_dr, dt2r_ur, dt2x_ur, ur_dx, ur_dr, visc_matrix, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term)
 
     # p, tg, u, v, Ut, e = no_slip_no_mdot(p, q, tg, u, v, Ut, e)
     # grad_x, grad_r = grad_e2_matrix(v, u, e, N)
 
-    r_e, e_r, e_x, rhs_e_term = rhs_energy(i,
-                                           grad_r, grad_x, N, e_r, e_x, rhs_e_term)
-
     # apply inlet BCs
 
-    # print("r", r, "r_ux", r_ux, "r_ur", r_ur, "r_e", r_e)
-# first LHS calculations
-
-# calculating ratios
-
-    # print("ratio conti", dt*r/q)
-    # print("ratio momentum X, iteration #", i)
-    # print(dt*r_ux/u)
-    # print("ratio momentum R", dt*r_ur/v)
-    # print("ratio energy", dt*r_e/e)
-
-    qq = q + dt*r
-    qq[0, :] = q[0, :]
     uxx = u + dt*r_ux
     uxx[0, :] = u[0, :]
     urr = v + dt*r_ur
     urr[0, :] = v[0, :]
-    ee = e + dt*r_e
-    ee[0, :] = e[0, :]
-
-# ensure no division by zero
-    qq = no_division_zero(qq)
 
 # Velocity
     uu = np.sqrt(uxx**2. + urr**2.)
-# pressure defining
-    tt = (ee - 1./2.*qq*uu**2.) * 2./5. / qq/R*M_n
-    pp = qq*R/M_n*tt
 
-    uxx, urr, uu, pp, qq, tt, ee = inlet_BC(
-        uxx, urr, uu, pp, qq, tt, ee, p_in, u_in, rho_in, T_in, e_in)
+    uxx, urr, uu = inlet_BC(
+        uxx, urr, uu, u_in)
 # negative temp check
     # if np.any(tg < 0):
     #     print("Temp inlet_BC has at least one negative value")
     #     exit()
     # plot_imshow(p, u, tg, q, e)
-    pp, qq, tt, uxx, uu, ee = outlet_BC(pp, ee, qq, uxx, urr, uu, rho_0)
+    uxx, uu = outlet_BC(uxx, urr, uu)
 
     # uxx, urr, uu, ee = parabolic_velocity(qq, tg, uxx, urr, Ut, ee, u_in, v_in)
 
@@ -622,11 +592,11 @@ def simple_time(p, q, tg, u, v, Ut, e, p_in, rho_in, T_in, e_in, u_in, v_in, rho
 #     pp = qq*R/M_n*tt
 
 # no slip condition - pressure and temp recalculated within
-    pp, tt, uxx, urr, uu, ee = no_slip_no_mdot(pp, qq, tt, uxx, urr, uu, ee)
+    uxx, urr, uu = no_slip_no_mdot(uxx, urr, uu)
     # print("plotting no slip")
     # plot_imshow(pp, uu, tt, qq, ee)
-
-    return pp, qq, tt, uxx, urr, uu, ee, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term
+    pp = p
+    return uxx, urr, uu, pp, rho_r, rho_x, rhs_rho_term, pressure_x, visc_x, ux_x, ur_x, rhs_ux_term, pressure_r, visc_r, ux_r, ur_r, rhs_ur_term, e_r, e_x, rhs_e_term
 
 
 # adaptive timestep
@@ -1342,7 +1312,7 @@ def continue_simulation():
 def bulk_values(T_s):
     # T_0 = 100.
     T_0 = 4.2  # K
-    rho_0 = 1e-3  # An arbitrary small initial density in pipe, kg/m3
+    rho_0 = 1  # An arbitrary small initial density in pipe, kg/m3
     # T_0 = p_0/rho_0/R*M_n
     p_0 = rho_0*R/M_n*T_0
     u_0 = 0
@@ -1618,61 +1588,45 @@ def remove_timestepping():
 # Radial velocity assumed zero
 
 
-def no_slip_no_mdot(p, rho, tg, u, v, Ut, e):
+def no_slip_no_mdot(u, v, Ut):
     # no mass deposition
     u[:, Nr] = 0
     v[:, Nr] = 0
     Ut[:, Nr] = 0
-    # energy assumed constant
-    tg = (e - 1./2.*rho*Ut**2) * 2./5. / rho/R*M_n
-    p = rho*R/M_n*tg
-    return p, tg, u, v, Ut, e
+    return u, v, Ut
 
 
 # @jit(nopython=True)
-def inlet_BC(u, v, Ut, p, rho, T, e, p_inl, u_inl, rho_inl, T_inl, e_inl):
-    p[0, :] = p_inl
-    rho[0, :] = rho_inl
-    T[0, :] = T_inl
-    e[0, :] = e_inl
-    u[0, :] = u_inl
+def inlet_BC(u, v, Ut, u_inl):
+    # u[0, :] = u_inl
 
-# parabolic velocity profile
+    # parabolic velocity profile
     # for y in np.arange(Nr+1):
     #     u[0, y] = u_inl*(1.0 - ((y*dr)/R_cyl)**2)
     #     # print("parabolic y", y)
     #     Ut[0, y] = u[0, y]
 
-
-# no slip
+    # no slip
     u[:, Nr] = 0
     v[:, Nr] = 0
     Ut[:, Nr] = 0
     Ut = np.sqrt(u**2. + v**2.)
-    e = 5./2. * p + 1./2 * rho*Ut**2
-    return [u, v, Ut, p, rho, T, e]
+    return [u, v, Ut]
 
 # @jit(nopython=True)
 
 
-def outlet_BC(p, e, rho, u, v, Ut, rho_0):
+def outlet_BC(u, v, Ut):
 
     for n in np.arange(Nr+1):
-        p[Nx, n] = 2/5*(e[Nx, n]-1/2*rho[Nx, n]
-                        * Ut[Nx, n]**2)  # Pressure
-
-        rho[Nx, n] = max(2*rho[Nx-1, n]-rho[Nx-2, n], rho_0)  # Free outflow
-        u[Nx, n] = max(2*rho[Nx-1, n]*u[Nx-1, n] -
-                       rho[Nx-2, n]*u[Nx-2, n], 0) / rho[Nx, n]
+        u[Nx, n] = max(2*1*u[Nx-1, n] -
+                       1*u[Nx-2, n], 0) / 1
         u = np.sqrt(u**2. + v**2.)
-    # u[:, Nr] = 0  # no slip
-    # v[:, Nr] = 0
+    u[:, Nr] = 0  # no slip
+    v[:, Nr] = 0
     Ut = np.sqrt(u**2. + v**2.)
-    # e[Nx, n] = 2*e[Nx-1, n]-e[Nx-2, n]
-    e = 5./2. * p + 1./2 * rho*Ut**2
-    tg = p/rho/R*M_n
-    bc = [p, rho, tg,  u, Ut, e]
-    return bc
+    u, Ut
+    return u, Ut
 
 # recalculating velocity from energy, T, rho
 
@@ -1680,18 +1634,15 @@ def outlet_BC(p, e, rho, u, v, Ut, rho_0):
 # @jit(nopython=True)
 def val_in_constant(p_0, T_0, u_0):
     #   Calculate instant flow rate (kg/s)
-    p_in = 6000  # Pa
-    # rho_in = 0.5
-    T_in = 298.
-    rho_in = p_in/R*M_n / T_in
-    u_in = np.sqrt(gamma_n2*R/M_n*T_in)
-    # u_in = u_0
+    p_in = 700  # Pa
+    rho_in = 1.
+    # u_in = np.sqrt(gamma_n2*R/M_n*298.)
+    u_in = 0.
     v_in = 0.
     Ut_in = np.sqrt(u_in**2. + v_in**2.)
     # Ut_in = 50.
     # Ut_in = np.sqrt(u_in**2 + v_in**2)
-    e_in = 5./2.*rho_in/M_n*R*T_in + 1./2.*rho_in*Ut_in**2
-    out = np.array([p_in, u_in, v_in, rho_in, e_in, T_in])
+    out = np.array([p_in, u_in, v_in, rho_in])
     return out
 
 # @jit(nopython=True)
