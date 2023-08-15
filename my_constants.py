@@ -2,7 +2,8 @@ import math
 import scipy
 from scipy import constants
 import numpy as np
-
+import os
+import json
 
 D = 2.54e-2
 M_n = 0.028
@@ -13,18 +14,36 @@ d_n = 364e-12
 Pr_n = 0.72
 
 #   Time and spatial step
-L = 6.45  # With prepping region.
+L = 1.00  # With prepping region.
 # L = 6.45
-Nx = 350  # Total length & spatial step - x direction 6.45
+Nx = 250  # Total length & spatial step - x direction 6.45
 R_cyl = 1.27e-2
-Nr = 15  # Total length & spatial step - r direction
-T_sim = 1.
-Nt = 100000000.  # Total time & time step
+Nr = 12  # Total length & spatial step - r direction
+T_sim = 2e-3
+Nt = 1000000  # Total time & time step
 dt = T_sim/Nt
 dx = L/Nx
 dr = R_cyl/Nr
+
+# # Dynamically changing time stepping dt
+# os.chdir('C:/Users/rababqjt/Documents/programming/git-repos/2d-vacuumbreak-explicit-V1-func-calc/system/')
+
+# # reading the data from the file
+# with open('dictionary.txt') as f:
+#     data = f.read()
+# # reconstructing the data as a dictionary
+#     js = json.loads(data)
+#     # print("Data type after reconstruction : ", type(js))
+#     # print(js)
+#     Nt = js['timesteps']
+#     dt = T_sim/js['timesteps']
+#     print("dt: ", dt)
+
+# print("dx", dx, "dr", dr)
+
+# print()
 print("dx", dx, "dr", dr, "dt", dt, "Cou_r",
-      20*dt/dr, "Cou_x_Max", 800*dt/dx)
+      20*dt/dr, "Cou_x_Max", 1000*dt/dx)
 gamma_n2 = 1.4
 #   Tuning parameters
 # Coefficient for the film boiling of He I (we need to adjust optimal value)
@@ -32,7 +51,7 @@ Sc_PP = 0.95  # Condensation\boiling coeffcient
 
 #   Parameters
 sample = 100  # Sample coeffcient
-n_trans = 300  # Smoothing control for initial condition
+n_trans = 200  # Smoothing control for initial condition
 T_s = 4.2  # Temperature boundaries
 
 #   Constants
